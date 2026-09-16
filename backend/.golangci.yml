@@ -1,0 +1,99 @@
+# Линтер + архитектурные границы бэкенда (см. CLAUDE.md, спека §4).
+#
+#   cmd/api  →  api  →  core
+#                 ↘  gen/api (oapi-codegen из openapi.yaml)
+#                 ↘  gen/db  (go-jet из schema.sql)
+#
+#   core  — чистая доменная логика: дедуп, вердикт 30%, теневой бан.
+#           Только stdlib без I/O. Никакого HTTP, БД, os, контекстов.
+#   api   — реализует gen/api.StrictServerInterface, ходит в Postgres через
+#           pgx/v5/stdlib + go-jet, MAX/Dadata-клиенты, outbox-воркер.
+#   gen   — только сгенерированный код, руками не правится, линтом не проверяется.
+#   cmd   — только сборка зависимостей и запуск. Логики нет.
+#
+# Нарушение границы = ошибка линта, а не ревью.
+version: "2"
+
+run:
+  timeout: 3m
+  tests: true
+
+linters:
+  default: standard        # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - depguard             # архитектурные границы (ниже)
+    - gosec                # trust boundary: initData, вебхук, SQL
+    - sqlclosecheck        # rows.Close() после pool.Query
+    - rowserrcheck         # rows.Err() после итерации
+    - bodyclose            # resp.Body.Close() в MAX/Dadata-клиентах
+    - noctx                # http-запросы только с контекстом
+    - errorlint            # errors.Is/As вместо ==
+    - nilerr
+    - unparam
+    - misspell
+    - testifylint
+  settings:
+    depguard:
+      rules:
+        core-is-pure:
+          files: ["**/core/**"]
+          allow: ["$gostd"]
+          deny:
+            - pkg: "net/http"
+              desc: "core не знает про HTTP — принимает готовые данные, возвращает решение"
+            - pkg: "database/sql"
+              desc: "core не ходит в БД"
+            - pkg: "context"
+              desc: "core — чистые функции без I/O, контекст не нужен"
+            - pkg: "os"
+              desc: "core не читает env/файлы"
+            - pkg: "ukapp/api"
+              desc: "зависимость только api → core, не наоборот"
+            - pkg: "github.com/"
+              desc: "core без внешних зависимостей"
+        api-deps:
+          files: ["**/api/**"]
+          allow:
+            - "$gostd"
+            - "ukapp/core"
+            - "ukapp/gen"
+            - "github.com/jackc/pgx/v5"
+            - "github.com/go-jet/jet/v2"
+            - "github.com/oapi-codegen/runtime"
+          deny:
+            - pkg: "ukapp/cmd"
+              desc: "api не импортирует cmd"
+        cmd-is-thin:
+          files: ["**/cmd/**"]
+          allow:
+            - "$gostd"
+            - "ukapp/api"
+            - "ukapp/gen"
+            - "github.com/jackc/pgx/v5"
+          deny:
+            - pkg: "ukapp/core"
+              desc: "cmd только собирает api; доменная логика — через api"
+    gosec:
+      excludes:
+        - G104  # дублирует errcheck
+    errcheck:
+      exclude-functions:
+        - (*database/sql.Rows).Close
+        - (net/http.ResponseWriter).Write
+
+  exclusions:
+    generated: lax
+    paths: [gen/]
+    rules:
+      - path: _test\.go
+        linters: [gosec, unparam, noctx]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    paths: [gen/]
+  settings:
+    goimports:
+      local-prefixes: [ukapp]

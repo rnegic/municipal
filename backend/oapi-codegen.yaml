@@ -1,0 +1,8 @@
+# oapi-codegen: openapi.yaml → gen/api/openapi.gen.go (strict-server на stdlib net/http)
+package: oapi
+output: gen/api/openapi.gen.go
+generate:
+  models: true
+  std-http-server: true
+  strict-server: true
+  embedded-spec: true
