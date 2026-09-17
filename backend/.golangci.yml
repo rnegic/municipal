@@ -1,0 +1,169 @@
+# Линтер + архитектурные границы бэкенда (см. CLAUDE.md, спека §4).
+#
+#   cmd/api → transport/http → service → repository
+#                                 ↘         ↘
+#                                domain    domain, gen/db (go-jet из schema.sql)
+#                    ↘
+#                  gen/api (oapi-codegen из openapi.yaml) — только transport
+#
+#   domain     — чистая доменная логика: дедуп по title+riser, порог закрытия по
+#                подтверждениям, валидация initData. Только stdlib без I/O. Никакого
+#                HTTP, БД, os, контекстов.
+#   repository — доступ к Postgres (pgx/v5/stdlib + go-jet). Знает про domain (типы/
+#                константы), но не про service/transport и не про JSON-контракт.
+#   maxclient,
+#   dadata     — HTTP-клиенты внешних API. Не знают про repository/service/transport.
+#   service    — бизнес-оркестрация: применяет domain-правила поверх repository и
+#                maxclient/dadata. Не знает про oapi/JSON — только сюда нельзя gen/api.
+#   transport/
+#   http       — реализует gen/api.StrictServerInterface: разбор запроса, вызов
+#                service, маппинг в JSON. Ходит в repository/maxclient/dadata только
+#                через service.
+#   gen        — только сгенерированный код, руками не правится, линтом не проверяется.
+#   cmd        — только сборка зависимостей и запуск. Логики нет.
+#
+# Нарушение границы = ошибка линта, а не ревью. Тестовым файлам (_test.go) depguard
+# не мешает: интеграционные тесты законно поднимают весь стек и трогают БД напрямую
+# для сценариев без HTTP-ручки (шатдаун таймеров, теневой бан, роль диспетчера).
+version: "2"
+
+run:
+  timeout: 3m
+  tests: true
+
+linters:
+  default: standard        # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - depguard             # архитектурные границы (ниже)
+    - gosec                # trust boundary: initData, вебхук, SQL
+    - sqlclosecheck        # rows.Close() после pool.Query
+    - rowserrcheck         # rows.Err() после итерации
+    - bodyclose            # resp.Body.Close() в MAX/Dadata-клиентах
+    - noctx                # http-запросы только с контекстом
+    - errorlint            # errors.Is/As вместо ==
+    - unparam
+    - misspell
+    - testifylint
+  settings:
+    depguard:
+      rules:
+        domain-is-pure:
+          files: ["**/domain/**"]
+          allow: ["$gostd"]
+          deny:
+            - pkg: "net/http"
+              desc: "domain не знает про HTTP — принимает готовые данные, возвращает решение"
+            - pkg: "database/sql"
+              desc: "domain не ходит в БД"
+            - pkg: "context"
+              desc: "domain — чистые функции без I/O, контекст не нужен"
+            - pkg: "os"
+              desc: "domain не читает env/файлы"
+            - pkg: "ukapp/internal/"
+              desc: "зависимость только внутрь domain, не наоборот"
+            - pkg: "ukapp/gen/"
+              desc: "domain не знает про сгенерированные wire/db-типы"
+            - pkg: "github.com/"
+              desc: "domain без внешних зависимостей"
+        repository-deps:
+          files: ["**/internal/repository/**"]
+          allow:
+            - "$gostd"
+            - "ukapp/internal/domain"
+            - "ukapp/gen/db"
+            - "github.com/jackc/pgx/v5"
+            - "github.com/go-jet/jet/v2"
+          deny:
+            - pkg: "ukapp/internal/service"
+              desc: "repository ничего не знает про service (зависимость вверх запрещена)"
+            - pkg: "ukapp/internal/transport"
+              desc: "repository ничего не знает про transport"
+            - pkg: "ukapp/gen/api"
+              desc: "repository не отдаёт wire-типы — только свои строки/структуры"
+        client-deps:
+          files: ["**/internal/maxclient/**", "**/internal/dadata/**"]
+          allow:
+            - "$gostd"
+            - "ukapp/internal/domain"
+          deny:
+            - pkg: "ukapp/internal/repository"
+              desc: "внешний HTTP-клиент не знает про БД"
+            - pkg: "ukapp/internal/service"
+              desc: "внешний HTTP-клиент не знает про service"
+            - pkg: "ukapp/gen/"
+              desc: "внешний HTTP-клиент не отдаёт wire-типы"
+        service-deps:
+          files: ["**/internal/service/**"]
+          allow:
+            - "$gostd"
+            - "ukapp/internal/domain"
+            - "ukapp/internal/repository"
+            - "ukapp/internal/maxclient"
+            - "ukapp/internal/dadata"
+            - "ukapp/gen/db"
+          deny:
+            - pkg: "ukapp/internal/transport"
+              desc: "зависимость только transport → service, не наоборот"
+            - pkg: "ukapp/gen/api"
+              desc: "service не знает про JSON-контракт — это забота transport"
+        transport-deps:
+          files: ["**/internal/transport/**"]
+          allow:
+            - "$gostd"
+            - "ukapp/internal/domain"
+            - "ukapp/internal/service"
+            - "ukapp/gen/api"
+            - "ukapp/gen/db"
+            - "github.com/oapi-codegen/runtime"
+            - "github.com/gin-gonic/gin"
+          deny:
+            - pkg: "ukapp/internal/repository"
+              desc: "transport ходит в БД только через service"
+            - pkg: "ukapp/internal/maxclient"
+              desc: "transport зовёт внешние API только через service"
+            - pkg: "ukapp/internal/dadata"
+              desc: "transport зовёт внешние API только через service"
+        cmd-is-thin:
+          files: ["**/cmd/**"]
+          allow:
+            - "$gostd"
+            - "ukapp/internal/repository"
+            - "ukapp/internal/service"
+            - "ukapp/internal/transport"
+            - "ukapp/internal/maxclient"
+            - "ukapp/internal/dadata"
+          deny:
+            - pkg: "ukapp/internal/domain"
+              desc: "cmd только собирает зависимости; доменная логика — через service"
+            - pkg: "ukapp/gen/"
+              desc: "cmd не трогает сгенерированные типы напрямую"
+    staticcheck:
+      dot-import-whitelist:            # идиома go-jet: DSL читается как SQL
+        - github.com/go-jet/jet/v2/postgres
+        - ukapp/gen/db/ukapp/public/table
+    gosec:
+      excludes:
+        - G104  # дублирует errcheck
+    errcheck:
+      exclude-functions:
+        - (*database/sql.DB).Close
+        - (*database/sql.Rows).Close
+        - (io.ReadCloser).Close
+        - (net/http.ResponseWriter).Write
+
+  exclusions:
+    generated: lax
+    paths: [gen/]
+    rules:
+      - path: _test\.go
+        linters: [gosec, unparam, noctx, depguard]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    paths: [gen/]
+  settings:
+    goimports:
+      local-prefixes: [ukapp]
