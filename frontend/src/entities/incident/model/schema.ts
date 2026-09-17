@@ -13,7 +13,6 @@ export const incidentSchema = z.object({
   status: incidentStatusSchema,
   affectedCount: z.number().int().nonnegative(),
   createdAt: z.string(),
-  dueAt: z.string().nullable(),
 })
 
 export const residentRequestSchema = z.object({

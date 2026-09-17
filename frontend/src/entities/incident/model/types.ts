@@ -4,8 +4,3 @@ export type {
   IncidentStatus,
   ResidentRequest,
 } from './schema'
-
-export interface IncidentStatusStep {
-  id: string
-  label: string
-}

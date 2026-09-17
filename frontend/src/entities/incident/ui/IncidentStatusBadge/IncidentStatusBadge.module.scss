@@ -1,0 +1,25 @@
+.root {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  width: fit-content;
+  padding: var(--app-space-2) var(--app-space-4);
+  border: 1px solid currentcolor;
+  border-radius: var(--app-radius-semi-round);
+  white-space: nowrap;
+}
+
+.accepted {
+  color: var(--app-color-progress);
+  background-color: var(--app-color-progress-surface);
+}
+
+.inProgress {
+  color: var(--app-color-warning-dark);
+  background-color: var(--app-color-warning-surface);
+}
+
+.resolved {
+  color: var(--app-color-success);
+  background-color: var(--app-color-success-surface);
+}

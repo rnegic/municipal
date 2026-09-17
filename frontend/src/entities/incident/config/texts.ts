@@ -6,8 +6,7 @@ export const incidentTexts = {
     headerStatusAlert: 'Есть активная авария',
     joinAction: 'У меня тоже (Подписаться)',
     joinedAction: 'Вы подписались',
-    affectedCount: (count: number) => `Уже подписались: ${count}`,
-    dueAt: (time: string) => `Планируют устранить к ${time}`,
+    affectedCount: (count: number) => `+${count} жителей подтвердили`,
   },
   severity: {
     critical: 'Авария',
@@ -16,8 +15,12 @@ export const incidentTexts = {
   statuses: {
     accepted: 'Принята',
     in_progress: 'В работе',
-    verifying: 'Проверка',
-    done: 'Закрыта',
+    verifying: 'Решена',
+    done: 'Решена',
+  },
+  confirm: {
+    action: 'Подтвердите',
+    done: 'Спасибо, подтверждено',
   },
   requests: {
     sectionTitle: 'Мои заявки',
@@ -30,7 +33,7 @@ export const incidentTexts = {
     action: 'Сообщить о новой проблеме',
   },
   a11y: {
-    statusTrack: 'Стадия работ по заявке',
+    status: 'Текущий статус заявки',
     severityIcon: 'Признак аварии',
   },
 } as const

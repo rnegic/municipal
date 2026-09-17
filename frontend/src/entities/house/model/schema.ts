@@ -2,10 +2,7 @@ import { z } from 'zod'
 
 export const houseSchema = z.object({
   id: z.string(),
-  city: z.string(),
-  street: z.string(),
-  building: z.string(),
-  apartment: z.string().nullable(),
+  address: z.string().min(1),
 })
 
 export type House = z.infer<typeof houseSchema>

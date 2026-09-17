@@ -18,13 +18,12 @@ export const PLACEHOLDER_ACTIVE_INCIDENT: Incident | null = incidentSchema.parse
   status: 'in_progress',
   affectedCount: 12,
   createdAt: dayjs().subtract(2, 'hour').toISOString(),
-  dueAt: dayjs().hour(15).minute(0).second(0).millisecond(0).toISOString(),
 })
 
 export const PLACEHOLDER_REQUESTS: ResidentRequest[] = residentRequestSchema.array().parse([
   {
     id: 'request-1',
-    title: 'Течёт кран на кухне',
+    title: 'Протекает крыша',
     status: 'verifying',
     createdAt: dayjs().subtract(5, 'hour').toISOString(),
     dueAt: dayjs().add(1, 'day').toISOString(),
