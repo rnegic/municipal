@@ -1,19 +1,23 @@
 openapi: 3.0.3
 info:
   title: УК-инциденты API
-  version: 0.1.0
+  version: 0.2.0
   description: |
     Бэкенд мини-аппа MAX для жильцов и УК. Источник правды по контракту —
     этот файл: из него генерируется Go-сервер (`make gen`) и TS-клиент для фронта
     (`npx openapi-typescript backend/openapi.yaml -o src/shared/api/schema.d.ts`).
 
-    Авторизация: заголовок `Authorization: MaxInitData <initData>` (см. CLAUDE.md).
-    Все ошибки — JSON `{"error": "..."}` с соответствующим HTTP-кодом.
-    Ручки `/api/v1/admin/*` — только для роли `uk_dispatcher` (иначе 403).
+    Контракт зафиксирован фронтом (shared/api/client.ts + zod-схемы): camelCase,
+    nullable-поля всегда присутствуют в ответе (ключ есть, значение null),
+    ошибки — единая форма {code, message, details?}.
+
+    Авторизация: заголовок `Authorization: tma <initData>`. `auth_date` не старше 24ч.
+    Ручки `/api/uk/*` и `PATCH /api/incidents/{id}/status` — только для роли
+    `uk_dispatcher` (иначе 403 forbidden).
 servers:
   - url: http://localhost:8080
 security:
-  - MaxInitData: []
+  - TmaInitData: []
 
 paths:
   /health:
@@ -28,62 +32,94 @@ paths:
             text/plain:
               schema: { type: string, example: ok }
 
-  /api/v1/profile:
+  /api/me:
     get:
-      operationId: getProfile
+      operationId: getMe
       tags: [profile]
-      summary: Текущий пользователь (создаётся при первом вызове)
+      summary: Текущий пользователь + привязанный дом (пользователь создаётся лениво)
       responses:
-        "200": { $ref: "#/components/responses/User" }
+        "200":
+          description: Профиль
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MeResponse" }
         "401": { $ref: "#/components/responses/Error" }
+
+  /api/houses/bind:
     post:
       operationId: bindHouse
       tags: [profile]
-      summary: Привязать дом к пользователю
+      summary: Привязать дом по свободному адресу (нормализуется через DaData)
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/BindHouseRequest" }
       responses:
-        "200": { $ref: "#/components/responses/User" }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-
-  /api/v1/addresses:
-    get:
-      operationId: suggestAddresses
-      tags: [profile]
-      summary: Подсказки адреса (прокси к Dadata, только до дома)
-      parameters:
-        - name: query
-          in: query
-          required: true
-          schema: { type: string, minLength: 3 }
-      responses:
         "200":
-          description: Подсказки
+          description: Дом
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: "#/components/schemas/AddressSuggestion" }
+              schema: { $ref: "#/components/schemas/House" }
+        "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
-        "502": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
 
-  /api/v1/incidents:
+  /api/houses/{houseId}/incidents:
     get:
-      operationId: listIncidents
+      operationId: listHouseIncidents
       tags: [incidents]
-      summary: Незакрытые заявки дома текущего пользователя
+      summary: Активные аварии дома (critical сначала, затем createdAt desc)
+      parameters:
+        - { $ref: "#/components/parameters/HouseID" }
+        - name: status
+          in: query
+          schema: { type: string, enum: [active] }
       responses:
-        "200": { $ref: "#/components/responses/IncidentList" }
+        "200":
+          description: Список
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IncidentListResponse" }
         "401": { $ref: "#/components/responses/Error" }
-        "409": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/houses/{houseId}/requests:
+    get:
+      operationId: listHouseRequests
+      tags: [requests]
+      summary: "«Мои заявки» текущего пользователя в доме"
+      parameters:
+        - { $ref: "#/components/parameters/HouseID" }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: Страница заявок
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedResidentRequests" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/houses/{houseId}/stats:
+    get:
+      operationId: houseStats
+      tags: [stats]
+      summary: "P1 — статистика дома (пока не реализовано)"
+      parameters: [{ $ref: "#/components/parameters/HouseID" }]
+      responses:
+        "501": { $ref: "#/components/responses/Error" }
+
+  /api/incidents:
     post:
       operationId: createIncident
       tags: [incidents]
-      summary: Создать заявку (с дедупом — может приклеить к существующей)
+      summary: "«Сообщить о новой проблеме» (с дедупом по дому+заголовку+стояку в окне 2ч)"
       requestBody:
         required: true
         content:
@@ -91,428 +127,266 @@ paths:
             schema: { $ref: "#/components/schemas/CreateIncidentRequest" }
       responses:
         "201":
-          description: Создана или объединена с дубликатом
+          description: Создана новая авария
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CreateIncidentResponse" }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "409": { $ref: "#/components/responses/Error" }
-
-  /api/v1/incidents/{id}/subscribe:
-    post:
-      operationId: subscribeIncident
-      tags: [incidents]
-      summary: «У меня тоже» (повтор — 204 без изменений)
-      parameters: [{ $ref: "#/components/parameters/ID" }]
-      responses:
-        "204": { description: Подписан }
-        "401": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-
-  /api/v1/incidents/{id}/handshake-response:
-    post:
-      operationId: respondHandshake
-      tags: [incidents]
-      summary: Ответ на «Проблема решена?» из мини-аппа
-      parameters: [{ $ref: "#/components/parameters/ID" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/HandshakeRequest" }
-      responses:
-        "200": { $ref: "#/components/responses/Status" }
+              schema: { $ref: "#/components/schemas/Incident" }
+        "200":
+          description: Приклеена к существующей аварии (дедуп)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Incident" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
-  /api/v1/events:
+  /api/incidents/{id}:
+    get:
+      operationId: getIncident
+      tags: [incidents]
+      summary: Карточка аварии
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: Авария
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Incident" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/incidents/{id}/join:
+    post:
+      operationId: joinIncident
+      tags: [incidents]
+      summary: "«У меня тоже» (идемпотентно: повтор — 200 с текущим состоянием)"
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: Подписан
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JoinResponse" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/incidents/{id}/confirm:
+    post:
+      operationId: confirmIncident
+      tags: [incidents]
+      summary: "Цифровое рукопожатие: «Починили» (идемпотентно)"
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: Текущий статус после подтверждения
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConfirmResponse" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
+  /api/incidents/{id}/photos:
+    post:
+      operationId: uploadIncidentPhoto
+      tags: [incidents]
+      summary: "P1 — фото к обращению (пока не реализовано)"
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "501": { $ref: "#/components/responses/Error" }
+
+  /api/incidents/{id}/status:
+    patch:
+      operationId: setIncidentStatus
+      tags: [uk]
+      summary: "P2 — смена статуса диспетчером (пока не реализовано)"
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "501": { $ref: "#/components/responses/Error" }
+
+  /api/events:
     get:
       operationId: listEvents
       tags: [events]
-      summary: Незакрытые события дома текущего пользователя
+      summary: "P1 — плановые работы УК (пока не реализовано)"
+      parameters:
+        - name: houseId
+          in: query
+          required: true
+          schema: { type: string }
       responses:
-        "200": { $ref: "#/components/responses/EventList" }
-        "401": { $ref: "#/components/responses/Error" }
-        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
 
-  /api/v1/events/{id}/confirmation:
-    post:
-      operationId: confirmEvent
+  /api/events/{id}:
+    get:
+      operationId: getEvent
       tags: [events]
-      summary: Подтверждение результата события жильцом
+      summary: "P1 — карточка события (пока не реализовано)"
       parameters: [{ $ref: "#/components/parameters/ID" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/EventConfirmationRequest" }
       responses:
-        "200": { $ref: "#/components/responses/Status" }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
 
-  /api/v1/admin/incidents:
+  /api/uk/queue:
     get:
-      operationId: adminListIncidents
-      tags: [admin]
-      summary: Заявки домов УК диспетчера, по убыванию подписчиков
+      operationId: ukQueue
+      tags: [uk]
+      summary: "P2 — очередь заявок УК (пока не реализовано)"
       responses:
-        "200": { $ref: "#/components/responses/IncidentList" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "409": { $ref: "#/components/responses/Error" }
+        "501": { $ref: "#/components/responses/Error" }
 
-  /api/v1/admin/incidents/{id}/status:
-    patch:
-      operationId: adminSetIncidentStatus
-      tags: [admin]
-      summary: Новая → В работе → Выполнено (запускает рукопожатие)
-      parameters: [{ $ref: "#/components/parameters/ID" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/IncidentStatusRequest" }
-      responses:
-        "204": { description: Статус изменён, пуши поставлены в очередь }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-
-  /api/v1/admin/incidents/{id}/escalation-resolve:
+  /api/uk/events:
     post:
-      operationId: adminResolveIncidentEscalation
-      tags: [admin]
-      summary: Решение инженера по спорной заявке
-      parameters: [{ $ref: "#/components/parameters/ID" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/EscalationResolveRequest" }
+      operationId: ukCreateEvent
+      tags: [uk]
+      summary: "P2 — создать плановое событие (пока не реализовано)"
       responses:
-        "200": { $ref: "#/components/responses/Status" }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-        "409": { $ref: "#/components/responses/Error" }
-
-  /api/v1/admin/events:
-    get:
-      operationId: adminListEvents
-      tags: [admin]
-      summary: События домов УК диспетчера
-      responses:
-        "200": { $ref: "#/components/responses/EventList" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "409": { $ref: "#/components/responses/Error" }
-    post:
-      operationId: adminCreateEvent
-      tags: [admin]
-      summary: Создать плановое событие (пуш жильцам дома)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CreateEventRequest" }
-      responses:
-        "201":
-          description: Создано
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/CreateEventResponse" }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-
-  /api/v1/admin/events/{id}:
-    patch:
-      operationId: adminRescheduleEvent
-      tags: [admin]
-      summary: Сдвинуть сроки (пуш жильцам)
-      parameters: [{ $ref: "#/components/parameters/ID" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/RescheduleEventRequest" }
-      responses:
-        "204": { description: Обновлено }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-
-  /api/v1/admin/events/{id}/status:
-    patch:
-      operationId: adminSetEventStatus
-      tags: [admin]
-      summary: «Готово» → ждёт подтверждения жильцов
-      parameters: [{ $ref: "#/components/parameters/ID" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/EventStatusRequest" }
-      responses:
-        "204": { description: Обновлено }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-
-  /api/v1/admin/events/{id}/escalation-resolve:
-    post:
-      operationId: adminResolveEventEscalation
-      tags: [admin]
-      summary: Решение инженера по спорному событию
-      parameters: [{ $ref: "#/components/parameters/ID" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/EscalationResolveRequest" }
-      responses:
-        "200": { $ref: "#/components/responses/Status" }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-        "409": { $ref: "#/components/responses/Error" }
-
-  /api/v1/bot/webhook:
-    post:
-      operationId: maxWebhook
-      security: []
-      tags: [system]
-      summary: Входящие обновления от MAX Bot API (callback-кнопки)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              description: Update из MAX (update_type, callback.payload, callback.user.id)
-              additionalProperties: true
-      responses:
-        "200": { description: Принято }
+        "501": { $ref: "#/components/responses/Error" }
 
 components:
   securitySchemes:
-    MaxInitData:
+    TmaInitData:
       type: apiKey
       in: header
       name: Authorization
-      description: "`MaxInitData <initData>` из MAX WebApp Bridge"
+      description: "`tma <initData>` из MAX WebApp Bridge"
 
   parameters:
     ID:
       name: id
       in: path
       required: true
-      schema: { type: integer, format: int64 }
+      schema: { type: string }
+    HouseID:
+      name: houseId
+      in: path
+      required: true
+      schema: { type: string }
 
   responses:
     Error:
       description: Ошибка
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/Error" }
-    Status:
-      description: Текущий статус после действия
-      content:
-        application/json:
-          schema: { $ref: "#/components/schemas/StatusResponse" }
-    User:
-      description: Профиль
-      content:
-        application/json:
-          schema: { $ref: "#/components/schemas/User" }
-    IncidentList:
-      description: Список заявок
-      content:
-        application/json:
-          schema:
-            type: array
-            items: { $ref: "#/components/schemas/Incident" }
-    EventList:
-      description: Список событий
-      content:
-        application/json:
-          schema:
-            type: array
-            items: { $ref: "#/components/schemas/Event" }
+          schema: { $ref: "#/components/schemas/ApiErrorResponse" }
 
   schemas:
-    Error:
+    ApiErrorResponse:
       type: object
-      required: [error]
+      required: [code, message]
       properties:
-        error: { type: string }
-
-    StatusResponse:
-      type: object
-      required: [status]
-      properties:
-        status: { type: string }
+        code: { type: string, example: validation_failed }
+        message: { type: string }
+        details: {}
 
     Role:
       type: string
       enum: [resident, uk_dispatcher]
 
-    Category:
-      type: string
-      enum: [electricity, water, elevator, yard, other]
-
-    IncidentStatus:
-      type: string
-      enum: [new, in_progress, awaiting_confirmation, disputed, closed]
-
-    EventStatus:
-      type: string
-      enum: [planned, in_progress, awaiting_confirmation, disputed, closed]
-
     User:
       type: object
-      required: [id, max_user_id, full_name, role, house_id, uk_id]
+      required: [id, fullName, role]
       properties:
-        id: { type: integer, format: int64 }
-        max_user_id: { type: integer, format: int64 }
-        full_name: { type: string }
+        id: { type: string, example: u_123 }
+        fullName: { type: string }
         role: { $ref: "#/components/schemas/Role" }
-        house_id: { type: integer, format: int64, nullable: true }
-        uk_id: { type: integer, format: int64, nullable: true }
 
-    AddressSuggestion:
+    House:
       type: object
-      required: [value, house_fias_id]
+      required: [id, address]
       properties:
-        value: { type: string, example: "г Казань, ул Баумана, д 10" }
-        house_fias_id: { type: string }
+        id: { type: string, example: h_123 }
+        address: { type: string, example: "Казань, ул. Баумана, д. 10" }
+
+    MeResponse:
+      type: object
+      required: [user, house]
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+        house:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/House" }]
 
     BindHouseRequest:
       type: object
-      required: [address_raw, house_fias_id]
+      required: [address]
       properties:
-        address_raw: { type: string }
-        house_fias_id: { type: string }
+        address: { type: string, minLength: 1 }
+
+    Severity:
+      type: string
+      enum: [critical, warning]
+
+    IncidentStatus:
+      type: string
+      enum: [accepted, in_progress, verifying, done]
 
     Incident:
       type: object
-      required: [id, house_id, house_address, category, reporter_id, description,
-                 entrance, riser, status, created_at, resolved_at, subscribers, subscribed]
+      required: [id, houseId, title, description, severity, status, affectedCount,
+                 createdAt, joinedByMe, confirmedByMe]
       properties:
-        id: { type: integer, format: int64 }
-        house_id: { type: integer, format: int64 }
-        house_address: { type: string }
-        category: { $ref: "#/components/schemas/Category" }
-        reporter_id: { type: integer, format: int64 }
+        id: { type: string, example: inc_01H }
+        houseId: { type: string, example: h_123 }
+        title: { type: string }
         description: { type: string }
-        entrance: { type: string, nullable: true }
-        riser: { type: string, nullable: true }
+        severity: { $ref: "#/components/schemas/Severity" }
         status: { $ref: "#/components/schemas/IncidentStatus" }
-        created_at: { type: string, format: date-time }
-        resolved_at: { type: string, format: date-time, nullable: true }
-        subscribers: { type: integer, description: "Сколько жильцов нажали «У меня тоже» (включая автора)" }
-        subscribed: { type: boolean, description: "Текущий пользователь уже подписан" }
+        affectedCount: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+        joinedByMe: { type: boolean }
+        confirmedByMe: { type: boolean }
+
+    IncidentListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Incident" }
 
     CreateIncidentRequest:
       type: object
-      required: [category, description]
+      required: [title, description, severity]
       properties:
-        category: { $ref: "#/components/schemas/Category" }
-        description: { type: string, minLength: 1 }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, minLength: 1, maxLength: 2000 }
+        severity: { $ref: "#/components/schemas/Severity" }
         entrance: { type: string }
         riser: { type: string }
 
-    CreateIncidentResponse:
+    JoinResponse:
       type: object
-      required: [incident_id, merged]
+      required: [incidentId, affectedCount, joined]
       properties:
-        incident_id: { type: integer, format: int64 }
-        merged: { type: boolean, description: "true — приклеили к существующей заявке (дедуп)" }
+        incidentId: { type: string }
+        affectedCount: { type: integer, minimum: 0 }
+        joined: { type: boolean }
 
-    IncidentStatusRequest:
+    ConfirmResponse:
       type: object
-      required: [status]
+      required: [incidentId, status, confirmedAt]
       properties:
-        status: { type: string, enum: [in_progress, resolved] }
+        incidentId: { type: string }
+        status: { $ref: "#/components/schemas/IncidentStatus" }
+        confirmedAt: { type: string, format: date-time }
 
-    HandshakeRequest:
+    ResidentRequest:
       type: object
-      required: [answer]
+      required: [id, title, status, createdAt, dueAt]
       properties:
-        answer: { type: string, enum: [yes, "no"] }
+        id: { type: string, example: req_1 }
+        title: { type: string }
+        status: { $ref: "#/components/schemas/IncidentStatus" }
+        createdAt: { type: string, format: date-time }
+        dueAt: { type: string, format: date-time, nullable: true }
 
-    EscalationResolveRequest:
+    PaginatedResidentRequests:
       type: object
-      required: [confirmed]
+      required: [items, total, offset, limit]
       properties:
-        confirmed: { type: boolean, description: "true — работа реально выполнена" }
-        photo_url: { type: string }
-
-    Event:
-      type: object
-      required: [id, house_id, dispatcher_id, house_address, entrance, riser, reason, responsible,
-                 scheduled_from, scheduled_to, status, created_at, resolved_at, my_answer, recipients]
-      properties:
-        id: { type: integer, format: int64 }
-        house_id: { type: integer, format: int64 }
-        dispatcher_id: { type: integer, format: int64 }
-        house_address: { type: string }
-        entrance: { type: string, nullable: true }
-        riser: { type: string, nullable: true }
-        reason: { type: string }
-        responsible: { type: string }
-        scheduled_from: { type: string, format: date-time }
-        scheduled_to: { type: string, format: date-time }
-        status: { $ref: "#/components/schemas/EventStatus" }
-        created_at: { type: string, format: date-time }
-        resolved_at: { type: string, format: date-time, nullable: true }
-        my_answer: { type: string, enum: [yes, partial, "no"], nullable: true }
-        recipients: { type: integer, description: "Сколько жильцов получили уведомление" }
-
-    CreateEventRequest:
-      type: object
-      required: [house_id, reason, responsible, scheduled_from, scheduled_to]
-      properties:
-        house_id: { type: integer, format: int64 }
-        entrance: { type: string }
-        riser: { type: string }
-        reason: { type: string, minLength: 1 }
-        responsible: { type: string, minLength: 1 }
-        scheduled_from: { type: string, format: date-time }
-        scheduled_to: { type: string, format: date-time }
-
-    CreateEventResponse:
-      type: object
-      required: [event_id]
-      properties:
-        event_id: { type: integer, format: int64 }
-
-    RescheduleEventRequest:
-      type: object
-      required: [scheduled_from, scheduled_to, reason]
-      properties:
-        scheduled_from: { type: string, format: date-time }
-        scheduled_to: { type: string, format: date-time }
-        reason: { type: string, minLength: 1 }
-
-    EventStatusRequest:
-      type: object
-      required: [status]
-      properties:
-        status: { type: string, enum: [done] }
-
-    EventConfirmationRequest:
-      type: object
-      required: [answer]
-      properties:
-        answer: { type: string, enum: [yes, partial, "no"] }
-        photo_url: { type: string }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ResidentRequest" }
+        total: { type: integer, minimum: 0 }
+        offset: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 0 }
