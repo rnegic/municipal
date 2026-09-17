@@ -4,6 +4,7 @@ import { Route, Routes } from 'react-router-dom'
 
 import { ROUTES } from '@/shared/config/routes'
 
+import { RequireAddress } from './providers/require-address'
 import { RequireRole } from './providers/require-role'
 
 const FeedPage = lazy(() => import('@/pages/feed').then((module) => ({ default: module.FeedPage })))
@@ -22,9 +23,11 @@ export const AppRoutes = () => (
     <Route
       path={ROUTES.feed}
       element={
-        <RequireRole role="resident">
-          <FeedPage />
-        </RequireRole>
+        <RequireAddress>
+          <RequireRole role="resident">
+            <FeedPage />
+          </RequireRole>
+        </RequireAddress>
       }
     />
     <Route path={ROUTES.incidentCreate} element={<IncidentCreatePage />} />
