@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 
 import { Input, Typography } from '@maxhub/max-ui'
 
