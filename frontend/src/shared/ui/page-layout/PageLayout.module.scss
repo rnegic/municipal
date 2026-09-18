@@ -1,0 +1,54 @@
+.root {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+}
+
+.content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--app-space-8);
+  width: 100%;
+  max-width: var(--size-base-platform-width-normal);
+  margin-inline: auto;
+  padding: calc(var(--app-space-8) + env(safe-area-inset-top)) var(--app-space-8)
+    var(--app-space-12);
+}
+
+.contentWithHero {
+  padding-top: var(--app-space-8);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-4);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-8);
+}
+
+.floatingActionSpacer {
+  height: calc(var(--app-space-12) * 3);
+}
+
+.floatingAction {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(var(--app-space-8) + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+  padding-inline: var(--app-space-8);
+  pointer-events: none;
+}
+
+.floatingActionInner {
+  width: 100%;
+  max-width: calc(var(--size-base-platform-width-normal) - var(--app-space-8) * 2);
+  pointer-events: auto;
+}
