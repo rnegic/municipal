@@ -1,0 +1,44 @@
+.root {
+  gap: var(--app-space-6);
+}
+
+.addressRow {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-6);
+}
+
+.addressIcon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--app-space-12);
+  height: var(--app-space-12);
+  border-radius: var(--app-radius-round);
+  color: var(--app-color-icon-accent);
+  background-color: var(--app-color-progress-surface);
+}
+
+.address {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--app-space-1);
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--app-space-3);
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-4);
+  padding-top: var(--app-space-6);
+  border-top: 1px solid var(--app-color-border);
+}
