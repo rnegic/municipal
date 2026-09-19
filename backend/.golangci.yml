@@ -13,7 +13,7 @@
 #                константы), но не про service/transport и не про JSON-контракт.
 #   maxclient,
 #   dadata     — HTTP-клиенты внешних API. Не знают про repository/service/transport.
-#   ukclient    — адаптер порта service.UkProvider (gen/uk из contracts/uk.yaml).
+#   ukclient   — адаптер порта service.UkProvider (gen/uk из contracts/uk.yaml).
 #   service    — бизнес-оркестрация: применяет domain-правила поверх repository и
 #                maxclient/dadata. Не знает про oapi/JSON — только сюда нельзя gen/api.
 #   transport/

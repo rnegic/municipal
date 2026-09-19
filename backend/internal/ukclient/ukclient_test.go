@@ -83,6 +83,26 @@ func TestFindHouse(t *testing.T) {
 	}
 }
 
+// TestFindHouse_200WithoutJSONBody guards against a real UK system (misconfigured proxy,
+// stripped headers, ...) returning 2xx with a Content-Type gen/uk doesn't parse as JSON:
+// resp.JSON200 stays nil there, and the adapter must return an error instead of panicking.
+func TestFindHouse_200WithoutJSONBody(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /houses/{fias}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"id":"h-1","address":"x","organization":{"id":"uk-1","name":"y"}}`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	c := New(srv.URL, "tok")
+	_, err := c.FindHouse(context.Background(), "f-1")
+	if err == nil {
+		t.Fatal("want error on 200 without JSON content-type, got nil")
+	}
+}
+
 func TestFindHouse_Unauthorized(t *testing.T) {
 	c := New(fakeUkServer(t).URL, "wrong")
 	if _, err := c.FindHouse(context.Background(), "f-1"); err == nil {

@@ -43,6 +43,9 @@ func (c *Client) FindHouse(ctx context.Context, fiasID string) (service.UkHouse,
 	switch resp.StatusCode() {
 	case http.StatusOK:
 		h := resp.JSON200
+		if h == nil {
+			return service.UkHouse{}, fmt.Errorf("uk: find house: status %d without JSON body", resp.StatusCode())
+		}
 		return service.UkHouse{ID: h.Id, Address: h.Address, OrgID: h.Organization.Id, OrgName: h.Organization.Name}, nil
 	case http.StatusNotFound:
 		return service.UkHouse{}, service.ErrUkHouseNotFound
@@ -68,6 +71,9 @@ func (c *Client) RegisterIncident(ctx context.Context, in service.UkIncident) (s
 	default:
 		return "", "", fmt.Errorf("uk: register incident: status %d", resp.StatusCode())
 	}
+	if inc == nil {
+		return "", "", fmt.Errorf("uk: register incident: status %d without JSON body", resp.StatusCode())
+	}
 	return inc.Id, toDomainStatus(inc.Status), nil
 }
 
@@ -78,6 +84,9 @@ func (c *Client) IncidentUpdates(ctx context.Context, since time.Time) ([]servic
 	}
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("uk: list updates: status %d", resp.StatusCode())
+	}
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("uk: list updates: status %d without JSON body", resp.StatusCode())
 	}
 	out := make([]service.UkIncidentUpdate, len(resp.JSON200.Items))
 	for i, it := range resp.JSON200.Items {
