@@ -233,4 +233,14 @@ func TestSyncStatuses_CursorNotAdvancedOnError(t *testing.T) {
 	if !svc.ukSince.Equal(t2) {
 		t.Fatalf("cursor must advance to last update on success, want %v got %v", t2, svc.ukSince)
 	}
+
+	// accepted (and other unannounced statuses) must still advance the cursor.
+	t3 := t2.Add(time.Minute)
+	uk.updates = []UkIncidentUpdate{{ID: "INC-nope", ExternalRef: "999", Status: domain.IncidentAccepted, UpdatedAt: t3}}
+	if err := svc.syncStatuses(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !svc.ukSince.Equal(t3) {
+		t.Fatalf("cursor must advance past skipped (accepted) statuses, want %v got %v", t3, svc.ukSince)
+	}
 }

@@ -112,6 +112,12 @@ func (l *lk) setStatus(c *gin.Context) {
 	if _, ok := l.current(c); !ok {
 		return
 	}
+	switch c.PostForm("status") {
+	case "accepted", "in_progress", "verifying", "done":
+	default:
+		c.String(http.StatusBadRequest, "неизвестный статус")
+		return
+	}
 	_, err := l.st.SetStatus(c.Request.Context(), c.Param("id"), c.PostForm("status"))
 	switch {
 	case errors.Is(err, store.ErrNotFound):

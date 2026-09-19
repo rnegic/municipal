@@ -6,7 +6,7 @@
 <table><tr><th>№</th><th>Дом</th><th>Проблема</th><th>Важность</th><th>Статус</th><th>Действие</th></tr>
 {{range .Incidents}}<tr>
   <td>{{.ID}}<br><small>{{.CreatedAt.Format "02.01 15:04"}}</small></td>
-  <td>{{.Address}}{{if .Entrance}}<br>подъезд {{str .Entrance}}{{end}}{{if .Riser}}, стояк {{str .Riser}}{{end}}</td>
+  <td>{{.Address}}{{if str .Entrance}}<br>подъезд {{str .Entrance}}{{end}}{{if str .Riser}}, стояк {{str .Riser}}{{end}}</td>
   <td><b>{{.Title}}</b><br>{{.Description}}</td>
   <td>{{.Severity}}</td>
   <td class="st-{{.Status}}">{{.Status}}</td>

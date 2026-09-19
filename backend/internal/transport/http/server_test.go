@@ -26,9 +26,10 @@ import (
 
 // These are integration tests exercising the whole stack (transport → service → repository)
 // against a real Postgres, per CLAUDE.md testing policy. Raw SQL setup below (forcing an
-// incident into "verifying") has no HTTP endpoint in this P0 scope (that's P2, the UK cabinet),
-// so it goes straight through repository.Store.DB() — that's why depguard exempts _test.go
-// files from the transport→repository boundary.
+// incident into "verifying") has no HTTP endpoint on this API: that transition is performed
+// by the external УК system, not by any endpoint of ours, so the test goes straight through
+// repository.Store.DB() — that's why depguard exempts _test.go files from the
+// transport→repository boundary.
 
 func testStore(t *testing.T) *repository.Store {
 	t.Helper()

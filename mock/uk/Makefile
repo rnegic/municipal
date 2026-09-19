@@ -1,9 +1,13 @@
 MOCKUK_DATABASE_URL ?= postgres://mockuk:mockuk@localhost:5433/mockuk?sslmode=disable
 
-.PHONY: gen db test run
+.PHONY: gen db lint test run
 
 gen:
 	go tool oapi-codegen -config oapi-codegen.yaml ../../backend/contracts/uk.yaml
+
+lint:
+	go vet ./...
+	test -z "$$(gofmt -l .)"
 
 db:
 	docker compose -f ../../docker-compose.yml up -d --wait mock-uk-db

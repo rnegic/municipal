@@ -231,7 +231,7 @@ components:
 
     Role:
       type: string
-      enum: [resident, uk_dispatcher]
+      enum: [resident]
 
     User:
       type: object

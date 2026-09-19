@@ -37,6 +37,22 @@
 3. Сообщите ФИАС-id домов, которые обслуживаете, — `GET /houses/{fiasId}`
    должен отвечать `200` именно по `house_fias_id` из ФИАС/DaData.
 
+## Демо-дом
+
+В сиде `mock/uk/internal/store/seed.sql` один дом (`h-1`, «г Казань, ул Баумана, д 10») с
+плейсхолдером `fias_id = REPLACE-WITH-DADATA-HOUSE-FIAS-ID`. Пока он не заменён, любой
+`POST /api/houses/bind` отвечает `422` (система УК не знает дом). Перед демо:
+
+1. Получите `house_fias_id` демо-адреса из DaData (тот же запрос, что делает бэкенд:
+   `POST https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address` с
+   `{"query": "Казань, ул. Баумана, д. 10"}`, поле `data.house_fias_id`).
+2. Вставьте его в `seed.sql` вместо плейсхолдера.
+3. `docker compose restart mock-uk` — сид идемпотентен и обновит `fias_id` существующей строки.
+
+Полный сброс обеих баз: `docker compose down -v`. Учтите: `make gen-db` в `backend/`
+пересоздаёт только нашу БД, а mock-uk помнит `externalRef` старых инцидентов — после
+`gen-db` сбрасывайте и mock-uk-db, иначе новый инцидент №1 «приклеится» к старому INC-001.
+
 ## Устойчивость
 
 Если ваша система недоступна: обращения жителей всё равно создаются у нас и
