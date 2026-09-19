@@ -4,8 +4,10 @@ import { Input, Typography } from '@maxhub/max-ui'
 
 import { saveBoundHouse } from '@/entities/house'
 import { IconLocation } from '@/shared/assets/icons'
+import { describeApiError } from '@/shared/lib/api-error'
 import { BottomSheet } from '@/shared/ui/bottom-sheet'
 import { Button } from '@/shared/ui/button'
+import { useBindHouseMutation } from '../../api'
 import { addressBindTexts } from '../../config/texts'
 import s from './AddressBindSheet.module.scss'
 
@@ -20,17 +22,24 @@ const MIN_ADDRESS_LENGTH = 5
 export const AddressBindSheet = ({ open, onClose, onSuccess }: AddressBindSheetProps) => {
   const [address, setAddress] = useState('')
   const [invalid, setInvalid] = useState(false)
+  const bindMutation = useBindHouseMutation()
 
   const handleSubmit = (event: React.SubmitEvent) => {
     event.preventDefault()
 
-    if (address.trim().length < MIN_ADDRESS_LENGTH) {
+    const value = address.trim()
+
+    if (value.length < MIN_ADDRESS_LENGTH) {
       setInvalid(true)
       return
     }
 
-    saveBoundHouse(address)
-    onSuccess()
+    bindMutation.mutate(value, {
+      onSuccess: (house) => {
+        saveBoundHouse(house)
+        onSuccess()
+      },
+    })
   }
 
   return (
@@ -61,7 +70,12 @@ export const AddressBindSheet = ({ open, onClose, onSuccess }: AddressBindSheetP
             }}
           />
         </label>
-        <Button type="submit" stretched>
+        {bindMutation.isError ? (
+          <Typography.Text variant="note" color="secondary">
+            {describeApiError(bindMutation.error).description}
+          </Typography.Text>
+        ) : null}
+        <Button type="submit" stretched disabled={bindMutation.isPending}>
           {addressBindTexts.submit}
         </Button>
       </form>

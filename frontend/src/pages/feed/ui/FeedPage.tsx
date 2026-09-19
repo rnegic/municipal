@@ -1,15 +1,60 @@
-import { getBoundHouse, PLACEHOLDER_HOUSE } from '@/entities/house'
-import { incidentTexts, PLACEHOLDER_ACTIVE_INCIDENT, PLACEHOLDER_REQUESTS } from '@/entities/incident'
+import { Navigate } from 'react-router-dom'
+
+import { incidentTexts, useActiveIncidentsQuery, useMyRequestsQuery } from '@/entities/incident'
+import { useCurrentHouseQuery } from '@/entities/user'
 import { IncidentReportFab } from '@/features/incident-report'
+import { ROUTES } from '@/shared/config/routes'
+import { ApiErrorState } from '@/shared/ui/api-error-state'
+import { LoadingState } from '@/shared/ui/loading-state'
 import { PageLayout } from '@/shared/ui/page-layout'
+import { Skeleton } from '@/shared/ui/skeleton'
 import { AppHeader } from '@/widgets/app-header'
 import { IncidentFocus } from '@/widgets/incident-focus'
 import { MyRequests } from '@/widgets/my-requests'
 import s from './FeedPage.module.scss'
 
 export const FeedPage = () => {
-  const incident = PLACEHOLDER_ACTIVE_INCIDENT
-  const house = getBoundHouse() ?? PLACEHOLDER_HOUSE
+  const houseQuery = useCurrentHouseQuery()
+  const incidentsQuery = useActiveIncidentsQuery(houseQuery.data?.id)
+  const requestsQuery = useMyRequestsQuery(houseQuery.data?.id)
+
+  if (houseQuery.isPending) {
+    return (
+      <PageLayout>
+        <LoadingState />
+      </PageLayout>
+    )
+  }
+
+  if (houseQuery.isError) {
+    return (
+      <PageLayout>
+        <ApiErrorState error={houseQuery.error} onRetry={() => houseQuery.refetch()} />
+      </PageLayout>
+    )
+  }
+
+  if (!houseQuery.data) {
+    return <Navigate to={ROUTES.onboarding} replace />
+  }
+
+  if (incidentsQuery.isPending) {
+    return (
+      <PageLayout>
+        <LoadingState />
+      </PageLayout>
+    )
+  }
+
+  if (incidentsQuery.isError) {
+    return (
+      <PageLayout>
+        <ApiErrorState error={incidentsQuery.error} onRetry={() => incidentsQuery.refetch()} />
+      </PageLayout>
+    )
+  }
+
+  const incident = incidentsQuery.data?.items[0] ?? null
 
   return (
     <PageLayout
@@ -17,7 +62,7 @@ export const FeedPage = () => {
         <div className={s.hero}>
           <div className={s.heroInner}>
             <AppHeader
-              house={house}
+              house={houseQuery.data}
               status={
                 incident
                   ? { tone: 'danger', label: incidentTexts.focus.headerStatusAlert }
@@ -30,7 +75,17 @@ export const FeedPage = () => {
       }
       floatingAction={<IncidentReportFab />}
     >
-      <MyRequests requests={PLACEHOLDER_REQUESTS} />
+      {requestsQuery.isPending ? (
+        <div className={s.requestsSkeleton}>
+          <Skeleton height={88} radius="card" />
+          <Skeleton height={88} radius="card" />
+          <Skeleton height={88} radius="card" />
+        </div>
+      ) : requestsQuery.isError ? (
+        <ApiErrorState error={requestsQuery.error} onRetry={() => requestsQuery.refetch()} />
+      ) : (
+        <MyRequests requests={requestsQuery.data.items} />
+      )}
     </PageLayout>
   )
 }

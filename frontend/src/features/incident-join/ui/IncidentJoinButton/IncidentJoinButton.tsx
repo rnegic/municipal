@@ -1,26 +1,27 @@
-import { useState } from 'react'
-
 import { Avatar, Typography } from '@maxhub/max-ui'
 
-import { incidentTexts } from '@/entities/incident'
+import { incidentTexts, useJoinIncidentMutation } from '@/entities/incident'
 import { IconCheckCircle, IconPlus } from '@/shared/assets/icons'
+import { describeApiError } from '@/shared/lib/api-error'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/button'
 import s from './IncidentJoinButton.module.scss'
 
 export interface IncidentJoinButtonProps {
+  incidentId: string
   affectedCount: number
   alreadyJoined?: boolean
   className?: string
 }
 
 export const IncidentJoinButton = ({
+  incidentId,
   affectedCount,
   alreadyJoined = false,
   className,
 }: IncidentJoinButtonProps) => {
-  const [joined, setJoined] = useState(alreadyJoined)
-  const count = affectedCount + (joined && !alreadyJoined ? 1 : 0)
+  const joinMutation = useJoinIncidentMutation()
+  const joined = alreadyJoined || joinMutation.isSuccess
 
   return (
     <div className={cn(s.root, className)}>
@@ -37,18 +38,23 @@ export const IncidentJoinButton = ({
           </Avatar.Container>
         </div>
         <Typography.Text variant="note" color="secondary">
-          {incidentTexts.focus.affectedCount(count)}
+          {incidentTexts.focus.affectedCount(affectedCount)}
         </Typography.Text>
       </div>
+      {joinMutation.isError ? (
+        <Typography.Text variant="note" color="secondary">
+          {describeApiError(joinMutation.error).description}
+        </Typography.Text>
+      ) : null}
       <Button
         className={s.action}
         size="medium"
         stretched
         tone={joined ? 'secondary' : 'primary'}
-        disabled={joined}
+        disabled={joined || joinMutation.isPending}
         aria-pressed={joined}
         iconBefore={joined ? <IconCheckCircle /> : <IconPlus />}
-        onClick={() => setJoined(true)}
+        onClick={() => joinMutation.mutate(incidentId)}
       >
         {joined ? incidentTexts.focus.joinedAction : incidentTexts.focus.joinAction}
       </Button>

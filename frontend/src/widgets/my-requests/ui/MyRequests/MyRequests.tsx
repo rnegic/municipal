@@ -1,11 +1,6 @@
 import { Typography } from '@maxhub/max-ui'
 
-import {
-  IncidentStatusBadge,
-  incidentTexts,
-  type ResidentRequest,
-} from '@/entities/incident'
-import { IncidentConfirmButton } from '@/features/incident-confirm'
+import { IncidentStatusBadge, incidentTexts, type ResidentRequest } from '@/entities/incident'
 import { IconDocument } from '@/shared/assets/icons'
 import { cn } from '@/shared/lib/cn'
 import { formatDate, formatDateTime } from '@/shared/lib/date'
@@ -48,11 +43,6 @@ export const MyRequests = ({ requests, className }: MyRequestsProps) => (
                   </Typography.Text>
                 ) : null}
               </div>
-              {request.status === 'verifying' ? (
-                <div className={s.footer}>
-                  <IncidentConfirmButton stretched />
-                </div>
-              ) : null}
             </Card>
           </li>
         ))}

@@ -18,13 +18,10 @@ export const getBoundHouse = (): House | null => {
   }
 }
 
-export const saveBoundHouse = (address: string): House => {
-  const house = houseSchema.parse({
-    id: 'bound-house',
-    address: address.trim(),
-  })
-
-  window.localStorage.setItem(BOUND_HOUSE_STORAGE_KEY, JSON.stringify(house))
-
-  return house
+export const saveBoundHouse = (house: House): void => {
+  try {
+    window.localStorage.setItem(BOUND_HOUSE_STORAGE_KEY, JSON.stringify(houseSchema.parse(house)))
+  } catch {
+    return
+  }
 }

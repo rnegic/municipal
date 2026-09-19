@@ -46,10 +46,19 @@ export const IncidentFocus = ({ incident, tone = 'default', className }: Inciden
         </Typography.Text>
         {incident.status === 'verifying' ? (
           <div className={s.footer}>
-            <IncidentConfirmButton stretched />
+            <IncidentConfirmButton
+              incidentId={incident.id}
+              alreadyConfirmed={incident.confirmedByMe}
+              stretched
+            />
           </div>
         ) : (
-          <IncidentJoinButton className={s.join} affectedCount={incident.affectedCount} />
+          <IncidentJoinButton
+            incidentId={incident.id}
+            affectedCount={incident.affectedCount}
+            alreadyJoined={incident.joinedByMe}
+            className={s.join}
+          />
         )}
       </Card>
     ) : (

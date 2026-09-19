@@ -1,9 +1,23 @@
 export { incidentTexts } from './config/texts'
-export { PLACEHOLDER_ACTIVE_INCIDENT, PLACEHOLDER_REQUESTS } from './model/placeholders'
+export {
+  REQUESTS_PAGE_SIZE,
+  incidentKeys,
+  useActiveIncidentsQuery,
+  useConfirmIncidentMutation,
+  useCreateIncidentMutation,
+  useIncidentQuery,
+  useJoinIncidentMutation,
+  useMyRequestsQuery,
+} from './api'
 export type {
+  ConfirmResponse,
+  CreateIncidentInput,
   Incident,
+  IncidentListResponse,
   IncidentSeverity,
   IncidentStatus,
+  JoinResponse,
+  PaginatedResidentRequests,
   ResidentRequest,
 } from './model/types'
 export {
