@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"ukapp/internal/domain"
@@ -53,6 +54,9 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	id, err := s.repo.CreateIncident(ctx, houseID, reporterID, title, description, sev, entrance, riser)
 	if err != nil {
 		return IncidentRow{}, false, err
+	}
+	if err := s.syncUnregistered(ctx); err != nil {
+		slog.Warn("uk register deferred to worker", "incident", id, "err", err)
 	}
 	r, err := s.repo.GetIncident(ctx, id, reporterID)
 	return toIncidentRow(r), true, err
