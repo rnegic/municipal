@@ -14,10 +14,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"ukapp/internal/dadata"
+	"ukapp/internal/domain"
 	"ukapp/internal/repository"
 	"ukapp/internal/service"
 )
@@ -71,9 +73,44 @@ func fakeDadata(t *testing.T) *dadata.Client {
 	return c
 }
 
+// fakeUk — in-memory UkProvider: любой ФИАС, кроме "unknown", обслуживается организацией uk-1.
+type fakeUk struct {
+	mu         sync.Mutex
+	registered []service.UkIncident
+	updates    []service.UkIncidentUpdate
+	setStatus  []string
+}
+
+func (f *fakeUk) FindHouse(_ context.Context, fias string) (service.UkHouse, error) {
+	if fias == "unknown" {
+		return service.UkHouse{}, service.ErrUkHouseNotFound
+	}
+	return service.UkHouse{ID: "h-" + fias, Address: fias, OrgID: "uk-1", OrgName: "Демо УК"}, nil
+}
+
+func (f *fakeUk) RegisterIncident(_ context.Context, in service.UkIncident) (string, domain.IncidentStatus, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.registered = append(f.registered, in)
+	return "INC-" + in.ExternalRef, domain.IncidentAccepted, nil
+}
+
+func (f *fakeUk) IncidentUpdates(context.Context, time.Time) ([]service.UkIncidentUpdate, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.updates, nil
+}
+
+func (f *fakeUk) SetStatus(_ context.Context, id string, st domain.IncidentStatus) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.setStatus = append(f.setStatus, id+":"+string(st))
+	return nil
+}
+
 func newTestServer(t *testing.T, repo *repository.Store) http.Handler {
 	t.Helper()
-	return NewServer(service.New(repo, nil, fakeDadata(t)), testBotToken)
+	return NewServer(service.New(repo, nil, fakeDadata(t), &fakeUk{}), testBotToken)
 }
 
 func itoa(n int64) string              { return strconv.FormatInt(n, 10) }
