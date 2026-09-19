@@ -81,6 +81,7 @@ func (s *Service) syncStatuses(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	maxSeen := s.ukSince
 	for _, u := range ups {
 		text, ok := ukStatusText[u.Status]
 		if !ok {
@@ -89,9 +90,10 @@ func (s *Service) syncStatuses(ctx context.Context) error {
 		if _, err := s.repo.ApplyUkStatus(ctx, u.ID, u.Status, "uk_status_"+string(u.Status), repository.OutboxPayload{Text: text}); err != nil {
 			return fmt.Errorf("apply status %s for %s: %w", u.Status, u.ID, err)
 		}
-		if u.UpdatedAt.After(s.ukSince) {
-			s.ukSince = u.UpdatedAt
+		if u.UpdatedAt.After(maxSeen) {
+			maxSeen = u.UpdatedAt
 		}
 	}
+	s.ukSince = maxSeen
 	return nil
 }

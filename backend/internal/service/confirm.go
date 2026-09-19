@@ -43,8 +43,10 @@ func (s *Service) ConfirmIncident(ctx context.Context, incidentID, userID int64)
 	if !closed {
 		return domain.IncidentVerifying, confirmedAt, nil
 	}
-	if r, err := s.repo.GetIncident(ctx, incidentID, userID); err == nil && r.ExternalID != nil {
-		// ponytail: best effort, без реконсиляции; воркер done в УК не досылает.
+	// ponytail: best effort, без реконсиляции; воркер done в УК не досылает.
+	if r, err := s.repo.GetIncident(ctx, incidentID, userID); err != nil {
+		slog.Warn("uk: set done skipped, incident lookup failed", "incident", incidentID, "err", err)
+	} else if r.ExternalID != nil {
 		if err := s.uk.SetStatus(ctx, *r.ExternalID, domain.IncidentDone); err != nil {
 			slog.Warn("uk: set done failed", "incident", incidentID, "err", err)
 		}

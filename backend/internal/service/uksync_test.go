@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ type fakeUk struct {
 	mu         sync.Mutex
 	registered int
 	updates    []UkIncidentUpdate
+	updatesErr error
 	setStatus  []string
 	fail       bool
 }
@@ -35,6 +37,9 @@ func (f *fakeUk) RegisterIncident(_ context.Context, in UkIncident) (string, dom
 func (f *fakeUk) IncidentUpdates(context.Context, time.Time) ([]UkIncidentUpdate, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.updatesErr != nil {
+		return nil, f.updatesErr
+	}
 	return f.updates, nil
 }
 
@@ -201,5 +206,31 @@ func TestConfirm_PushesDoneToUk(t *testing.T) {
 	}
 	if len(uk.setStatus) != 1 || uk.setStatus[0] != "INC-1:done" {
 		t.Fatalf("want done pushed to uk once, got %v", uk.setStatus)
+	}
+}
+
+func TestSyncStatuses_CursorNotAdvancedOnError(t *testing.T) {
+	s := testStore(t)
+	uk := &fakeUk{}
+	svc := New(s, nil, nil, uk)
+
+	someTime := time.Now().Add(-time.Hour)
+	svc.ukSince = someTime
+	uk.updatesErr = errors.New("uk unreachable")
+	if err := svc.syncStatuses(context.Background()); err == nil {
+		t.Fatal("want error from IncidentUpdates")
+	}
+	if !svc.ukSince.Equal(someTime) {
+		t.Fatalf("cursor must not move on error, want %v got %v", someTime, svc.ukSince)
+	}
+
+	uk.updatesErr = nil
+	t2 := someTime.Add(time.Minute)
+	uk.updates = []UkIncidentUpdate{{ID: "INC-nope", ExternalRef: "999", Status: domain.IncidentInProgress, UpdatedAt: t2}}
+	if err := svc.syncStatuses(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !svc.ukSince.Equal(t2) {
+		t.Fatalf("cursor must advance to last update on success, want %v got %v", t2, svc.ukSince)
 	}
 }
