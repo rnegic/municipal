@@ -467,6 +467,20 @@ func (response SetIncidentStatus200JSONResponse) VisitSetIncidentStatusResponse(
 	return err
 }
 
+type SetIncidentStatus400JSONResponse Error
+
+func (response SetIncidentStatus400JSONResponse) VisitSetIncidentStatusResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type SetIncidentStatus401JSONResponse Error
 
 func (response SetIncidentStatus401JSONResponse) VisitSetIncidentStatusResponse(w http.ResponseWriter) error {

@@ -4,6 +4,7 @@ package api
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,16 +15,30 @@ import (
 
 type server struct{ st *store.Store }
 
+func validStatus(s ukapi.IncidentStatus) bool {
+	switch s {
+	case ukapi.Accepted, ukapi.InProgress, ukapi.Verifying, ukapi.Done:
+		return true
+	default:
+		return false
+	}
+}
+
 func NewRouter(st *store.Store, token string, failureRate float64) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.GET("/health", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
-	h := ukapi.NewStrictHandler(&server{st: st}, nil)
+	h := ukapi.NewStrictHandlerWithOptions(&server{st: st}, nil, ukapi.StrictGinServerOptions{
+		RequestErrorHandlerFunc: func(c *gin.Context, err error) {
+			writeErr(c, http.StatusBadRequest, "validation_failed", err.Error())
+		},
+		ResponseErrorHandlerFunc: func(c *gin.Context, err error) {
+			slog.Error("response handler error", "err", err)
+			writeErr(c, http.StatusInternalServerError, "internal", "internal error")
+		},
+	})
 	ukapi.RegisterHandlersWithOptions(r, h, ukapi.GinServerOptions{
 		Middlewares: []ukapi.MiddlewareFunc{bearer(token), faults(failureRate)},
-		ErrorHandler: func(c *gin.Context, err error, code int) {
-			writeErr(c, code, "validation_failed", err.Error())
-		},
 	})
 	return r
 }
@@ -77,6 +92,9 @@ func (s *server) ListIncidentUpdates(ctx context.Context, req ukapi.ListIncident
 }
 
 func (s *server) SetIncidentStatus(ctx context.Context, req ukapi.SetIncidentStatusRequestObject) (ukapi.SetIncidentStatusResponseObject, error) {
+	if !validStatus(req.Body.Status) {
+		return ukapi.SetIncidentStatus400JSONResponse{Code: "validation_failed", Message: "unknown status"}, nil
+	}
 	inc, err := s.st.SetStatus(ctx, req.Id, string(req.Body.Status))
 	switch {
 	case errors.Is(err, store.ErrNotFound):

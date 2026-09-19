@@ -81,6 +81,9 @@ paths:
         "200":
           description: Обновлено
           content: { application/json: { schema: { $ref: "#/components/schemas/Incident" } } }
+        "400":
+          description: Невалидный статус
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "401":
           description: Нет/неверный токен
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }

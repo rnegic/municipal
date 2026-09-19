@@ -127,3 +127,54 @@ func TestFailureInjection(t *testing.T) {
 		t.Fatalf("failureRate=1 must always fail, got %d", w.Code)
 	}
 }
+
+func TestErrorEnvelope(t *testing.T) {
+	h := testRouter(t)
+	// (a) invalid JSON → 400 with code:validation_failed
+	w := do(t, h, "POST", "/incidents", `{not json`, "tok")
+	if w.Code != 400 {
+		t.Fatalf("malformed JSON: want 400, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), `"code":"validation_failed"`) {
+		t.Fatalf("malformed JSON: body missing code:validation_failed, got %s", w.Body)
+	}
+	// (b) invalid status enum → 400 with code:validation_failed
+	// First create an incident
+	createBody := `{"externalRef":"e-test","houseId":"h-1","title":"Test","description":"d","severity":"critical"}`
+	createW := do(t, h, "POST", "/incidents", createBody, "tok")
+	if createW.Code != 201 {
+		t.Fatalf("create incident: want 201, got %d", createW.Code)
+	}
+	var inc struct{ Id string }
+	json.Unmarshal(createW.Body.Bytes(), &inc)
+	// Patch with bogus status
+	w = do(t, h, "PATCH", "/incidents/"+inc.Id, `{"status":"bogus"}`, "tok")
+	if w.Code != 400 {
+		t.Fatalf("bogus status: want 400, got %d %s", w.Code, w.Body)
+	}
+	if !strings.Contains(w.Body.String(), `"code":"validation_failed"`) {
+		t.Fatalf("bogus status: body missing code:validation_failed, got %s", w.Body)
+	}
+}
+
+func TestBearerEmptyTokenFailsClosed(t *testing.T) {
+	dsn := os.Getenv("MOCKUK_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("MOCKUK_DATABASE_URL not set")
+	}
+	st, err := store.Open(context.Background(), dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(st.Close)
+	// Router with empty token
+	h := NewRouter(st, "", 0)
+	// Request with "Authorization: Bearer " (empty token) should fail
+	r := httptest.NewRequest("GET", "/houses/x", nil)
+	r.Header.Set("Authorization", "Bearer ")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 401 {
+		t.Fatalf("empty bearer token: want 401, got %d", w.Code)
+	}
+}

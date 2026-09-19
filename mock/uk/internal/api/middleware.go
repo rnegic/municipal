@@ -18,7 +18,7 @@ func writeErr(c *gin.Context, code int, kind, msg string) {
 func bearer(token string) ukapi.MiddlewareFunc {
 	return func(c *gin.Context) {
 		got, ok := strings.CutPrefix(c.GetHeader("Authorization"), "Bearer ")
-		if !ok || subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
+		if !ok || got == "" || subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
 			writeErr(c, http.StatusUnauthorized, "unauthorized", "invalid bearer token")
 			return
 		}
