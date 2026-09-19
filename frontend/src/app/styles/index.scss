@@ -1,0 +1,4 @@
+@layer maxui, tokens, base, components, utilities;
+@import '@maxhub/max-ui/dist/styles.css' layer(maxui);
+@import './tokens.scss' layer(tokens);
+@import './base.scss' layer(base);

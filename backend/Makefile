@@ -8,8 +8,10 @@ gen: gen-api gen-db
 gen-api:
 	go tool oapi-codegen -config oapi-codegen.yaml openapi.yaml
 
+# ponytail: schema.sql — CREATE IF NOT EXISTS без миграций; локальную БД пересоздаём целиком.
 gen-db: db
-	psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -q -f api/schema.sql
+	psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -q -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+	psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -q -f internal/repository/schema.sql
 	rm -rf gen/db
 	go tool jet -source=postgres -dsn="$(DATABASE_URL)" -schema=public -path=./gen/db
 
@@ -20,7 +22,9 @@ lint:
 	golangci-lint run ./...
 
 test:
-	go test ./...
+	# -p 1: repository/service/transport-тесты бьют в один и тот же локальный Postgres
+	# (TRUNCATE ... CASCADE); параллельные пакеты могут словить deadlock.
+	go test -p 1 ./...
 
 run:
 	go run ./cmd/api

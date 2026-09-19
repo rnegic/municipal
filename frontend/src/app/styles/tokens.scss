@@ -1,0 +1,70 @@
+.app-theme-root {
+  /* Поверхности */
+  --app-color-surface-page: var(--background-surface);
+  --app-color-surface-card: var(--background-card);
+  --app-color-surface-raised: var(--background-primary);
+  --app-color-surface-muted: var(--background-tertiary);
+  --app-color-surface-overlay: var(--background-overlay);
+
+  /* Текст */
+  --app-color-text-primary: var(--text-primary);
+  --app-color-text-secondary: var(--text-secondary);
+  --app-color-text-tertiary: var(--text-tertiary);
+  --app-color-text-accent: var(--text-themed);
+  --app-color-text-negative: var(--text-negative);
+  --app-color-text-on-accent: var(--text-primary-inverse);
+
+  /* Иконки */
+  --app-color-icon-primary: var(--icon-primary);
+  --app-color-icon-muted: var(--icon-tertiary);
+  --app-color-icon-accent: var(--icon-themed);
+
+  /* Статусы интерфейса */
+  --app-color-success: var(--icon-positive);
+  --app-color-success-surface: color-mix(in srgb, var(--icon-positive) 14%, transparent);
+  --app-color-danger: var(--text-negative);
+  --app-color-danger-surface: color-mix(in srgb, var(--text-negative) 12%, transparent);
+  --app-color-progress: var(--text-themed);
+  --app-color-progress-surface: color-mix(in srgb, var(--text-themed) 12%, transparent);
+  --app-color-warning: #ff9500;
+  --app-color-warning-dark: #dc8000;
+  --app-color-warning-surface: color-mix(in srgb, var(--app-color-warning) 16%, transparent);
+
+  /* Границы и дорожки */
+  --app-color-border: var(--divider-secondary);
+  --app-color-track: var(--controls-inactive);
+
+  /* панель */
+  --app-color-brand: #334d8f;
+  --app-color-brand-top: #3f5a9e;
+  --app-color-brand-surface: rgb(255 255 255 / 14%);
+  --app-color-text-on-brand: var(--text-primary-inverse-static);
+  --app-color-text-on-brand-secondary: rgb(255 255 255 / 74%);
+
+  /* шрифт */
+  --family-base: 'Manrope', system-ui, sans-serif;
+  --family-headers: 'Manrope', system-ui, sans-serif;
+
+  /* Отступы: */
+  --app-space-1: var(--spacing-size2xs);
+  --app-space-2: var(--spacing-size-xs);
+  --app-space-3: var(--spacing-size-s);
+  --app-space-4: var(--spacing-size-m);
+  --app-space-5: var(--spacing-size-l);
+  --app-space-6: var(--spacing-size-xl);
+  --app-space-8: var(--spacing-size2xl);
+  --app-space-10: var(--spacing-size3xl);
+  --app-space-12: var(--spacing-size4xl);
+
+  /* Радиусы */
+  --app-radius-card: var(--size-border-radius-semantic-border-radius-card);
+  --app-radius-paper: var(--size-border-radius-semantic-border-radius-paper);
+  --app-radius-floating: var(--size-border-radius-semantic-border-radius-floating);
+  --app-radius-control: var(--size-border-radius-action-medium);
+  --app-radius-round: var(--border-radius-circle);
+  --app-radius-semi-round: var(--size-border-radius-semantic-border-radius);
+
+  /* Тени */
+  --app-shadow-card: 0 1px 2px color-mix(in srgb, var(--app-color-surface-overlay) 10%, transparent);
+  --app-shadow-floating: 0 6px 20px color-mix(in srgb, var(--app-color-surface-overlay) 30%, transparent);
+}
