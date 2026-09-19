@@ -1,0 +1,35 @@
+.root {
+  gap: var(--app-space-6);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--app-space-4);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+}
+
+.footer {
+  padding-top: var(--app-space-4);
+  border-top: 1px solid var(--app-color-border);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+}

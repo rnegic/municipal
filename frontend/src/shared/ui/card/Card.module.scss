@@ -1,0 +1,28 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-4);
+  border-radius: var(--app-radius-card);
+  background-color: var(--app-color-surface-card);
+  box-shadow: var(--app-shadow-card);
+}
+
+.paddingDefault {
+  padding: var(--app-space-8);
+}
+
+.paddingCompact {
+  padding: var(--app-space-8);
+}
+
+.toneSuccess {
+  background-color: var(--app-color-success-surface);
+}
+
+.toneDanger {
+  background-color: var(--app-color-danger-surface);
+}
+
+.toneProgress {
+  background-color: var(--app-color-progress-surface);
+}

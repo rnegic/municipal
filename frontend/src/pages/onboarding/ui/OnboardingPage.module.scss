@@ -1,0 +1,40 @@
+.root {
+  justify-content: center;
+  min-height: calc(100dvh - var(--app-space-12));
+}
+
+.hero {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--app-space-8);
+  text-align: center;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--app-space-12) * 2);
+  height: calc(var(--app-space-12) * 2);
+  border-radius: var(--app-radius-round);
+  color: var(--app-color-icon-accent);
+  background-color: var(--app-color-progress-surface);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+  max-width: 24rem;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+  width: 100%;
+  max-width: 24rem;
+}

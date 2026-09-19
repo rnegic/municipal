@@ -1,0 +1,41 @@
+.root {
+  display: block;
+  width: var(--app-skeleton-width, 100%);
+  height: var(--app-skeleton-height, var(--app-space-6));
+  background-image: linear-gradient(
+    90deg,
+    var(--app-color-surface-muted) 0%,
+    color-mix(in srgb, var(--app-color-surface-muted) 30%, transparent) 50%,
+    var(--app-color-surface-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+.radiusPaper {
+  border-radius: var(--app-radius-paper);
+}
+
+.radiusCard {
+  border-radius: var(--app-radius-card);
+}
+
+.radiusRound {
+  border-radius: var(--app-radius-round);
+}
+
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root {
+    animation: none;
+  }
+}

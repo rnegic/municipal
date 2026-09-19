@@ -1,0 +1,50 @@
+.root {
+  flex: none;
+  display: inline-block;
+  border-radius: var(--app-radius-round);
+  background-color: var(--app-color-text-tertiary);
+}
+
+.sizeSmall {
+  width: var(--app-space-4);
+  height: var(--app-space-4);
+}
+
+.sizeMedium {
+  width: var(--app-space-5);
+  height: var(--app-space-5);
+}
+
+.toneSuccess {
+  background-color: var(--app-color-success);
+}
+
+.toneDanger {
+  background-color: var(--app-color-danger);
+  box-shadow: 0 0 0 var(--app-space-2) var(--app-color-danger-surface);
+}
+
+.toneProgress {
+  background-color: var(--app-color-progress);
+}
+
+.pulse {
+  animation: statusDotPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes statusDotPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}

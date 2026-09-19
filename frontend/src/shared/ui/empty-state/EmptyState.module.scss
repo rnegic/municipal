@@ -1,0 +1,66 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--app-space-6);
+  padding: var(--app-space-10) var(--app-space-8);
+  border-radius: var(--app-radius-card);
+  background-color: var(--app-color-surface-card);
+  box-shadow: var(--app-shadow-card);
+  text-align: center;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--app-space-12);
+  height: var(--app-space-12);
+  border-radius: var(--app-radius-round);
+  color: var(--app-color-icon-muted);
+  background-color: var(--app-color-surface-muted);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+  align-items: center;
+}
+
+.action {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.toneSuccess {
+  background-color: var(--app-color-success-surface);
+}
+
+.toneSuccess .icon {
+  color: var(--app-color-success);
+  background-color: var(--app-color-surface-card);
+}
+
+.toneDanger {
+  background-color: var(--app-color-danger-surface);
+}
+
+.toneDanger .icon {
+  color: var(--app-color-danger);
+  background-color: var(--app-color-surface-card);
+}
+
+.toneInverse {
+  --text-primary: var(--app-color-text-on-brand);
+  --text-secondary: var(--app-color-text-on-brand-secondary);
+
+  color: var(--app-color-text-on-brand);
+  background-color: var(--app-color-brand-surface);
+}
+
+.toneInverse .icon {
+  color: var(--app-color-text-on-brand);
+  background-color: var(--app-color-brand-surface);
+}
