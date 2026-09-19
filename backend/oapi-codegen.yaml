@@ -1,0 +1,8 @@
+# oapi-codegen: openapi.yaml → gen/api/openapi.gen.go (strict-server на gin)
+package: oapi
+output: gen/api/openapi.gen.go
+generate:
+  models: true
+  gin-server: true
+  strict-server: true
+  embedded-spec: true
