@@ -1,0 +1,6 @@
+# oapi-codegen: contracts/uk.yaml → gen/uk/client.gen.go (только клиент + модели)
+package: ukapi
+output: gen/uk/client.gen.go
+generate:
+  models: true
+  client: true
