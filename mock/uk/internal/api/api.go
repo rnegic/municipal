@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	ukapi "mockuk/gen/api"
+	"mockuk/internal/lk"
 	"mockuk/internal/store"
 )
 
@@ -40,6 +41,7 @@ func NewRouter(st *store.Store, token string, failureRate float64) *gin.Engine {
 	ukapi.RegisterHandlersWithOptions(r, h, ukapi.GinServerOptions{
 		Middlewares: []ukapi.MiddlewareFunc{bearer(token), faults(failureRate)},
 	})
+	lk.Mount(r, st)
 	return r
 }
 

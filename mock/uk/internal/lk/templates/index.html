@@ -1,0 +1,21 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>УК — обращения</title>
+<style>body{font:15px system-ui;max-width:960px;margin:30px auto;padding:0 16px}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}form{display:inline}button{font:inherit;padding:4px 10px}.st-accepted{color:#b00}.st-in_progress{color:#a60}.st-verifying{color:#06a}.st-done{color:#080}</style>
+</head><body>
+<p>Диспетчер <b>{{.Login}}</b> · {{.OrgName}} · <form method="post" action="/lk/logout"><button>Выйти</button></form></p>
+<h1>Обращения жителей</h1>
+<table><tr><th>№</th><th>Дом</th><th>Проблема</th><th>Важность</th><th>Статус</th><th>Действие</th></tr>
+{{range .Incidents}}<tr>
+  <td>{{.ID}}<br><small>{{.CreatedAt.Format "02.01 15:04"}}</small></td>
+  <td>{{.Address}}{{if .Entrance}}<br>подъезд {{str .Entrance}}{{end}}{{if .Riser}}, стояк {{str .Riser}}{{end}}</td>
+  <td><b>{{.Title}}</b><br>{{.Description}}</td>
+  <td>{{.Severity}}</td>
+  <td class="st-{{.Status}}">{{.Status}}</td>
+  <td>
+    {{if eq .Status "accepted"}}<form method="post" action="/lk/incidents/{{.ID}}/status"><input type="hidden" name="status" value="in_progress"><button>В работу</button></form>{{end}}
+    {{if eq .Status "in_progress"}}<form method="post" action="/lk/incidents/{{.ID}}/status"><input type="hidden" name="status" value="verifying"><button>Починили</button></form>{{end}}
+    {{if eq .Status "verifying"}}<small>ждём подтверждения жителей</small>{{end}}
+    {{if eq .Status "done"}}<small>закрыто</small>{{end}}
+  </td>
+</tr>{{else}}<tr><td colspan="6">Обращений пока нет</td></tr>{{end}}
+</table>
+</body></html>
