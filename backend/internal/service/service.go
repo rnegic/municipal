@@ -4,6 +4,7 @@ package service
 
 import (
 	"errors"
+	"time"
 
 	"ukapp/internal/dadata"
 	"ukapp/internal/maxclient"
@@ -17,10 +18,11 @@ var (
 )
 
 type Service struct {
-	repo *repository.Store
-	maxc *maxclient.Client
-	dd   *dadata.Client
-	uk   UkProvider
+	repo    *repository.Store
+	maxc    *maxclient.Client
+	dd      *dadata.Client
+	uk      UkProvider
+	ukSince time.Time
 }
 
 func New(repo *repository.Store, maxc *maxclient.Client, dd *dadata.Client, uk UkProvider) *Service {

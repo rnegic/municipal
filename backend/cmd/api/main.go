@@ -27,6 +27,7 @@ func main() {
 	svc := service.New(repo, maxclient.NewClient(botToken), dadata.NewClient(os.Getenv("DADATA_TOKEN")),
 		ukclient.New(os.Getenv("UK_BASE_URL"), os.Getenv("UK_API_TOKEN")))
 	go svc.RunOutboxWorker(ctx)
+	go svc.RunUkSyncWorker(ctx)
 
 	port := os.Getenv("PORT")
 	if port == "" {

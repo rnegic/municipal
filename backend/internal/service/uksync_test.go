@@ -112,3 +112,94 @@ func TestSyncUnregistered_UkDownLeavesNull(t *testing.T) {
 		t.Fatalf("must stay unregistered, got %s", *ext)
 	}
 }
+
+func status(t *testing.T, s *repository.Store, id int64) string {
+	t.Helper()
+	var st string
+	if err := s.DB().QueryRowContext(context.Background(), `SELECT status FROM incident WHERE id=$1`, id).Scan(&st); err != nil {
+		t.Fatal(err)
+	}
+	return st
+}
+
+func TestSyncStatuses_AppliesOnceAndNotifies(t *testing.T) {
+	s := testStore(t)
+	uk := &fakeUk{}
+	svc := New(s, nil, nil, uk)
+	incID, _ := seedResidentWithIncident(t, s, 3)
+	if err := svc.syncUnregistered(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	uk.updates = []UkIncidentUpdate{{ID: "INC-1", ExternalRef: "1", Status: domain.IncidentInProgress, UpdatedAt: time.Now()}}
+
+	if err := svc.syncStatuses(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if st := status(t, s, incID); st != "in_progress" {
+		t.Fatalf("want in_progress, got %s", st)
+	}
+	if n := outboxCount(t, s, "pending"); n != 1 {
+		t.Fatalf("want 1 push to the reporter, got %d", n)
+	}
+	// same update again → no-op, no duplicate push
+	if err := svc.syncStatuses(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if n := outboxCount(t, s, "pending"); n != 1 {
+		t.Fatalf("duplicate push: %d", n)
+	}
+}
+
+func TestSyncStatuses_DoneIsFinal(t *testing.T) {
+	s := testStore(t)
+	uk := &fakeUk{}
+	svc := New(s, nil, nil, uk)
+	incID, _ := seedResidentWithIncident(t, s, 4)
+	if err := svc.syncUnregistered(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DB().ExecContext(context.Background(), `UPDATE incident SET status='done' WHERE id=$1`, incID); err != nil {
+		t.Fatal(err)
+	}
+	uk.updates = []UkIncidentUpdate{{ID: "INC-1", ExternalRef: "1", Status: domain.IncidentVerifying, UpdatedAt: time.Now()}}
+	if err := svc.syncStatuses(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if st := status(t, s, incID); st != "done" {
+		t.Fatalf("done must not be reopened, got %s", st)
+	}
+	if n := outboxCount(t, s, "pending"); n != 0 {
+		t.Fatalf("no push expected, got %d", n)
+	}
+}
+
+func TestConfirm_PushesDoneToUk(t *testing.T) {
+	s := testStore(t)
+	uk := &fakeUk{}
+	svc := New(s, nil, nil, uk)
+	incID, userID := seedResidentWithIncident(t, s, 5)
+	if err := svc.syncUnregistered(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	// second subscriber so MinConfirmations=2 is reachable
+	u2, err := s.UpsertUser(context.Background(), domain.InitUser{ID: 6, FirstName: "S"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Subscribe(context.Background(), incID, u2.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DB().ExecContext(context.Background(), `UPDATE incident SET status='verifying' WHERE id=$1`, incID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := svc.ConfirmIncident(context.Background(), incID, userID); err != nil {
+		t.Fatal(err)
+	}
+	st, _, err := svc.ConfirmIncident(context.Background(), incID, u2.ID)
+	if err != nil || st != domain.IncidentDone {
+		t.Fatalf("want done, got %s %v", st, err)
+	}
+	if len(uk.setStatus) != 1 || uk.setStatus[0] != "INC-1:done" {
+		t.Fatalf("want done pushed to uk once, got %v", uk.setStatus)
+	}
+}
