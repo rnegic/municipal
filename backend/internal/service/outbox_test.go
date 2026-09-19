@@ -25,7 +25,7 @@ func testStore(t *testing.T) *repository.Store {
 		t.Fatal(err)
 	}
 	_, err = s.DB().ExecContext(context.Background(),
-		`TRUNCATE outbox_message, event_response, event, incident_confirmation, incident_subscription, incident, app_user, house, uk RESTART IDENTITY CASCADE`)
+		`TRUNCATE outbox_message, incident_confirmation, incident_subscription, incident, app_user, house, uk RESTART IDENTITY CASCADE`)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,8 @@
 package model
 
 type Uk struct {
-	ID     int64 `sql:"primary_key"`
-	Name   string
-	Rating int32
+	ID         int64 `sql:"primary_key"`
+	ExternalID string
+	Name       string
+	Rating     int32
 }

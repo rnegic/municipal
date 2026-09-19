@@ -12,8 +12,6 @@ info:
     ошибки — единая форма {code, message, details?}.
 
     Авторизация: заголовок `Authorization: tma <initData>`. `auth_date` не старше 24ч.
-    Ручки `/api/uk/*` и `PATCH /api/incidents/{id}/status` — только для роли
-    `uk_dispatcher` (иначе 403 forbidden).
 servers:
   - url: http://localhost:8080
 security:
@@ -192,53 +190,6 @@ paths:
       tags: [incidents]
       summary: "P1 — фото к обращению (пока не реализовано)"
       parameters: [{ $ref: "#/components/parameters/ID" }]
-      responses:
-        "501": { $ref: "#/components/responses/Error" }
-
-  /api/incidents/{id}/status:
-    patch:
-      operationId: setIncidentStatus
-      tags: [uk]
-      summary: "P2 — смена статуса диспетчером (пока не реализовано)"
-      parameters: [{ $ref: "#/components/parameters/ID" }]
-      responses:
-        "501": { $ref: "#/components/responses/Error" }
-
-  /api/events:
-    get:
-      operationId: listEvents
-      tags: [events]
-      summary: "P1 — плановые работы УК (пока не реализовано)"
-      parameters:
-        - name: houseId
-          in: query
-          required: true
-          schema: { type: string }
-      responses:
-        "501": { $ref: "#/components/responses/Error" }
-
-  /api/events/{id}:
-    get:
-      operationId: getEvent
-      tags: [events]
-      summary: "P1 — карточка события (пока не реализовано)"
-      parameters: [{ $ref: "#/components/parameters/ID" }]
-      responses:
-        "501": { $ref: "#/components/responses/Error" }
-
-  /api/uk/queue:
-    get:
-      operationId: ukQueue
-      tags: [uk]
-      summary: "P2 — очередь заявок УК (пока не реализовано)"
-      responses:
-        "501": { $ref: "#/components/responses/Error" }
-
-  /api/uk/events:
-    post:
-      operationId: ukCreateEvent
-      tags: [uk]
-      summary: "P2 — создать плановое событие (пока не реализовано)"
       responses:
         "501": { $ref: "#/components/responses/Error" }
 

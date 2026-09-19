@@ -216,11 +216,6 @@ type ID = string
 // Error defines model for Error.
 type Error = ApiErrorResponse
 
-// ListEventsParams defines parameters for ListEvents.
-type ListEventsParams struct {
-	HouseId string `form:"houseId" json:"houseId"`
-}
-
 // ListHouseIncidentsParams defines parameters for ListHouseIncidents.
 type ListHouseIncidentsParams struct {
 	Status *ListHouseIncidentsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
@@ -243,12 +238,6 @@ type CreateIncidentJSONRequestBody = CreateIncidentRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// ListEvents P1 — плановые работы УК (пока не реализовано)
-	// (GET /api/events)
-	ListEvents(c *gin.Context, params ListEventsParams)
-	// GetEvent P1 — карточка события (пока не реализовано)
-	// (GET /api/events/{id})
-	GetEvent(c *gin.Context, id ID)
 	// BindHouse Привязать дом по свободному адресу (нормализуется через DaData)
 	// (POST /api/houses/bind)
 	BindHouse(c *gin.Context)
@@ -276,18 +265,9 @@ type ServerInterface interface {
 	// UploadIncidentPhoto P1 — фото к обращению (пока не реализовано)
 	// (POST /api/incidents/{id}/photos)
 	UploadIncidentPhoto(c *gin.Context, id ID)
-	// SetIncidentStatus P2 — смена статуса диспетчером (пока не реализовано)
-	// (PATCH /api/incidents/{id}/status)
-	SetIncidentStatus(c *gin.Context, id ID)
 	// GetMe Текущий пользователь + привязанный дом (пользователь создаётся лениво)
 	// (GET /api/me)
 	GetMe(c *gin.Context)
-	// UkCreateEvent P2 — создать плановое событие (пока не реализовано)
-	// (POST /api/uk/events)
-	UkCreateEvent(c *gin.Context)
-	// UkQueue P2 — очередь заявок УК (пока не реализовано)
-	// (GET /api/uk/queue)
-	UkQueue(c *gin.Context)
 
 	// (GET /health)
 	Health(c *gin.Context)
@@ -301,58 +281,6 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(c *gin.Context)
-
-// ListEvents operation middleware
-func (siw *ServerInterfaceWrapper) ListEvents(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListEventsParams
-
-	// ------------- Required query parameter "houseId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "houseId", c.Request.URL.Query(), &params.HouseId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter houseId: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.ListEvents(c, params)
-}
-
-// GetEvent operation middleware
-func (siw *ServerInterfaceWrapper) GetEvent(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "id" -------------
-	var id ID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.GetEvent(c, id)
-}
 
 // BindHouse operation middleware
 func (siw *ServerInterfaceWrapper) BindHouse(c *gin.Context) {
@@ -585,31 +513,6 @@ func (siw *ServerInterfaceWrapper) UploadIncidentPhoto(c *gin.Context) {
 	siw.Handler.UploadIncidentPhoto(c, id)
 }
 
-// SetIncidentStatus operation middleware
-func (siw *ServerInterfaceWrapper) SetIncidentStatus(c *gin.Context) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "id" -------------
-	var id ID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
-		return
-	}
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.SetIncidentStatus(c, id)
-}
-
 // GetMe operation middleware
 func (siw *ServerInterfaceWrapper) GetMe(c *gin.Context) {
 
@@ -621,32 +524,6 @@ func (siw *ServerInterfaceWrapper) GetMe(c *gin.Context) {
 	}
 
 	siw.Handler.GetMe(c)
-}
-
-// UkCreateEvent operation middleware
-func (siw *ServerInterfaceWrapper) UkCreateEvent(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.UkCreateEvent(c)
-}
-
-// UkQueue operation middleware
-func (siw *ServerInterfaceWrapper) UkQueue(c *gin.Context) {
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		middleware(c)
-		if c.IsAborted() {
-			return
-		}
-	}
-
-	siw.Handler.UkQueue(c)
 }
 
 // Health operation middleware
@@ -700,58 +577,9 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/api/incidents/:id/join", wrapper.JoinIncident)
 	router.POST(options.BaseURL+"/api/incidents/:id/confirm", wrapper.ConfirmIncident)
 	router.POST(options.BaseURL+"/api/incidents/:id/photos", wrapper.UploadIncidentPhoto)
-	router.PATCH(options.BaseURL+"/api/incidents/:id/status", wrapper.SetIncidentStatus)
-	router.GET(options.BaseURL+"/api/events", wrapper.ListEvents)
-	router.GET(options.BaseURL+"/api/events/:id", wrapper.GetEvent)
-	router.GET(options.BaseURL+"/api/uk/queue", wrapper.UkQueue)
-	router.POST(options.BaseURL+"/api/uk/events", wrapper.UkCreateEvent)
 }
 
 type ErrorJSONResponse ApiErrorResponse
-
-type ListEventsRequestObject struct {
-	Params ListEventsParams
-}
-
-type ListEventsResponseObject interface {
-	VisitListEventsResponse(w http.ResponseWriter) error
-}
-
-type ListEvents501JSONResponse struct{ ErrorJSONResponse }
-
-func (response ListEvents501JSONResponse) VisitListEventsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetEventRequestObject struct {
-	Id ID `json:"id"`
-}
-
-type GetEventResponseObject interface {
-	VisitGetEventResponse(w http.ResponseWriter) error
-}
-
-type GetEvent501JSONResponse struct{ ErrorJSONResponse }
-
-func (response GetEvent501JSONResponse) VisitGetEventResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
-	_, err := buf.WriteTo(w)
-	return err
-}
 
 type BindHouseRequestObject struct {
 	Body *BindHouseJSONRequestBody
@@ -1205,28 +1033,6 @@ func (response UploadIncidentPhoto501JSONResponse) VisitUploadIncidentPhotoRespo
 	return err
 }
 
-type SetIncidentStatusRequestObject struct {
-	Id ID `json:"id"`
-}
-
-type SetIncidentStatusResponseObject interface {
-	VisitSetIncidentStatusResponse(w http.ResponseWriter) error
-}
-
-type SetIncidentStatus501JSONResponse struct{ ErrorJSONResponse }
-
-func (response SetIncidentStatus501JSONResponse) VisitSetIncidentStatusResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type GetMeRequestObject struct {
 }
 
@@ -1262,48 +1068,6 @@ func (response GetMe401JSONResponse) VisitGetMeResponse(w http.ResponseWriter) e
 	return err
 }
 
-type UkCreateEventRequestObject struct {
-}
-
-type UkCreateEventResponseObject interface {
-	VisitUkCreateEventResponse(w http.ResponseWriter) error
-}
-
-type UkCreateEvent501JSONResponse struct{ ErrorJSONResponse }
-
-func (response UkCreateEvent501JSONResponse) VisitUkCreateEventResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UkQueueRequestObject struct {
-}
-
-type UkQueueResponseObject interface {
-	VisitUkQueueResponse(w http.ResponseWriter) error
-}
-
-type UkQueue501JSONResponse struct{ ErrorJSONResponse }
-
-func (response UkQueue501JSONResponse) VisitUkQueueResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type HealthRequestObject struct {
 }
 
@@ -1324,12 +1088,6 @@ func (response Health200TextResponse) VisitHealthResponse(w http.ResponseWriter)
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// ListEvents P1 — плановые работы УК (пока не реализовано)
-	// (GET /api/events)
-	ListEvents(ctx context.Context, request ListEventsRequestObject) (ListEventsResponseObject, error)
-	// GetEvent P1 — карточка события (пока не реализовано)
-	// (GET /api/events/{id})
-	GetEvent(ctx context.Context, request GetEventRequestObject) (GetEventResponseObject, error)
 	// BindHouse Привязать дом по свободному адресу (нормализуется через DaData)
 	// (POST /api/houses/bind)
 	BindHouse(ctx context.Context, request BindHouseRequestObject) (BindHouseResponseObject, error)
@@ -1357,18 +1115,9 @@ type StrictServerInterface interface {
 	// UploadIncidentPhoto P1 — фото к обращению (пока не реализовано)
 	// (POST /api/incidents/{id}/photos)
 	UploadIncidentPhoto(ctx context.Context, request UploadIncidentPhotoRequestObject) (UploadIncidentPhotoResponseObject, error)
-	// SetIncidentStatus P2 — смена статуса диспетчером (пока не реализовано)
-	// (PATCH /api/incidents/{id}/status)
-	SetIncidentStatus(ctx context.Context, request SetIncidentStatusRequestObject) (SetIncidentStatusResponseObject, error)
 	// GetMe Текущий пользователь + привязанный дом (пользователь создаётся лениво)
 	// (GET /api/me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
-	// UkCreateEvent P2 — создать плановое событие (пока не реализовано)
-	// (POST /api/uk/events)
-	UkCreateEvent(ctx context.Context, request UkCreateEventRequestObject) (UkCreateEventResponseObject, error)
-	// UkQueue P2 — очередь заявок УК (пока не реализовано)
-	// (GET /api/uk/queue)
-	UkQueue(ctx context.Context, request UkQueueRequestObject) (UkQueueResponseObject, error)
 
 	// (GET /health)
 	Health(ctx context.Context, request HealthRequestObject) (HealthResponseObject, error)
@@ -1429,58 +1178,6 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictGinServerOptions
-}
-
-// ListEvents operation middleware
-func (sh *strictHandler) ListEvents(ctx *gin.Context, params ListEventsParams) {
-	var request ListEventsRequestObject
-
-	request.Params = params
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.ListEvents(ctx, request.(ListEventsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListEvents")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(ListEventsResponseObject); ok {
-		if err := validResponse.VisitListEventsResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetEvent operation middleware
-func (sh *strictHandler) GetEvent(ctx *gin.Context, id ID) {
-	var request GetEventRequestObject
-
-	request.Id = id
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetEvent(ctx, request.(GetEventRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetEvent")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(GetEventResponseObject); ok {
-		if err := validResponse.VisitGetEventResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
 }
 
 // BindHouse operation middleware
@@ -1729,32 +1426,6 @@ func (sh *strictHandler) UploadIncidentPhoto(ctx *gin.Context, id ID) {
 	}
 }
 
-// SetIncidentStatus operation middleware
-func (sh *strictHandler) SetIncidentStatus(ctx *gin.Context, id ID) {
-	var request SetIncidentStatusRequestObject
-
-	request.Id = id
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.SetIncidentStatus(ctx, request.(SetIncidentStatusRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "SetIncidentStatus")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(SetIncidentStatusResponseObject); ok {
-		if err := validResponse.VisitSetIncidentStatusResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // GetMe operation middleware
 func (sh *strictHandler) GetMe(ctx *gin.Context) {
 	var request GetMeRequestObject
@@ -1772,54 +1443,6 @@ func (sh *strictHandler) GetMe(ctx *gin.Context) {
 		sh.options.HandlerErrorFunc(ctx, err)
 	} else if validResponse, ok := response.(GetMeResponseObject); ok {
 		if err := validResponse.VisitGetMeResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// UkCreateEvent operation middleware
-func (sh *strictHandler) UkCreateEvent(ctx *gin.Context) {
-	var request UkCreateEventRequestObject
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.UkCreateEvent(ctx, request.(UkCreateEventRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UkCreateEvent")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(UkCreateEventResponseObject); ok {
-		if err := validResponse.VisitUkCreateEventResponse(ctx.Writer); err != nil {
-			sh.options.ResponseErrorHandlerFunc(ctx, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// UkQueue operation middleware
-func (sh *strictHandler) UkQueue(ctx *gin.Context) {
-	var request UkQueueRequestObject
-
-	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.UkQueue(ctx, request.(UkQueueRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UkQueue")
-	}
-
-	response, err := handler(ctx, request)
-
-	if err != nil {
-		sh.options.HandlerErrorFunc(ctx, err)
-	} else if validResponse, ok := response.(UkQueueResponseObject); ok {
-		if err := validResponse.VisitUkQueueResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -1856,54 +1479,50 @@ func (sh *strictHandler) Health(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"Mijm865fom7Fj2Txk8InBat2u/a/AAAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

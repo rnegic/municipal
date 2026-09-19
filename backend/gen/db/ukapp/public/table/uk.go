@@ -17,9 +17,10 @@ type ukTable struct {
 	postgres.Table
 
 	// Columns
-	ID     postgres.ColumnInteger
-	Name   postgres.ColumnString
-	Rating postgres.ColumnInteger
+	ID         postgres.ColumnInteger
+	ExternalID postgres.ColumnString
+	Name       postgres.ColumnString
+	Rating     postgres.ColumnInteger
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -61,21 +62,23 @@ func newUkTable(schemaName, tableName, alias string) *UkTable {
 
 func newUkTableImpl(schemaName, tableName, alias string) ukTable {
 	var (
-		IDColumn       = postgres.IntegerColumn("id")
-		NameColumn     = postgres.StringColumn("name")
-		RatingColumn   = postgres.IntegerColumn("rating")
-		allColumns     = postgres.ColumnList{IDColumn, NameColumn, RatingColumn}
-		mutableColumns = postgres.ColumnList{NameColumn, RatingColumn}
-		defaultColumns = postgres.ColumnList{IDColumn, RatingColumn}
+		IDColumn         = postgres.IntegerColumn("id")
+		ExternalIDColumn = postgres.StringColumn("external_id")
+		NameColumn       = postgres.StringColumn("name")
+		RatingColumn     = postgres.IntegerColumn("rating")
+		allColumns       = postgres.ColumnList{IDColumn, ExternalIDColumn, NameColumn, RatingColumn}
+		mutableColumns   = postgres.ColumnList{ExternalIDColumn, NameColumn, RatingColumn}
+		defaultColumns   = postgres.ColumnList{IDColumn, RatingColumn}
 	)
 
 	return ukTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:     IDColumn,
-		Name:   NameColumn,
-		Rating: RatingColumn,
+		ID:         IDColumn,
+		ExternalID: ExternalIDColumn,
+		Name:       NameColumn,
+		Rating:     RatingColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,
