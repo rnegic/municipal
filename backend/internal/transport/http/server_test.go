@@ -25,10 +25,10 @@ import (
 )
 
 // These are integration tests exercising the whole stack (transport → service → repository)
-// against a real Postgres, per CLAUDE.md testing policy. Raw SQL setup below (assigning the
-// dispatcher role, forcing an incident into "verifying") has no HTTP endpoint in this P0 scope
-// (that's P2, the UK cabinet), so it goes straight through repository.Store.DB() — that's why
-// depguard exempts _test.go files from the transport→repository boundary.
+// against a real Postgres, per CLAUDE.md testing policy. Raw SQL setup below (forcing an
+// incident into "verifying") has no HTTP endpoint in this P0 scope (that's P2, the UK cabinet),
+// so it goes straight through repository.Store.DB() — that's why depguard exempts _test.go
+// files from the transport→repository boundary.
 
 func testStore(t *testing.T) *repository.Store {
 	t.Helper()
@@ -47,13 +47,6 @@ func testStore(t *testing.T) *repository.Store {
 	}
 	t.Cleanup(s.Close)
 	return s
-}
-
-func seedUK(t *testing.T, s *repository.Store) {
-	t.Helper()
-	if _, err := s.DB().ExecContext(context.Background(), `INSERT INTO uk (external_id, name) VALUES ('uk-1', 'Демо УК')`); err != nil {
-		t.Fatal(err)
-	}
 }
 
 // fakeDadata echoes the query back as both the normalized address and the house_fias_id, so

@@ -30,7 +30,6 @@ func createIncident(t *testing.T, srv http.Handler, maxID int64, body string) (i
 
 func TestIncidents_DedupAndJoin(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 	h10 := bindUser(t, srv, 1, "f-10")
 	bindUser(t, srv, 2, "f-10")
@@ -107,7 +106,6 @@ func TestIncidents_DedupAndJoin(t *testing.T) {
 
 func TestIncidents_RequiresHouseAndValidInput(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 
 	w := httptest.NewRecorder()
@@ -125,7 +123,6 @@ func TestIncidents_RequiresHouseAndValidInput(t *testing.T) {
 
 func TestGetIncident(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
 	inc, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical"}`)
@@ -144,7 +141,6 @@ func TestGetIncident(t *testing.T) {
 
 func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
 	bindUser(t, srv, 2, "f-10")
@@ -201,7 +197,6 @@ func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 
 func TestListHouseRequests_Paginated(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 	h10 := bindUser(t, srv, 1, "f-10")
 	createIncident(t, srv, 1, `{"title":"A","description":"x","severity":"warning"}`)

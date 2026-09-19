@@ -9,13 +9,17 @@ import (
 	"ukapp/gen/db/ukapp/public/model"
 )
 
-var ErrAddressNotResolved = errors.New("address not resolved")
+var (
+	ErrAddressNotResolved = errors.New("address not resolved")
+	ErrHouseNotServed     = errors.New("house not served by connected uk")
+)
 
 func (s *Service) UpsertUser(ctx context.Context, iu domain.InitUser) (model.AppUser, error) {
 	return s.repo.UpsertUser(ctx, iu)
 }
 
-// BindHouse normalizes a free-text address via DaData and binds the first (best) match.
+// BindHouse normalizes a free-text address via DaData, asks the UK system who serves the
+// building, and binds the house to the user. Unknown to the UK → ErrHouseNotServed.
 func (s *Service) BindHouse(ctx context.Context, userID int64, rawAddress string) (houseID int64, address string, err error) {
 	sugs, err := s.dd.Suggest(ctx, rawAddress)
 	if err != nil {
@@ -25,7 +29,18 @@ func (s *Service) BindHouse(ctx context.Context, userID int64, rawAddress string
 		return 0, "", ErrAddressNotResolved
 	}
 	best := sugs[0]
-	houseID, err = s.repo.BindHouse(ctx, userID, best.Value, best.HouseFiasID)
+	h, err := s.uk.FindHouse(ctx, best.HouseFiasID)
+	if errors.Is(err, ErrUkHouseNotFound) {
+		return 0, "", ErrHouseNotServed
+	}
+	if err != nil {
+		return 0, "", err
+	}
+	ukID, err := s.repo.UpsertUk(ctx, h.OrgID, h.OrgName)
+	if err != nil {
+		return 0, "", err
+	}
+	houseID, err = s.repo.BindHouse(ctx, userID, best.Value, best.HouseFiasID, ukID, h.ID)
 	return houseID, best.Value, err
 }
 

@@ -62,7 +62,6 @@ func TestMe_Unauthorized(t *testing.T) {
 
 func TestBindHouse(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 
 	h1 := bindUser(t, srv, 501, "abc-123")
@@ -88,5 +87,31 @@ func TestBindHouse(t *testing.T) {
 	srv.ServeHTTP(w, authedReq(t, "POST", "/api/houses/bind", `{"address":""}`, 501, "Ivan"))
 	if w.Code != 400 {
 		t.Fatalf("code %d body %s", w.Code, w.Body)
+	}
+}
+
+func TestBindHouse_NotServedByUk(t *testing.T) {
+	s := testStore(t)
+	srv := newTestServer(t, s)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, authedReq(t, "POST", "/api/houses/bind", `{"address":"unknown"}`, 777, "U"))
+	if w.Code != 422 || !strings.Contains(w.Body.String(), `"code":"business_rule_failed"`) {
+		t.Fatalf("want 422 business_rule_failed, got %d %s", w.Code, w.Body)
+	}
+}
+
+func TestBindHouse_CreatesUkFromProvider(t *testing.T) {
+	s := testStore(t)
+	srv := newTestServer(t, s)
+	bindUser(t, srv, 778, "f-42")
+	var ext, name, houseExt string
+	err := s.DB().QueryRowContext(t.Context(),
+		`SELECT uk.external_id, uk.name, house.external_id FROM house JOIN uk ON uk.id = house.uk_id WHERE house.house_fias_id='f-42'`).
+		Scan(&ext, &name, &houseExt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ext != "uk-1" || name != "Демо УК" || houseExt != "h-f-42" {
+		t.Fatalf("got uk %s/%s house %s", ext, name, houseExt)
 	}
 }
