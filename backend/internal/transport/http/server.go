@@ -5,7 +5,6 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 
@@ -17,12 +16,10 @@ import (
 
 // Middlewares are applied in reverse order: auth wraps dispatcher wraps handler.
 // server implements oapi.StrictServerInterface. Handlers live in per-feature files
-// (users.go, incidents.go, ...); not-yet-implemented operations are in stubs.go.
+// (users.go, incidents.go, events.go, uk.go).
 type server struct {
 	svc *service.Service
 }
-
-var errNotImplemented = errors.New("not implemented")
 
 func NewServer(svc *service.Service, botToken string) http.Handler {
 	srv := &server{svc: svc}
@@ -31,10 +28,6 @@ func NewServer(svc *service.Service, botToken string) http.Handler {
 			writeError(c.Writer, http.StatusBadRequest, "validation_failed", err.Error())
 		},
 		HandlerErrorFunc: func(c *gin.Context, err error) {
-			if errors.Is(err, errNotImplemented) {
-				writeError(c.Writer, http.StatusNotImplemented, "not_implemented", err.Error())
-				return
-			}
 			slog.Error("handler failed", "method", c.Request.Method, "path", c.Request.URL.Path, "err", err)
 			writeError(c.Writer, http.StatusInternalServerError, "internal", "internal error")
 		},

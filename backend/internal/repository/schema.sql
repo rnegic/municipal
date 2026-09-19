@@ -37,8 +37,11 @@ CREATE TABLE IF NOT EXISTS incident (
   status       TEXT NOT NULL DEFAULT 'accepted'
                CHECK (status IN ('accepted','in_progress','verifying','done')),
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  due_at       TIMESTAMPTZ,
   resolved_at  TIMESTAMPTZ
 );
+-- ponytail: миграций нет — для уже созданных БД колонку доливаем идемпотентным ALTER.
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS due_at TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS incident_house_open ON incident(house_id, title, created_at)
   WHERE status IN ('accepted','in_progress');
 CREATE INDEX IF NOT EXISTS incident_house_status ON incident(house_id, status, created_at DESC);
@@ -58,6 +61,17 @@ CREATE TABLE IF NOT EXISTS incident_confirmation (
   confirmed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (incident_id, user_id)
 );
+
+-- ponytail: фото лежат в Postgres (bytea, ≤10 МБ); при росте объёма — в S3, хранить только url.
+CREATE TABLE IF NOT EXISTS incident_photo (
+  id           BIGSERIAL PRIMARY KEY,
+  incident_id  BIGINT NOT NULL REFERENCES incident(id),
+  user_id      BIGINT NOT NULL REFERENCES app_user(id),
+  content_type TEXT NOT NULL,
+  data         BYTEA NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS incident_photo_incident ON incident_photo(incident_id);
 
 CREATE TABLE IF NOT EXISTS event (
   id                BIGSERIAL PRIMARY KEY,

@@ -13,7 +13,7 @@ import (
 var (
 	ErrNotFound      = repository.ErrNotFound
 	ErrInvalidInput  = errors.New("invalid input")
-	ErrInvalidStatus = errors.New("incident is not verifying")
+	ErrInvalidStatus = errors.New("status transition not allowed")
 )
 
 type Service struct {

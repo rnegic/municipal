@@ -8,7 +8,7 @@ import (
 	"ukapp/internal/repository"
 )
 
-// ConfirmIncident records the resident's "почикили" confirmation. Only allowed while the
+// ConfirmIncident records the resident's "починили" confirmation. Only allowed while the
 // incident is verifying (ErrInvalidStatus otherwise). Once enough residents confirmed
 // (domain.ShouldClose), the incident is atomically closed and subscribers notified.
 func (s *Service) ConfirmIncident(ctx context.Context, incidentID, userID int64) (domain.IncidentStatus, time.Time, error) {
@@ -35,7 +35,7 @@ func (s *Service) ConfirmIncident(ctx context.Context, incidentID, userID int64)
 		return domain.IncidentVerifying, confirmedAt, nil
 	}
 	payload := repository.OutboxPayload{Text: "Ваша проблема закрыта: жители подтвердили, что всё работает."}
-	closed, err := s.repo.CloseIfVerifying(ctx, incidentID, "incident_done", payload)
+	closed, err := s.repo.TransitionIncident(ctx, incidentID, domain.IncidentVerifying, domain.IncidentDone, "incident_done", payload)
 	if err != nil {
 		return "", time.Time{}, err
 	}

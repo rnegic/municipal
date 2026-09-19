@@ -45,7 +45,7 @@ func (s *Store) BindHouse(ctx context.Context, userID int64, addressRaw, houseFi
 // FindHouse returns ErrNotFound for a missing house.
 func (s *Store) FindHouse(ctx context.Context, id int64) (model.House, error) {
 	var h model.House
-	err := SELECT(House.ID, House.AddressRaw).FROM(House).WHERE(House.ID.EQ(Int64(id))).QueryContext(ctx, s.db, &h)
+	err := SELECT(House.ID, House.AddressRaw, House.UkID).FROM(House).WHERE(House.ID.EQ(Int64(id))).QueryContext(ctx, s.db, &h)
 	if errors.Is(err, qrm.ErrNoRows) {
 		return model.House{}, ErrNotFound
 	}

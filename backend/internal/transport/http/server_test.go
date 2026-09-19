@@ -24,9 +24,8 @@ import (
 
 // These are integration tests exercising the whole stack (transport → service → repository)
 // against a real Postgres, per CLAUDE.md testing policy. Raw SQL setup below (assigning the
-// dispatcher role, forcing an incident into "verifying") has no HTTP endpoint in this P0 scope
-// (that's P2, the UK cabinet), so it goes straight through repository.Store.DB() — that's why
-// depguard exempts _test.go files from the transport→repository boundary.
+// dispatcher role) has no HTTP endpoint, so it goes straight through repository.Store.DB() —
+// that's why depguard exempts _test.go files from the transport→repository boundary.
 
 func testStore(t *testing.T) *repository.Store {
 	t.Helper()
@@ -151,11 +150,25 @@ func incidentStatus(t *testing.T, s *repository.Store, id int64) string {
 	return st
 }
 
-// setVerifying forces status=verifying directly — reachable via the UK cabinet (P2, not yet
-// implemented), so tests that exercise confirmIncident set it up this way.
-func setVerifying(t *testing.T, s *repository.Store, id int64) {
+// makeDispatcher upserts the user (first authed request) and promotes it to uk_dispatcher of the seeded UK.
+func makeDispatcher(t *testing.T, srv http.Handler, s *repository.Store, maxID int64) {
 	t.Helper()
-	if _, err := s.DB().ExecContext(context.Background(), `UPDATE incident SET status='verifying' WHERE id=$1`, id); err != nil {
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, authedReq(t, "GET", "/api/me", "", maxID, "D"))
+	if w.Code != 200 {
+		t.Fatalf("me: %d %s", w.Code, w.Body)
+	}
+	_, err := s.DB().ExecContext(context.Background(),
+		`UPDATE app_user SET role='uk_dispatcher', uk_id=(SELECT id FROM uk ORDER BY id LIMIT 1) WHERE max_user_id=$1`, maxID)
+	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+// setStatus drives PATCH /api/incidents/{id}/status as the dispatcher and returns the HTTP code.
+func setStatus(t *testing.T, srv http.Handler, dispatcherMaxID int64, incID, status string) int {
+	t.Helper()
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, authedReq(t, "PATCH", "/api/incidents/"+incID+"/status", `{"status":"`+status+`"}`, dispatcherMaxID, "D"))
+	return w.Code
 }

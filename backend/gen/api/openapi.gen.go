@@ -10,6 +10,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"path"
@@ -19,26 +21,54 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
+
+// Defines values for EventStatus.
+const (
+	EventStatusAwaitingConfirmation EventStatus = "awaiting_confirmation"
+	EventStatusClosed               EventStatus = "closed"
+	EventStatusDisputed             EventStatus = "disputed"
+	EventStatusInProgress           EventStatus = "in_progress"
+	EventStatusPlanned              EventStatus = "planned"
+)
+
+// Valid indicates whether the value is a known member of the EventStatus enum.
+func (e EventStatus) Valid() bool {
+	switch e {
+	case EventStatusAwaitingConfirmation:
+		return true
+	case EventStatusClosed:
+		return true
+	case EventStatusDisputed:
+		return true
+	case EventStatusInProgress:
+		return true
+	case EventStatusPlanned:
+		return true
+	default:
+		return false
+	}
+}
 
 // Defines values for IncidentStatus.
 const (
-	Accepted   IncidentStatus = "accepted"
-	Done       IncidentStatus = "done"
-	InProgress IncidentStatus = "in_progress"
-	Verifying  IncidentStatus = "verifying"
+	IncidentStatusAccepted   IncidentStatus = "accepted"
+	IncidentStatusDone       IncidentStatus = "done"
+	IncidentStatusInProgress IncidentStatus = "in_progress"
+	IncidentStatusVerifying  IncidentStatus = "verifying"
 )
 
 // Valid indicates whether the value is a known member of the IncidentStatus enum.
 func (e IncidentStatus) Valid() bool {
 	switch e {
-	case Accepted:
+	case IncidentStatusAccepted:
 		return true
-	case Done:
+	case IncidentStatusDone:
 		return true
-	case InProgress:
+	case IncidentStatusInProgress:
 		return true
-	case Verifying:
+	case IncidentStatusVerifying:
 		return true
 	default:
 		return false
@@ -116,6 +146,19 @@ type ConfirmResponse struct {
 	Status      IncidentStatus `json:"status"`
 }
 
+// CreateEventRequest defines model for CreateEventRequest.
+type CreateEventRequest struct {
+	Entrance *string `json:"entrance,omitempty"`
+
+	// HouseId Example: h_1
+	HouseId       string    `json:"houseId"`
+	Reason        string    `json:"reason"`
+	Responsible   string    `json:"responsible"`
+	Riser         *string   `json:"riser,omitempty"`
+	ScheduledFrom time.Time `json:"scheduledFrom"`
+	ScheduledTo   time.Time `json:"scheduledTo"`
+}
+
 // CreateIncidentRequest defines model for CreateIncidentRequest.
 type CreateIncidentRequest struct {
 	Description string   `json:"description"`
@@ -124,6 +167,37 @@ type CreateIncidentRequest struct {
 	Severity    Severity `json:"severity"`
 	Title       string   `json:"title"`
 }
+
+// Event defines model for Event.
+type Event struct {
+	CreatedAt time.Time `json:"createdAt"`
+	Entrance  *string   `json:"entrance"`
+
+	// HouseId Example: h_1
+	HouseId string `json:"houseId"`
+
+	// Id Example: evt_1
+	Id string `json:"id"`
+
+	// Reason Example: Плановое отключение горячей воды
+	Reason     string     `json:"reason"`
+	ResolvedAt *time.Time `json:"resolvedAt"`
+
+	// Responsible Example: УК-1
+	Responsible   string      `json:"responsible"`
+	Riser         *string     `json:"riser"`
+	ScheduledFrom time.Time   `json:"scheduledFrom"`
+	ScheduledTo   time.Time   `json:"scheduledTo"`
+	Status        EventStatus `json:"status"`
+}
+
+// EventListResponse defines model for EventListResponse.
+type EventListResponse struct {
+	Items []Event `json:"items"`
+}
+
+// EventStatus defines model for EventStatus.
+type EventStatus string
 
 // House defines model for House.
 type House struct {
@@ -134,12 +208,23 @@ type House struct {
 	Id string `json:"id"`
 }
 
+// HouseStats defines model for HouseStats.
+type HouseStats struct {
+	// ActiveIncidents accepted + in_progress + verifying
+	ActiveIncidents    int        `json:"activeIncidents"`
+	AvgResolutionHours *float64   `json:"avgResolutionHours"`
+	InProgress         int        `json:"inProgress"`
+	LastIncidentAt     *time.Time `json:"lastIncidentAt"`
+	ResolvedLast30Days int        `json:"resolvedLast30Days"`
+}
+
 // Incident defines model for Incident.
 type Incident struct {
-	AffectedCount int       `json:"affectedCount"`
-	ConfirmedByMe bool      `json:"confirmedByMe"`
-	CreatedAt     time.Time `json:"createdAt"`
-	Description   string    `json:"description"`
+	AffectedCount int        `json:"affectedCount"`
+	ConfirmedByMe bool       `json:"confirmedByMe"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	Description   string     `json:"description"`
+	DueAt         *time.Time `json:"dueAt"`
 
 	// HouseId Example: h_123
 	HouseId string `json:"houseId"`
@@ -147,6 +232,7 @@ type Incident struct {
 	// Id Example: inc_01H
 	Id         string         `json:"id"`
 	JoinedByMe bool           `json:"joinedByMe"`
+	Photos     []Photo        `json:"photos"`
 	Severity   Severity       `json:"severity"`
 	Status     IncidentStatus `json:"status"`
 	Title      string         `json:"title"`
@@ -181,12 +267,30 @@ type PaginatedResidentRequests struct {
 	Total  int               `json:"total"`
 }
 
-// ResidentRequest defines model for ResidentRequest.
-type ResidentRequest struct {
-	CreatedAt time.Time  `json:"createdAt"`
-	DueAt     *time.Time `json:"dueAt"`
+// PaginatedUkQueue defines model for PaginatedUkQueue.
+type PaginatedUkQueue struct {
+	Items  []UkQueueItem `json:"items"`
+	Limit  int           `json:"limit"`
+	Offset int           `json:"offset"`
+	Total  int           `json:"total"`
+}
 
-	// Id Example: req_1
+// Photo defines model for Photo.
+type Photo struct {
+	// Id Example: ph_1
+	Id string `json:"id"`
+
+	// Url Example: /api/photos/ph_1
+	Url string `json:"url"`
+}
+
+// ResidentRequest Заявка в «Моих заявках» — это тот же инцидент, id общий (inc_…) и годится для /confirm.
+type ResidentRequest struct {
+	ConfirmedByMe bool       `json:"confirmedByMe"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	DueAt         *time.Time `json:"dueAt"`
+
+	// Id Example: inc_01H
 	Id     string         `json:"id"`
 	Status IncidentStatus `json:"status"`
 	Title  string         `json:"title"`
@@ -195,8 +299,37 @@ type ResidentRequest struct {
 // Role defines model for Role.
 type Role string
 
+// SetIncidentStatusRequest defines model for SetIncidentStatusRequest.
+type SetIncidentStatusRequest struct {
+	Status IncidentStatus `json:"status"`
+}
+
 // Severity defines model for Severity.
 type Severity string
+
+// UkQueueItem defines model for UkQueueItem.
+type UkQueueItem struct {
+	AffectedCount  int        `json:"affectedCount"`
+	ConfirmedCount int        `json:"confirmedCount"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	Description    string     `json:"description"`
+	DueAt          *time.Time `json:"dueAt"`
+
+	// HouseAddress Example: Казань, ул. Баумана, д. 10
+	HouseAddress string `json:"houseAddress"`
+
+	// HouseId Example: h_1
+	HouseId string `json:"houseId"`
+
+	// Id Example: inc_42
+	Id string `json:"id"`
+
+	// ReporterName Example: Иван И.
+	ReporterName string         `json:"reporterName"`
+	Severity     Severity       `json:"severity"`
+	Status       IncidentStatus `json:"status"`
+	Title        string         `json:"title"`
+}
 
 // User defines model for User.
 type User struct {
@@ -235,18 +368,38 @@ type ListHouseRequestsParams struct {
 	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// UploadIncidentPhotoMultipartBody defines parameters for UploadIncidentPhoto.
+type UploadIncidentPhotoMultipartBody struct {
+	Photo openapi_types.File `json:"photo"`
+}
+
+// UkQueueParams defines parameters for UkQueue.
+type UkQueueParams struct {
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+	Limit  *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // BindHouseJSONRequestBody defines body for BindHouse for application/json ContentType.
 type BindHouseJSONRequestBody = BindHouseRequest
 
 // CreateIncidentJSONRequestBody defines body for CreateIncident for application/json ContentType.
 type CreateIncidentJSONRequestBody = CreateIncidentRequest
 
+// UploadIncidentPhotoMultipartRequestBody defines body for UploadIncidentPhoto for multipart/form-data ContentType.
+type UploadIncidentPhotoMultipartRequestBody UploadIncidentPhotoMultipartBody
+
+// SetIncidentStatusJSONRequestBody defines body for SetIncidentStatus for application/json ContentType.
+type SetIncidentStatusJSONRequestBody = SetIncidentStatusRequest
+
+// UkCreateEventJSONRequestBody defines body for UkCreateEvent for application/json ContentType.
+type UkCreateEventJSONRequestBody = CreateEventRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// ListEvents P1 — плановые работы УК (пока не реализовано)
+	// ListEvents Плановые работы УК по дому (житель своего дома или диспетчер его УК; чужой дом → 404)
 	// (GET /api/events)
 	ListEvents(c *gin.Context, params ListEventsParams)
-	// GetEvent P1 — карточка события (пока не реализовано)
+	// GetEvent Карточка события (только для своего дома)
 	// (GET /api/events/{id})
 	GetEvent(c *gin.Context, id ID)
 	// BindHouse Привязать дом по свободному адресу (нормализуется через DaData)
@@ -258,7 +411,7 @@ type ServerInterface interface {
 	// ListHouseRequests «Мои заявки» текущего пользователя в доме
 	// (GET /api/houses/{houseId}/requests)
 	ListHouseRequests(c *gin.Context, houseId HouseID, params ListHouseRequestsParams)
-	// HouseStats P1 — статистика дома (пока не реализовано)
+	// HouseStats Статистика дома (житель дома или диспетчер его УК; чужой дом → 404)
 	// (GET /api/houses/{houseId}/stats)
 	HouseStats(c *gin.Context, houseId HouseID)
 	// CreateIncident «Сообщить о новой проблеме» (с дедупом по дому+заголовку+стояку в окне 2ч)
@@ -273,21 +426,24 @@ type ServerInterface interface {
 	// JoinIncident «У меня тоже» (идемпотентно: повтор — 200 с текущим состоянием)
 	// (POST /api/incidents/{id}/join)
 	JoinIncident(c *gin.Context, id ID)
-	// UploadIncidentPhoto P1 — фото к обращению (пока не реализовано)
+	// UploadIncidentPhoto Фото к обращению (jpeg/png, до 10 МБ); отдаётся по Photo.url без авторизации
 	// (POST /api/incidents/{id}/photos)
 	UploadIncidentPhoto(c *gin.Context, id ID)
-	// SetIncidentStatus P2 — смена статуса диспетчером (пока не реализовано)
+	// SetIncidentStatus Смена статуса диспетчером: accepted → in_progress → verifying → done
 	// (PATCH /api/incidents/{id}/status)
 	SetIncidentStatus(c *gin.Context, id ID)
 	// GetMe Текущий пользователь + привязанный дом (пользователь создаётся лениво)
 	// (GET /api/me)
 	GetMe(c *gin.Context)
-	// UkCreateEvent P2 — создать плановое событие (пока не реализовано)
+	// GetPhoto Содержимое фото (публично — вебвью грузит <img> без заголовка Authorization)
+	// (GET /api/photos/{id})
+	GetPhoto(c *gin.Context, id ID)
+	// UkCreateEvent Создать плановое событие (дом должен принадлежать УК диспетчера, иначе 404)
 	// (POST /api/uk/events)
 	UkCreateEvent(c *gin.Context)
-	// UkQueue P2 — очередь заявок УК (пока не реализовано)
+	// UkQueue Очередь незакрытых заявок по домам УК диспетчера (critical сначала, затем createdAt desc)
 	// (GET /api/uk/queue)
-	UkQueue(c *gin.Context)
+	UkQueue(c *gin.Context, params UkQueueParams)
 
 	// (GET /health)
 	Health(c *gin.Context)
@@ -623,6 +779,31 @@ func (siw *ServerInterfaceWrapper) GetMe(c *gin.Context) {
 	siw.Handler.GetMe(c)
 }
 
+// GetPhoto operation middleware
+func (siw *ServerInterfaceWrapper) GetPhoto(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetPhoto(c, id)
+}
+
 // UkCreateEvent operation middleware
 func (siw *ServerInterfaceWrapper) UkCreateEvent(c *gin.Context) {
 
@@ -639,6 +820,28 @@ func (siw *ServerInterfaceWrapper) UkCreateEvent(c *gin.Context) {
 // UkQueue operation middleware
 func (siw *ServerInterfaceWrapper) UkQueue(c *gin.Context) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UkQueueParams
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", c.Request.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter offset: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", c.Request.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -646,7 +849,7 @@ func (siw *ServerInterfaceWrapper) UkQueue(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.UkQueue(c)
+	siw.Handler.UkQueue(c, params)
 }
 
 // Health operation middleware
@@ -700,6 +903,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.POST(options.BaseURL+"/api/incidents/:id/join", wrapper.JoinIncident)
 	router.POST(options.BaseURL+"/api/incidents/:id/confirm", wrapper.ConfirmIncident)
 	router.POST(options.BaseURL+"/api/incidents/:id/photos", wrapper.UploadIncidentPhoto)
+	router.GET(options.BaseURL+"/api/photos/:id", wrapper.GetPhoto)
 	router.PATCH(options.BaseURL+"/api/incidents/:id/status", wrapper.SetIncidentStatus)
 	router.GET(options.BaseURL+"/api/events", wrapper.ListEvents)
 	router.GET(options.BaseURL+"/api/events/:id", wrapper.GetEvent)
@@ -717,16 +921,44 @@ type ListEventsResponseObject interface {
 	VisitListEventsResponse(w http.ResponseWriter) error
 }
 
-type ListEvents501JSONResponse struct{ ErrorJSONResponse }
+type ListEvents200JSONResponse EventListResponse
 
-func (response ListEvents501JSONResponse) VisitListEventsResponse(w http.ResponseWriter) error {
+func (response ListEvents200JSONResponse) VisitListEventsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListEvents401JSONResponse struct{ ErrorJSONResponse }
+
+func (response ListEvents401JSONResponse) VisitListEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListEvents404JSONResponse ApiErrorResponse
+
+func (response ListEvents404JSONResponse) VisitListEventsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -739,16 +971,44 @@ type GetEventResponseObject interface {
 	VisitGetEventResponse(w http.ResponseWriter) error
 }
 
-type GetEvent501JSONResponse struct{ ErrorJSONResponse }
+type GetEvent200JSONResponse Event
 
-func (response GetEvent501JSONResponse) VisitGetEventResponse(w http.ResponseWriter) error {
+func (response GetEvent200JSONResponse) VisitGetEventResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetEvent401JSONResponse struct{ ErrorJSONResponse }
+
+func (response GetEvent401JSONResponse) VisitGetEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetEvent404JSONResponse ApiErrorResponse
+
+func (response GetEvent404JSONResponse) VisitGetEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -927,16 +1187,44 @@ type HouseStatsResponseObject interface {
 	VisitHouseStatsResponse(w http.ResponseWriter) error
 }
 
-type HouseStats501JSONResponse struct{ ErrorJSONResponse }
+type HouseStats200JSONResponse HouseStats
 
-func (response HouseStats501JSONResponse) VisitHouseStatsResponse(w http.ResponseWriter) error {
+func (response HouseStats200JSONResponse) VisitHouseStatsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type HouseStats401JSONResponse struct{ ErrorJSONResponse }
+
+func (response HouseStats401JSONResponse) VisitHouseStatsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type HouseStats404JSONResponse ApiErrorResponse
+
+func (response HouseStats404JSONResponse) VisitHouseStatsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -1184,45 +1472,159 @@ func (response JoinIncident404JSONResponse) VisitJoinIncidentResponse(w http.Res
 }
 
 type UploadIncidentPhotoRequestObject struct {
-	Id ID `json:"id"`
+	Id   ID `json:"id"`
+	Body *multipart.Reader
 }
 
 type UploadIncidentPhotoResponseObject interface {
 	VisitUploadIncidentPhotoResponse(w http.ResponseWriter) error
 }
 
-type UploadIncidentPhoto501JSONResponse struct{ ErrorJSONResponse }
+type UploadIncidentPhoto201JSONResponse Photo
 
-func (response UploadIncidentPhoto501JSONResponse) VisitUploadIncidentPhotoResponse(w http.ResponseWriter) error {
+func (response UploadIncidentPhoto201JSONResponse) VisitUploadIncidentPhotoResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UploadIncidentPhoto400JSONResponse struct{ ErrorJSONResponse }
+
+func (response UploadIncidentPhoto400JSONResponse) VisitUploadIncidentPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UploadIncidentPhoto401JSONResponse ApiErrorResponse
+
+func (response UploadIncidentPhoto401JSONResponse) VisitUploadIncidentPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UploadIncidentPhoto404JSONResponse ApiErrorResponse
+
+func (response UploadIncidentPhoto404JSONResponse) VisitUploadIncidentPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
 type SetIncidentStatusRequestObject struct {
-	Id ID `json:"id"`
+	Id   ID `json:"id"`
+	Body *SetIncidentStatusJSONRequestBody
 }
 
 type SetIncidentStatusResponseObject interface {
 	VisitSetIncidentStatusResponse(w http.ResponseWriter) error
 }
 
-type SetIncidentStatus501JSONResponse struct{ ErrorJSONResponse }
+type SetIncidentStatus200JSONResponse Incident
 
-func (response SetIncidentStatus501JSONResponse) VisitSetIncidentStatusResponse(w http.ResponseWriter) error {
+func (response SetIncidentStatus200JSONResponse) VisitSetIncidentStatusResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetIncidentStatus400JSONResponse struct{ ErrorJSONResponse }
+
+func (response SetIncidentStatus400JSONResponse) VisitSetIncidentStatusResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetIncidentStatus401JSONResponse ApiErrorResponse
+
+func (response SetIncidentStatus401JSONResponse) VisitSetIncidentStatusResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetIncidentStatus403JSONResponse ApiErrorResponse
+
+func (response SetIncidentStatus403JSONResponse) VisitSetIncidentStatusResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetIncidentStatus404JSONResponse ApiErrorResponse
+
+func (response SetIncidentStatus404JSONResponse) VisitSetIncidentStatusResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetIncidentStatus422JSONResponse ApiErrorResponse
+
+func (response SetIncidentStatus422JSONResponse) VisitSetIncidentStatusResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -1262,44 +1664,192 @@ func (response GetMe401JSONResponse) VisitGetMeResponse(w http.ResponseWriter) e
 	return err
 }
 
+type GetPhotoRequestObject struct {
+	Id ID `json:"id"`
+}
+
+type GetPhotoResponseObject interface {
+	VisitGetPhotoResponse(w http.ResponseWriter) error
+}
+
+type GetPhoto200ImagejpegResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response GetPhoto200ImagejpegResponse) VisitGetPhotoResponse(w http.ResponseWriter) error {
+
+	w.Header().Set("Content-Type", "image/jpeg")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetPhoto200ImagepngResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response GetPhoto200ImagepngResponse) VisitGetPhotoResponse(w http.ResponseWriter) error {
+
+	w.Header().Set("Content-Type", "image/png")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetPhoto404JSONResponse struct{ ErrorJSONResponse }
+
+func (response GetPhoto404JSONResponse) VisitGetPhotoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type UkCreateEventRequestObject struct {
+	Body *UkCreateEventJSONRequestBody
 }
 
 type UkCreateEventResponseObject interface {
 	VisitUkCreateEventResponse(w http.ResponseWriter) error
 }
 
-type UkCreateEvent501JSONResponse struct{ ErrorJSONResponse }
+type UkCreateEvent201JSONResponse Event
 
-func (response UkCreateEvent501JSONResponse) VisitUkCreateEventResponse(w http.ResponseWriter) error {
+func (response UkCreateEvent201JSONResponse) VisitUkCreateEventResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UkCreateEvent400JSONResponse struct{ ErrorJSONResponse }
+
+func (response UkCreateEvent400JSONResponse) VisitUkCreateEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UkCreateEvent401JSONResponse ApiErrorResponse
+
+func (response UkCreateEvent401JSONResponse) VisitUkCreateEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UkCreateEvent403JSONResponse ApiErrorResponse
+
+func (response UkCreateEvent403JSONResponse) VisitUkCreateEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UkCreateEvent404JSONResponse ApiErrorResponse
+
+func (response UkCreateEvent404JSONResponse) VisitUkCreateEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
 	_, err := buf.WriteTo(w)
 	return err
 }
 
 type UkQueueRequestObject struct {
+	Params UkQueueParams
 }
 
 type UkQueueResponseObject interface {
 	VisitUkQueueResponse(w http.ResponseWriter) error
 }
 
-type UkQueue501JSONResponse struct{ ErrorJSONResponse }
+type UkQueue200JSONResponse PaginatedUkQueue
 
-func (response UkQueue501JSONResponse) VisitUkQueueResponse(w http.ResponseWriter) error {
+func (response UkQueue200JSONResponse) VisitUkQueueResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(501)
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UkQueue401JSONResponse struct{ ErrorJSONResponse }
+
+func (response UkQueue401JSONResponse) VisitUkQueueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UkQueue403JSONResponse ApiErrorResponse
+
+func (response UkQueue403JSONResponse) VisitUkQueueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -1324,10 +1874,10 @@ func (response Health200TextResponse) VisitHealthResponse(w http.ResponseWriter)
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// ListEvents P1 — плановые работы УК (пока не реализовано)
+	// ListEvents Плановые работы УК по дому (житель своего дома или диспетчер его УК; чужой дом → 404)
 	// (GET /api/events)
 	ListEvents(ctx context.Context, request ListEventsRequestObject) (ListEventsResponseObject, error)
-	// GetEvent P1 — карточка события (пока не реализовано)
+	// GetEvent Карточка события (только для своего дома)
 	// (GET /api/events/{id})
 	GetEvent(ctx context.Context, request GetEventRequestObject) (GetEventResponseObject, error)
 	// BindHouse Привязать дом по свободному адресу (нормализуется через DaData)
@@ -1339,7 +1889,7 @@ type StrictServerInterface interface {
 	// ListHouseRequests «Мои заявки» текущего пользователя в доме
 	// (GET /api/houses/{houseId}/requests)
 	ListHouseRequests(ctx context.Context, request ListHouseRequestsRequestObject) (ListHouseRequestsResponseObject, error)
-	// HouseStats P1 — статистика дома (пока не реализовано)
+	// HouseStats Статистика дома (житель дома или диспетчер его УК; чужой дом → 404)
 	// (GET /api/houses/{houseId}/stats)
 	HouseStats(ctx context.Context, request HouseStatsRequestObject) (HouseStatsResponseObject, error)
 	// CreateIncident «Сообщить о новой проблеме» (с дедупом по дому+заголовку+стояку в окне 2ч)
@@ -1354,19 +1904,22 @@ type StrictServerInterface interface {
 	// JoinIncident «У меня тоже» (идемпотентно: повтор — 200 с текущим состоянием)
 	// (POST /api/incidents/{id}/join)
 	JoinIncident(ctx context.Context, request JoinIncidentRequestObject) (JoinIncidentResponseObject, error)
-	// UploadIncidentPhoto P1 — фото к обращению (пока не реализовано)
+	// UploadIncidentPhoto Фото к обращению (jpeg/png, до 10 МБ); отдаётся по Photo.url без авторизации
 	// (POST /api/incidents/{id}/photos)
 	UploadIncidentPhoto(ctx context.Context, request UploadIncidentPhotoRequestObject) (UploadIncidentPhotoResponseObject, error)
-	// SetIncidentStatus P2 — смена статуса диспетчером (пока не реализовано)
+	// SetIncidentStatus Смена статуса диспетчером: accepted → in_progress → verifying → done
 	// (PATCH /api/incidents/{id}/status)
 	SetIncidentStatus(ctx context.Context, request SetIncidentStatusRequestObject) (SetIncidentStatusResponseObject, error)
 	// GetMe Текущий пользователь + привязанный дом (пользователь создаётся лениво)
 	// (GET /api/me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
-	// UkCreateEvent P2 — создать плановое событие (пока не реализовано)
+	// GetPhoto Содержимое фото (публично — вебвью грузит <img> без заголовка Authorization)
+	// (GET /api/photos/{id})
+	GetPhoto(ctx context.Context, request GetPhotoRequestObject) (GetPhotoResponseObject, error)
+	// UkCreateEvent Создать плановое событие (дом должен принадлежать УК диспетчера, иначе 404)
 	// (POST /api/uk/events)
 	UkCreateEvent(ctx context.Context, request UkCreateEventRequestObject) (UkCreateEventResponseObject, error)
-	// UkQueue P2 — очередь заявок УК (пока не реализовано)
+	// UkQueue Очередь незакрытых заявок по домам УК диспетчера (critical сначала, затем createdAt desc)
 	// (GET /api/uk/queue)
 	UkQueue(ctx context.Context, request UkQueueRequestObject) (UkQueueResponseObject, error)
 
@@ -1709,6 +2262,13 @@ func (sh *strictHandler) UploadIncidentPhoto(ctx *gin.Context, id ID) {
 
 	request.Id = id
 
+	if reader, err := ctx.Request.MultipartReader(); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	} else {
+		request.Body = reader
+	}
+
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.UploadIncidentPhoto(ctx, request.(UploadIncidentPhotoRequestObject))
 	}
@@ -1734,6 +2294,13 @@ func (sh *strictHandler) SetIncidentStatus(ctx *gin.Context, id ID) {
 	var request SetIncidentStatusRequestObject
 
 	request.Id = id
+
+	var body SetIncidentStatusJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.SetIncidentStatus(ctx, request.(SetIncidentStatusRequestObject))
@@ -1779,9 +2346,42 @@ func (sh *strictHandler) GetMe(ctx *gin.Context) {
 	}
 }
 
+// GetPhoto operation middleware
+func (sh *strictHandler) GetPhoto(ctx *gin.Context, id ID) {
+	var request GetPhotoRequestObject
+
+	request.Id = id
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPhoto(ctx, request.(GetPhotoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPhoto")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(GetPhotoResponseObject); ok {
+		if err := validResponse.VisitGetPhotoResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // UkCreateEvent operation middleware
 func (sh *strictHandler) UkCreateEvent(ctx *gin.Context) {
 	var request UkCreateEventRequestObject
+
+	var body UkCreateEventJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(ctx, err)
+		return
+	}
+	request.Body = &body
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.UkCreateEvent(ctx, request.(UkCreateEventRequestObject))
@@ -1804,8 +2404,10 @@ func (sh *strictHandler) UkCreateEvent(ctx *gin.Context) {
 }
 
 // UkQueue operation middleware
-func (sh *strictHandler) UkQueue(ctx *gin.Context) {
+func (sh *strictHandler) UkQueue(ctx *gin.Context, params UkQueueParams) {
 	var request UkQueueRequestObject
+
+	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.UkQueue(ctx, request.(UkQueueRequestObject))
@@ -1856,54 +2458,72 @@ func (sh *strictHandler) Health(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

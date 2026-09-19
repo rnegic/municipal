@@ -16,6 +16,7 @@ func UseSchema(schema string) {
 	House = House.FromSchema(schema)
 	Incident = Incident.FromSchema(schema)
 	IncidentConfirmation = IncidentConfirmation.FromSchema(schema)
+	IncidentPhoto = IncidentPhoto.FromSchema(schema)
 	IncidentSubscription = IncidentSubscription.FromSchema(schema)
 	OutboxMessage = OutboxMessage.FromSchema(schema)
 	Uk = Uk.FromSchema(schema)

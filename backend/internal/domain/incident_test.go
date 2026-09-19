@@ -58,3 +58,27 @@ func TestFindDuplicate_NoRiserVsRiser(t *testing.T) {
 		t.Fatalf("nil riser must match nil riser, got %d", got)
 	}
 }
+
+func TestCanTransition(t *testing.T) {
+	ok := [][2]IncidentStatus{{IncidentAccepted, IncidentInProgress}, {IncidentInProgress, IncidentVerifying}, {IncidentVerifying, IncidentDone}}
+	for _, c := range ok {
+		if !CanTransition(c[0], c[1]) {
+			t.Errorf("%s → %s must be allowed", c[0], c[1])
+		}
+	}
+	bad := [][2]IncidentStatus{{IncidentAccepted, IncidentVerifying}, {IncidentAccepted, IncidentDone}, {IncidentDone, IncidentAccepted}, {IncidentVerifying, IncidentInProgress}, {IncidentAccepted, IncidentAccepted}, {IncidentDone, IncidentDone}}
+	for _, c := range bad {
+		if CanTransition(c[0], c[1]) {
+			t.Errorf("%s → %s must be rejected", c[0], c[1])
+		}
+	}
+	if !IncidentDone.Valid() || IncidentStatus("urgent").Valid() {
+		t.Error("Valid")
+	}
+}
+
+func TestSLA(t *testing.T) {
+	if SLA(SeverityCritical) != 4*time.Hour || SLA(SeverityWarning) != 24*time.Hour {
+		t.Error("SLA")
+	}
+}

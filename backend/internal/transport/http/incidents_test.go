@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 type incidentResp struct {
@@ -163,7 +165,13 @@ func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 	}
 
 	incID, _ := parseID("inc_", inc.Id)
-	setVerifying(t, s, incID)
+	makeDispatcher(t, srv, s, 100)
+	if c := setStatus(t, srv, 100, inc.Id, "in_progress"); c != 200 {
+		t.Fatalf("→ in_progress: %d", c)
+	}
+	if c := setStatus(t, srv, 100, inc.Id, "verifying"); c != 200 {
+		t.Fatalf("→ verifying: %d", c)
+	}
 
 	// 1 of 2 confirmations (50%, but under MinConfirmations=2) → stays verifying
 	w = httptest.NewRecorder()
@@ -215,10 +223,12 @@ func TestListHouseRequests_Paginated(t *testing.T) {
 	}
 	var page struct {
 		Items []struct {
-			Id     string
-			Title  string
-			Status string
-			DueAt  *string
+			Id            string
+			Title         string
+			Status        string
+			CreatedAt     time.Time
+			DueAt         *time.Time
+			ConfirmedByMe *bool
 		}
 		Total  int
 		Offset int
@@ -229,8 +239,9 @@ func TestListHouseRequests_Paginated(t *testing.T) {
 		t.Fatalf("bad page: %+v", page)
 	}
 	for _, it := range page.Items {
-		if it.DueAt != nil {
-			t.Fatalf("dueAt must be present and null, got %v", it.DueAt)
+		// id is the incident id (usable with /confirm), dueAt = createdAt + SLA(warning)=24h
+		if !strings.HasPrefix(it.Id, "inc_") || it.DueAt == nil || !it.DueAt.Equal(it.CreatedAt.Add(24*time.Hour)) || it.ConfirmedByMe == nil {
+			t.Fatalf("bad item: %+v", it)
 		}
 	}
 }

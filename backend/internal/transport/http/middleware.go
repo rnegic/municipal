@@ -17,7 +17,7 @@ import (
 type ctxKey struct{}
 
 // publicOps are operations served without initData (see openapi.yaml `security: []`).
-var publicOps = map[string]bool{"Health": true}
+var publicOps = map[string]bool{"Health": true, "GetPhoto": true}
 
 // authMiddleware validates `Authorization: tma <initData>`, upserts the user and puts
 // model.AppUser into the request context. Writes 401 itself and returns (nil, nil) on failure.

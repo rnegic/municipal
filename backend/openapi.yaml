@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: УК-инциденты API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     Бэкенд мини-аппа MAX для жильцов и УК. Источник правды по контракту —
     этот файл: из него генерируется Go-сервер (`make gen`) и TS-клиент для фронта
@@ -110,10 +110,16 @@ paths:
     get:
       operationId: houseStats
       tags: [stats]
-      summary: "P1 — статистика дома (пока не реализовано)"
+      summary: Статистика дома (житель дома или диспетчер его УК; чужой дом → 404)
       parameters: [{ $ref: "#/components/parameters/HouseID" }]
       responses:
-        "501": { $ref: "#/components/responses/Error" }
+        "200":
+          description: Статистика
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HouseStats" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
 
   /api/incidents:
     post:
@@ -190,57 +196,143 @@ paths:
     post:
       operationId: uploadIncidentPhoto
       tags: [incidents]
-      summary: "P1 — фото к обращению (пока не реализовано)"
+      summary: Фото к обращению (jpeg/png, до 10 МБ); отдаётся по Photo.url без авторизации
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo: { type: string, format: binary }
+      responses:
+        "201":
+          description: Фото сохранено
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Photo" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/photos/{id}:
+    get:
+      operationId: getPhoto
+      security: []
+      tags: [incidents]
+      summary: Содержимое фото (публично — вебвью грузит <img> без заголовка Authorization)
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "501": { $ref: "#/components/responses/Error" }
+        "200":
+          description: Файл
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        "404": { $ref: "#/components/responses/Error" }
 
   /api/incidents/{id}/status:
     patch:
       operationId: setIncidentStatus
       tags: [uk]
-      summary: "P2 — смена статуса диспетчером (пока не реализовано)"
+      summary: "Смена статуса диспетчером: accepted → in_progress → verifying → done"
+      description: |
+        Переход в `verifying` рассылает подписчикам «починили — подтвердите»;
+        переход в `done` проставляет resolvedAt. Любой другой переход — 422.
       parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetIncidentStatusRequest" }
       responses:
-        "501": { $ref: "#/components/responses/Error" }
+        "200":
+          description: Авария после перехода
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Incident" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
 
   /api/events:
     get:
       operationId: listEvents
       tags: [events]
-      summary: "P1 — плановые работы УК (пока не реализовано)"
+      summary: Плановые работы УК по дому (житель своего дома или диспетчер его УК; чужой дом → 404)
       parameters:
         - name: houseId
           in: query
           required: true
           schema: { type: string }
       responses:
-        "501": { $ref: "#/components/responses/Error" }
+        "200":
+          description: Список (ближайшие сначала)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventListResponse" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
 
   /api/events/{id}:
     get:
       operationId: getEvent
       tags: [events]
-      summary: "P1 — карточка события (пока не реализовано)"
+      summary: Карточка события (только для своего дома)
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "501": { $ref: "#/components/responses/Error" }
+        "200":
+          description: Событие
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Event" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
 
   /api/uk/queue:
     get:
       operationId: ukQueue
       tags: [uk]
-      summary: "P2 — очередь заявок УК (пока не реализовано)"
+      summary: Очередь незакрытых заявок по домам УК диспетчера (critical сначала, затем createdAt desc)
+      parameters:
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
-        "501": { $ref: "#/components/responses/Error" }
+        "200":
+          description: Страница очереди
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedUkQueue" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
 
   /api/uk/events:
     post:
       operationId: ukCreateEvent
       tags: [uk]
-      summary: "P2 — создать плановое событие (пока не реализовано)"
+      summary: Создать плановое событие (дом должен принадлежать УК диспетчера, иначе 404)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateEventRequest" }
       responses:
-        "501": { $ref: "#/components/responses/Error" }
+        "201":
+          description: Событие создано
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Event" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
 
 components:
   securitySchemes:
@@ -323,7 +415,7 @@ components:
     Incident:
       type: object
       required: [id, houseId, title, description, severity, status, affectedCount,
-                 createdAt, joinedByMe, confirmedByMe]
+                 createdAt, dueAt, joinedByMe, confirmedByMe, photos]
       properties:
         id: { type: string, example: inc_01H }
         houseId: { type: string, example: h_123 }
@@ -333,8 +425,105 @@ components:
         status: { $ref: "#/components/schemas/IncidentStatus" }
         affectedCount: { type: integer, minimum: 0 }
         createdAt: { type: string, format: date-time }
+        dueAt: { type: string, format: date-time, nullable: true }
         joinedByMe: { type: boolean }
         confirmedByMe: { type: boolean }
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/Photo" }
+
+    Photo:
+      type: object
+      required: [id, url]
+      properties:
+        id: { type: string, example: ph_1 }
+        url: { type: string, example: /api/photos/ph_1 }
+
+    SetIncidentStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/IncidentStatus" }
+
+    HouseStats:
+      type: object
+      required: [activeIncidents, inProgress, resolvedLast30Days, avgResolutionHours, lastIncidentAt]
+      properties:
+        activeIncidents: { type: integer, minimum: 0, description: "accepted + in_progress + verifying" }
+        inProgress: { type: integer, minimum: 0 }
+        resolvedLast30Days: { type: integer, minimum: 0 }
+        avgResolutionHours: { type: number, format: double, nullable: true }
+        lastIncidentAt: { type: string, format: date-time, nullable: true }
+
+    EventStatus:
+      type: string
+      enum: [planned, in_progress, awaiting_confirmation, disputed, closed]
+
+    Event:
+      type: object
+      required: [id, houseId, entrance, riser, reason, responsible, scheduledFrom, scheduledTo,
+                 status, createdAt, resolvedAt]
+      properties:
+        id: { type: string, example: evt_1 }
+        houseId: { type: string, example: h_1 }
+        entrance: { type: string, nullable: true }
+        riser: { type: string, nullable: true }
+        reason: { type: string, example: Плановое отключение горячей воды }
+        responsible: { type: string, example: УК-1 }
+        scheduledFrom: { type: string, format: date-time }
+        scheduledTo: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/EventStatus" }
+        createdAt: { type: string, format: date-time }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+
+    EventListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Event" }
+
+    CreateEventRequest:
+      type: object
+      required: [houseId, reason, responsible, scheduledFrom, scheduledTo]
+      properties:
+        houseId: { type: string, example: h_1 }
+        entrance: { type: string }
+        riser: { type: string }
+        reason: { type: string, minLength: 1 }
+        responsible: { type: string, minLength: 1 }
+        scheduledFrom: { type: string, format: date-time }
+        scheduledTo: { type: string, format: date-time }
+
+    UkQueueItem:
+      type: object
+      required: [id, houseId, houseAddress, title, description, severity, status, createdAt,
+                 dueAt, affectedCount, confirmedCount, reporterName]
+      properties:
+        id: { type: string, example: inc_42 }
+        houseId: { type: string, example: h_1 }
+        houseAddress: { type: string, example: "Казань, ул. Баумана, д. 10" }
+        title: { type: string }
+        description: { type: string }
+        severity: { $ref: "#/components/schemas/Severity" }
+        status: { $ref: "#/components/schemas/IncidentStatus" }
+        createdAt: { type: string, format: date-time }
+        dueAt: { type: string, format: date-time, nullable: true }
+        affectedCount: { type: integer, minimum: 0 }
+        confirmedCount: { type: integer, minimum: 0 }
+        reporterName: { type: string, example: Иван И. }
+
+    PaginatedUkQueue:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/UkQueueItem" }
+        total: { type: integer, minimum: 0 }
+        offset: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 0 }
 
     IncidentListResponse:
       type: object
@@ -372,13 +561,15 @@ components:
 
     ResidentRequest:
       type: object
-      required: [id, title, status, createdAt, dueAt]
+      description: Заявка в «Моих заявках» — это тот же инцидент, id общий (inc_…) и годится для /confirm.
+      required: [id, title, status, createdAt, dueAt, confirmedByMe]
       properties:
-        id: { type: string, example: req_1 }
+        id: { type: string, example: inc_01H }
         title: { type: string }
         status: { $ref: "#/components/schemas/IncidentStatus" }
         createdAt: { type: string, format: date-time }
         dueAt: { type: string, format: date-time, nullable: true }
+        confirmedByMe: { type: boolean }
 
     PaginatedResidentRequests:
       type: object

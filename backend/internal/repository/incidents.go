@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
@@ -34,16 +35,16 @@ func (s *Store) OpenIncidents(ctx context.Context, houseID int64) ([]domain.Open
 	return out, nil
 }
 
-// CreateIncident inserts the incident and subscribes the reporter in one transaction.
-func (s *Store) CreateIncident(ctx context.Context, houseID, reporterID int64, title, description string, severity domain.Severity, entrance, riser *string) (int64, error) {
+// CreateIncident inserts the incident (due_at = created_at + sla) and subscribes the reporter in one transaction.
+func (s *Store) CreateIncident(ctx context.Context, houseID, reporterID int64, title, description string, severity domain.Severity, entrance, riser *string, sla time.Duration) (int64, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback() //nolint:errcheck // no-op after Commit
 	var inc model.Incident
-	err = Incident.INSERT(Incident.HouseID, Incident.Title, Incident.Severity, Incident.ReporterID, Incident.Description, Incident.Entrance, Incident.Riser).
-		VALUES(houseID, title, string(severity), reporterID, description, entrance, riser).
+	err = Incident.INSERT(Incident.HouseID, Incident.Title, Incident.Severity, Incident.ReporterID, Incident.Description, Incident.Entrance, Incident.Riser, Incident.DueAt).
+		VALUES(houseID, title, string(severity), reporterID, description, entrance, riser, NOW().ADD(INTERVALd(sla))).
 		RETURNING(Incident.ID).
 		QueryContext(ctx, tx, &inc)
 	if err != nil {

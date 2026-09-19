@@ -11,17 +11,11 @@ import (
 	"time"
 )
 
-type Incident struct {
+type IncidentPhoto struct {
 	ID          int64 `sql:"primary_key"`
-	HouseID     int64
-	Title       string
-	Severity    string
-	ReporterID  int64
-	Description string
-	Entrance    *string
-	Riser       *string
-	Status      string
+	IncidentID  int64
+	UserID      int64
+	ContentType string
+	Data        []byte
 	CreatedAt   time.Time
-	DueAt       *time.Time
-	ResolvedAt  *time.Time
 }

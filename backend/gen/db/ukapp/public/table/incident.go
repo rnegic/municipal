@@ -27,6 +27,7 @@ type incidentTable struct {
 	Riser       postgres.ColumnString
 	Status      postgres.ColumnString
 	CreatedAt   postgres.ColumnTimestampz
+	DueAt       postgres.ColumnTimestampz
 	ResolvedAt  postgres.ColumnTimestampz
 
 	AllColumns     postgres.ColumnList
@@ -79,9 +80,10 @@ func newIncidentTableImpl(schemaName, tableName, alias string) incidentTable {
 		RiserColumn       = postgres.StringColumn("riser")
 		StatusColumn      = postgres.StringColumn("status")
 		CreatedAtColumn   = postgres.TimestampzColumn("created_at")
+		DueAtColumn       = postgres.TimestampzColumn("due_at")
 		ResolvedAtColumn  = postgres.TimestampzColumn("resolved_at")
-		allColumns        = postgres.ColumnList{IDColumn, HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, CreatedAtColumn, ResolvedAtColumn}
-		mutableColumns    = postgres.ColumnList{HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, CreatedAtColumn, ResolvedAtColumn}
+		allColumns        = postgres.ColumnList{IDColumn, HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn}
+		mutableColumns    = postgres.ColumnList{HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn}
 		defaultColumns    = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn}
 	)
 
@@ -99,6 +101,7 @@ func newIncidentTableImpl(schemaName, tableName, alias string) incidentTable {
 		Riser:       RiserColumn,
 		Status:      StatusColumn,
 		CreatedAt:   CreatedAtColumn,
+		DueAt:       DueAtColumn,
 		ResolvedAt:  ResolvedAtColumn,
 
 		AllColumns:     allColumns,

@@ -46,31 +46,35 @@ func (s *Store) ConfirmationCount(ctx context.Context, incidentID int64) (int, e
 	return cnt.Count, err
 }
 
-// CloseIfVerifying atomically moves the incident from verifying to done and enqueues the
-// notification in the same transaction; closed=false if the incident wasn't in verifying
-// any more (already closed by a racing confirmation).
-func (s *Store) CloseIfVerifying(ctx context.Context, incidentID int64, kind string, payload OutboxPayload) (closed bool, err error) {
+// TransitionIncident atomically moves the incident from → to (done also stamps resolved_at)
+// and, when kind != "", enqueues the notification to subscribers in the same transaction.
+// moved=false if the incident wasn't in `from` any more (racing confirmation/dispatcher).
+func (s *Store) TransitionIncident(ctx context.Context, incidentID int64, from, to domain.IncidentStatus, kind string, payload OutboxPayload) (moved bool, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
 	}
 	defer tx.Rollback() //nolint:errcheck // no-op after Commit
 
-	res, err := Incident.UPDATE(Incident.Status, Incident.ResolvedAt).SET(string(domain.IncidentDone), NOW()).
-		WHERE(Incident.ID.EQ(Int64(incidentID)).AND(Incident.Status.EQ(String(string(domain.IncidentVerifying))))).
-		ExecContext(ctx, tx)
+	upd := Incident.UPDATE(Incident.Status).SET(string(to))
+	if to == domain.IncidentDone {
+		upd = Incident.UPDATE(Incident.Status, Incident.ResolvedAt).SET(string(to), NOW())
+	}
+	res, err := upd.WHERE(Incident.ID.EQ(Int64(incidentID)).AND(Incident.Status.EQ(String(string(from))))).ExecContext(ctx, tx)
 	if err != nil {
 		return false, err
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return false, nil
 	}
-	targets, err := s.SubscriberMaxIDs(ctx, incidentID)
-	if err != nil {
-		return false, err
-	}
-	if err := s.Enqueue(ctx, tx, targets, kind, payload); err != nil {
-		return false, err
+	if kind != "" {
+		targets, err := s.SubscriberMaxIDs(ctx, incidentID)
+		if err != nil {
+			return false, err
+		}
+		if err := s.Enqueue(ctx, tx, targets, kind, payload); err != nil {
+			return false, err
+		}
 	}
 	return true, tx.Commit()
 }

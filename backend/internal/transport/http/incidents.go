@@ -1,20 +1,32 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
+	"net/http"
 
 	oapi "ukapp/gen/api"
 	"ukapp/internal/service"
 )
 
 func toIncident(r service.IncidentRow) oapi.Incident {
+	photos := make([]oapi.Photo, len(r.PhotoIDs)) // non-nil: "photos": [] rather than null
+	for i, id := range r.PhotoIDs {
+		photos[i] = toPhoto(id)
+	}
 	return oapi.Incident{
 		Id: formatIncidentID(r.ID), HouseId: formatHouseID(r.HouseID),
 		Title: r.Title, Description: r.Description, Severity: oapi.Severity(r.Severity),
 		Status: oapi.IncidentStatus(r.Status), AffectedCount: r.AffectedCount,
-		CreatedAt: r.CreatedAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
+		CreatedAt: r.CreatedAt, DueAt: r.DueAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
+		Photos: photos,
 	}
+}
+
+func toPhoto(id int64) oapi.Photo {
+	return oapi.Photo{Id: formatPhotoID(id), Url: "/api/photos/" + formatPhotoID(id)}
 }
 
 func (s *server) CreateIncident(ctx context.Context, req oapi.CreateIncidentRequestObject) (oapi.CreateIncidentResponseObject, error) {
@@ -120,9 +132,92 @@ func (s *server) ListHouseRequests(ctx context.Context, req oapi.ListHouseReques
 	items := make([]oapi.ResidentRequest, len(rows))
 	for i, r := range rows {
 		items[i] = oapi.ResidentRequest{
-			Id: formatRequestID(r.ID), Title: r.Title, Status: oapi.IncidentStatus(r.Status),
-			CreatedAt: r.CreatedAt, DueAt: nil,
+			Id: formatIncidentID(r.ID), Title: r.Title, Status: oapi.IncidentStatus(r.Status),
+			CreatedAt: r.CreatedAt, DueAt: r.DueAt, ConfirmedByMe: r.ConfirmedByMe,
 		}
 	}
 	return oapi.ListHouseRequests200JSONResponse{Items: items, Total: int(total), Offset: int(offset), Limit: int(limit)}, nil
+}
+
+func (s *server) SetIncidentStatus(ctx context.Context, req oapi.SetIncidentStatusRequestObject) (oapi.SetIncidentStatusResponseObject, error) {
+	id, ok := parseID("inc_", req.Id)
+	if !ok {
+		return oapi.SetIncidentStatus404JSONResponse(apiErr("not_found", "авария не найдена")), nil
+	}
+	row, err := s.svc.SetIncidentStatus(ctx, id, userFromCtx(ctx).ID, string(req.Body.Status))
+	switch {
+	case errors.Is(err, service.ErrInvalidInput):
+		return oapi.SetIncidentStatus400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", "status must be one of accepted, in_progress, verifying, done"))}, nil
+	case errors.Is(err, service.ErrNotFound):
+		return oapi.SetIncidentStatus404JSONResponse(apiErr("not_found", "авария не найдена")), nil
+	case errors.Is(err, service.ErrInvalidStatus):
+		return oapi.SetIncidentStatus422JSONResponse(apiErr("business_rule_failed", "допустимы только переходы accepted → in_progress → verifying → done")), nil
+	case err != nil:
+		return nil, err
+	}
+	return oapi.SetIncidentStatus200JSONResponse(toIncident(row)), nil
+}
+
+const maxPhotoBytes = 10 << 20
+
+// UploadIncidentPhoto reads the `photo` part (≤10 МБ, jpeg/png by content sniffing, not by header).
+func (s *server) UploadIncidentPhoto(ctx context.Context, req oapi.UploadIncidentPhotoRequestObject) (oapi.UploadIncidentPhotoResponseObject, error) {
+	id, ok := parseID("inc_", req.Id)
+	if !ok {
+		return oapi.UploadIncidentPhoto404JSONResponse(apiErr("not_found", "авария не найдена")), nil
+	}
+	bad := func(msg string) (oapi.UploadIncidentPhotoResponseObject, error) {
+		return oapi.UploadIncidentPhoto400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", msg))}, nil
+	}
+	var data []byte
+	for {
+		part, err := req.Body.NextPart()
+		if errors.Is(err, io.EOF) {
+			return bad("multipart field photo is required")
+		}
+		if err != nil {
+			return bad(err.Error())
+		}
+		if part.FormName() != "photo" {
+			continue
+		}
+		data, err = io.ReadAll(io.LimitReader(part, maxPhotoBytes+1))
+		if err != nil {
+			return bad(err.Error())
+		}
+		break
+	}
+	if len(data) == 0 || len(data) > maxPhotoBytes {
+		return bad("photo must be 1 byte .. 10 MB")
+	}
+	ct := http.DetectContentType(data)
+	if ct != "image/jpeg" && ct != "image/png" {
+		return bad("photo must be image/jpeg or image/png")
+	}
+	photoID, err := s.svc.AddPhoto(ctx, id, userFromCtx(ctx).ID, ct, data)
+	if errors.Is(err, service.ErrNotFound) {
+		return oapi.UploadIncidentPhoto404JSONResponse(apiErr("not_found", "авария не найдена")), nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return oapi.UploadIncidentPhoto201JSONResponse(toPhoto(photoID)), nil
+}
+
+func (s *server) GetPhoto(ctx context.Context, req oapi.GetPhotoRequestObject) (oapi.GetPhotoResponseObject, error) {
+	id, ok := parseID("ph_", req.Id)
+	if !ok {
+		return oapi.GetPhoto404JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("not_found", "фото не найдено"))}, nil
+	}
+	p, err := s.svc.GetPhoto(ctx, id)
+	if errors.Is(err, service.ErrNotFound) {
+		return oapi.GetPhoto404JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("not_found", "фото не найдено"))}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if p.ContentType == "image/png" {
+		return oapi.GetPhoto200ImagepngResponse{Body: bytes.NewReader(p.Data), ContentLength: int64(len(p.Data))}, nil
+	}
+	return oapi.GetPhoto200ImagejpegResponse{Body: bytes.NewReader(p.Data), ContentLength: int64(len(p.Data))}, nil
 }

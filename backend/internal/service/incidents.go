@@ -19,16 +19,44 @@ type IncidentRow struct {
 	Status        string
 	AffectedCount int
 	CreatedAt     time.Time
+	DueAt         *time.Time
 	JoinedByMe    bool
 	ConfirmedByMe bool
+	PhotoIDs      []int64
 }
 
-func toIncidentRow(r repository.IncidentRow) IncidentRow {
-	return IncidentRow{
-		ID: r.ID, HouseID: r.HouseID, Title: r.Title, Description: r.Description,
-		Severity: r.Severity, Status: r.Status, AffectedCount: r.Subscribers,
-		CreatedAt: r.CreatedAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
+// toIncidentRows maps repository rows and attaches photo ids in one extra query.
+func (s *Service) toIncidentRows(ctx context.Context, rs []repository.IncidentRow) ([]IncidentRow, error) {
+	ids := make([]int64, len(rs))
+	for i, r := range rs {
+		ids[i] = r.ID
 	}
+	photos, err := s.repo.PhotoIDsByIncident(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]IncidentRow, len(rs))
+	for i, r := range rs {
+		out[i] = IncidentRow{
+			ID: r.ID, HouseID: r.HouseID, Title: r.Title, Description: r.Description,
+			Severity: r.Severity, Status: r.Status, AffectedCount: r.Subscribers,
+			CreatedAt: r.CreatedAt, DueAt: r.DueAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
+			PhotoIDs: photos[r.ID],
+		}
+	}
+	return out, nil
+}
+
+func (s *Service) GetIncident(ctx context.Context, id, userID int64) (IncidentRow, error) {
+	r, err := s.repo.GetIncident(ctx, id, userID)
+	if err != nil {
+		return IncidentRow{}, err
+	}
+	rows, err := s.toIncidentRows(ctx, []repository.IncidentRow{r})
+	if err != nil {
+		return IncidentRow{}, err
+	}
+	return rows[0], nil
 }
 
 // CreateIncident joins an open duplicate (same house+title+riser, opened within
@@ -47,20 +75,15 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 		if err := s.repo.Subscribe(ctx, dup, reporterID); err != nil {
 			return IncidentRow{}, false, err
 		}
-		r, err := s.repo.GetIncident(ctx, dup, reporterID)
-		return toIncidentRow(r), false, err
+		row, err = s.GetIncident(ctx, dup, reporterID)
+		return row, false, err
 	}
-	id, err := s.repo.CreateIncident(ctx, houseID, reporterID, title, description, sev, entrance, riser)
+	id, err := s.repo.CreateIncident(ctx, houseID, reporterID, title, description, sev, entrance, riser, domain.SLA(sev))
 	if err != nil {
 		return IncidentRow{}, false, err
 	}
-	r, err := s.repo.GetIncident(ctx, id, reporterID)
-	return toIncidentRow(r), true, err
-}
-
-func (s *Service) GetIncident(ctx context.Context, id, userID int64) (IncidentRow, error) {
-	r, err := s.repo.GetIncident(ctx, id, userID)
-	return toIncidentRow(r), err
+	row, err = s.GetIncident(ctx, id, reporterID)
+	return row, true, err
 }
 
 func (s *Service) ListActiveIncidents(ctx context.Context, houseID, userID int64) ([]IncidentRow, error) {
@@ -68,11 +91,7 @@ func (s *Service) ListActiveIncidents(ctx context.Context, houseID, userID int64
 	if err != nil {
 		return nil, err
 	}
-	out := make([]IncidentRow, len(rows))
-	for i, r := range rows {
-		out[i] = toIncidentRow(r)
-	}
-	return out, nil
+	return s.toIncidentRows(ctx, rows)
 }
 
 // ListRequests returns the reporter's own incidents in the house, paginated.
@@ -81,11 +100,36 @@ func (s *Service) ListRequests(ctx context.Context, houseID, reporterID, offset,
 	if err != nil {
 		return nil, 0, err
 	}
-	out := make([]IncidentRow, len(rows))
-	for i, r := range rows {
-		out[i] = toIncidentRow(r)
+	out, err := s.toIncidentRows(ctx, rows)
+	return out, total, err
+}
+
+// SetIncidentStatus (dispatcher) moves the incident one step along
+// accepted → in_progress → verifying → done; entering verifying asks subscribers to confirm.
+func (s *Service) SetIncidentStatus(ctx context.Context, incidentID, userID int64, statusStr string) (IncidentRow, error) {
+	to := domain.IncidentStatus(statusStr)
+	if !to.Valid() {
+		return IncidentRow{}, ErrInvalidInput
 	}
-	return out, total, nil
+	from, err := s.repo.FindIncidentStatus(ctx, incidentID)
+	if err != nil {
+		return IncidentRow{}, err
+	}
+	if !domain.CanTransition(from, to) {
+		return IncidentRow{}, ErrInvalidStatus
+	}
+	kind, payload := "", repository.OutboxPayload{}
+	if to == domain.IncidentVerifying {
+		kind, payload = "incident_verifying", repository.OutboxPayload{Text: "УК сообщает, что проблема устранена. Подтвердите, пожалуйста, что всё работает."}
+	}
+	moved, err := s.repo.TransitionIncident(ctx, incidentID, from, to, kind, payload)
+	if err != nil {
+		return IncidentRow{}, err
+	}
+	if !moved {
+		return IncidentRow{}, ErrInvalidStatus
+	}
+	return s.GetIncident(ctx, incidentID, userID)
 }
 
 // JoinIncident ("у меня тоже") is idempotent: joined is always true on success.
