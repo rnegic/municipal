@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ukapp
+      POSTGRES_PASSWORD: ukapp
+      POSTGRES_DB: ukapp
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ukapp"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  app:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://ukapp:ukapp@db:5432/ukapp?sslmode=disable
+      MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}
+      DADATA_TOKEN: ${DADATA_TOKEN:-}
+      UK_BASE_URL: http://mock-uk:8080
+      UK_API_TOKEN: demo-uk-token
+      UK_SYNC_INTERVAL: 5s
+    ports: ["8080:8080"]
+    depends_on:
+      db: { condition: service_healthy }
+      mock-uk: { condition: service_started }
+
+  mock-uk-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mockuk
+      POSTGRES_PASSWORD: mockuk
+      POSTGRES_DB: mockuk
+    ports: ["5433:5432"]
+    volumes: ["mockuk-pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mockuk"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  mock-uk:
+    build: ./mock/uk
+    environment:
+      DATABASE_URL: postgres://mockuk:mockuk@mock-uk-db:5432/mockuk?sslmode=disable
+      MOCK_API_TOKEN: demo-uk-token
+      MOCK_FAILURE_RATE: ${MOCK_FAILURE_RATE:-0}
+    ports: ["8081:8080"]
+    depends_on:
+      mock-uk-db: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  mockuk-pgdata:

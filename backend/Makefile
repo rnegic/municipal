@@ -17,7 +17,7 @@ gen-db: db
 	go tool jet -source=postgres -dsn="$(DATABASE_URL)" -schema=public -path=./gen/db
 
 db:
-	docker compose up -d --wait db
+	docker compose -f ../docker-compose.yml up -d --wait db
 
 lint:
 	golangci-lint run ./...
