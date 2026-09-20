@@ -19,14 +19,9 @@ services:
       DATABASE_URL: postgres://ukapp:${POSTGRES_PASSWORD}@db:5432/ukapp?sslmode=disable
       MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}
       DADATA_TOKEN: ${DADATA_TOKEN:-}
+    ports: ["127.0.0.1:8080:8080"] # наружу — через nginx на хосте
     depends_on:
       db: { condition: service_healthy }
-    restart: unless-stopped
-
-  web:
-    build: ./frontend
-    ports: ["80:80"]
-    depends_on: [api]
     restart: unless-stopped
 
 volumes:

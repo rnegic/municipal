@@ -1,5 +1,6 @@
 # Выкат по кнопке: Actions → Deploy → Run workflow.
 # Секрет DEPLOY_SSH_KEY — приватный ключ, чей pub лежит в /root/.ssh/authorized_keys на сервере.
+# Фронт собирается здесь и кладётся в /var/www/municipal (отдаёт nginx на хосте), бэк — docker compose.
 name: Deploy
 on:
   workflow_dispatch:
@@ -9,12 +10,17 @@ concurrency: deploy
 env:
   HOST: 136.234.4.220
   DIR: /opt/municipal
+  WWW: /var/www/municipal
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - name: build frontend
+        run: cd frontend && npm ci && npm run build
       - name: ssh key
         run: |
           mkdir -p ~/.ssh
@@ -22,6 +28,8 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
       - name: sync
-        run: rsync -az --delete --exclude .git --exclude node_modules --exclude .env ./ "root@$HOST:$DIR/"
+        run: |
+          rsync -az --delete --exclude .env backend docker-compose.yml "root@$HOST:$DIR/"
+          rsync -az --delete frontend/dist/ "root@$HOST:$WWW/"
       - name: up
         run: ssh "root@$HOST" "cd $DIR && docker compose up -d --build --remove-orphans && docker image prune -f && curl -fsS localhost/health"
