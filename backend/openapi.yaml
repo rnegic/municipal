@@ -12,8 +12,6 @@ info:
     ошибки — единая форма {code, message, details?}.
 
     Авторизация: заголовок `Authorization: tma <initData>`. `auth_date` не старше 24ч.
-    Ручки `/api/uk/*` и `PATCH /api/incidents/{id}/status` — только для роли
-    `uk_dispatcher` (иначе 403 forbidden).
 servers:
   - url: http://localhost:8080
 security:
@@ -238,126 +236,6 @@ paths:
             image/png: { schema: { type: string, format: binary } }
         "404": { $ref: "#/components/responses/Error" }
 
-  /api/incidents/{id}/status:
-    patch:
-      operationId: setIncidentStatus
-      tags: [uk]
-      summary: "Смена статуса диспетчером: accepted → in_progress → verifying → done"
-      description: |
-        Переход в `verifying` рассылает подписчикам «починили — подтвердите»;
-        переход в `done` проставляет resolvedAt. Любой другой переход — 422.
-      parameters: [{ $ref: "#/components/parameters/ID" }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/SetIncidentStatusRequest" }
-      responses:
-        "200":
-          description: Авария после перехода
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Incident" }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-        "422": { $ref: "#/components/responses/Error" }
-
-  /api/events:
-    get:
-      operationId: listEvents
-      tags: [events]
-      summary: Плановые работы УК по дому (житель своего дома или диспетчер его УК; чужой дом → 404)
-      parameters:
-        - name: houseId
-          in: query
-          required: true
-          schema: { type: string }
-        - name: scope
-          in: query
-          description: "active — только planned/in_progress, ближайшие сверху (scheduledFrom asc); без scope — все, новые сверху"
-          schema: { type: string, enum: [active] }
-      responses:
-        "200":
-          description: Список
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/EventListResponse" }
-        "401": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-
-  /api/events/{id}:
-    get:
-      operationId: getEvent
-      tags: [events]
-      summary: Карточка события (только для своего дома)
-      parameters: [{ $ref: "#/components/parameters/ID" }]
-      responses:
-        "200":
-          description: Событие
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Event" }
-        "401": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-
-  /api/uk/queue:
-    get:
-      operationId: ukQueue
-      tags: [uk]
-      summary: Очередь незакрытых заявок по домам УК диспетчера (critical сначала, затем createdAt desc)
-      parameters:
-        - name: offset
-          in: query
-          schema: { type: integer, minimum: 0, default: 0 }
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
-      responses:
-        "200":
-          description: Страница очереди
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PaginatedUkQueue" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-
-  /api/uk/houses:
-    get:
-      operationId: ukHouses
-      tags: [uk]
-      summary: Дома УК диспетчера (для выбора дома при создании объявления)
-      responses:
-        "200":
-          description: Список домов
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/HouseListResponse" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-
-  /api/uk/events:
-    post:
-      operationId: ukCreateEvent
-      tags: [uk]
-      summary: Создать плановое событие (дом должен принадлежать УК диспетчера, иначе 404)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CreateEventRequest" }
-      responses:
-        "201":
-          description: Событие создано
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Event" }
-        "400": { $ref: "#/components/responses/Error" }
-        "401": { $ref: "#/components/responses/Error" }
-        "403": { $ref: "#/components/responses/Error" }
-        "404": { $ref: "#/components/responses/Error" }
-
 components:
   securitySchemes:
     TmaInitData:
@@ -396,7 +274,7 @@ components:
 
     Role:
       type: string
-      enum: [resident, uk_dispatcher]
+      enum: [resident]
 
     User:
       type: object
@@ -412,14 +290,6 @@ components:
       properties:
         id: { type: string, example: h_123 }
         address: { type: string, example: "Казань, ул. Баумана, д. 10" }
-
-    HouseListResponse:
-      type: object
-      required: [items]
-      properties:
-        items:
-          type: array
-          items: { $ref: "#/components/schemas/House" }
 
     MeResponse:
       type: object
@@ -473,12 +343,6 @@ components:
         id: { type: string, example: ph_1 }
         url: { type: string, example: /api/photos/ph_1 }
 
-    SetIncidentStatusRequest:
-      type: object
-      required: [status]
-      properties:
-        status: { $ref: "#/components/schemas/IncidentStatus" }
-
     HouseStats:
       type: object
       required: [activeIncidents, inProgress, resolvedLast30Days, avgResolutionHours, lastIncidentAt]
@@ -488,81 +352,6 @@ components:
         resolvedLast30Days: { type: integer, minimum: 0 }
         avgResolutionHours: { type: number, format: double, nullable: true }
         lastIncidentAt: { type: string, format: date-time, nullable: true }
-
-    EventStatus:
-      type: string
-      enum: [planned, in_progress, awaiting_confirmation, disputed, closed]
-
-    Event:
-      type: object
-      required: [id, houseId, entrance, riser, reason, responsible, scheduledFrom, scheduledTo,
-                 status, createdAt, resolvedAt]
-      properties:
-        id: { type: string, example: evt_1 }
-        houseId: { type: string, example: h_1 }
-        entrance: { type: string, nullable: true }
-        riser: { type: string, nullable: true }
-        reason: { type: string, example: Плановое отключение горячей воды }
-        responsible: { type: string, example: УК-1 }
-        scheduledFrom: { type: string, format: date-time }
-        scheduledTo: { type: string, format: date-time }
-        status: { $ref: "#/components/schemas/EventStatus" }
-        createdAt: { type: string, format: date-time }
-        resolvedAt: { type: string, format: date-time, nullable: true }
-
-    EventListResponse:
-      type: object
-      required: [items]
-      properties:
-        items:
-          type: array
-          items: { $ref: "#/components/schemas/Event" }
-
-    CreateEventRequest:
-      type: object
-      required: [houseId, reason, responsible, scheduledFrom, scheduledTo]
-      properties:
-        houseId: { type: string, example: h_1 }
-        entrance: { type: string }
-        riser: { type: string }
-        reason: { type: string, minLength: 1 }
-        responsible: { type: string, minLength: 1 }
-        scheduledFrom: { type: string, format: date-time }
-        scheduledTo: { type: string, format: date-time }
-
-    UkQueueItem:
-      type: object
-      required: [id, houseId, houseAddress, title, description, entrance, riser, severity, status, createdAt,
-                 dueAt, affectedCount, confirmedCount, reporterName, photos]
-      properties:
-        id: { type: string, example: inc_42 }
-        houseId: { type: string, example: h_1 }
-        houseAddress: { type: string, example: "Казань, ул. Баумана, д. 10" }
-        title: { type: string }
-        description: { type: string }
-        entrance: { type: string, nullable: true }
-        riser: { type: string, nullable: true }
-        severity: { $ref: "#/components/schemas/Severity" }
-        status: { $ref: "#/components/schemas/IncidentStatus" }
-        createdAt: { type: string, format: date-time }
-        dueAt: { type: string, format: date-time, nullable: true }
-        affectedCount: { type: integer, minimum: 0 }
-        confirmedCount: { type: integer, minimum: 0 }
-        reporterName: { type: string, example: Иван И. }
-        photos:
-          type: array
-          items: { $ref: "#/components/schemas/Photo" }
-
-    PaginatedUkQueue:
-      type: object
-      required: [items, total, offset, limit]
-      properties:
-        items:
-          type: array
-          items: { $ref: "#/components/schemas/UkQueueItem" }
-        total: { type: integer, minimum: 0 }
-        offset: { type: integer, minimum: 0 }
-        limit: { type: integer, minimum: 0 }
 
     IncidentListResponse:
       type: object

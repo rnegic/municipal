@@ -11,7 +11,6 @@ import (
 func formatHouseID(id int64) string    { return "h_" + strconv.FormatInt(id, 10) }
 func formatIncidentID(id int64) string { return "inc_" + strconv.FormatInt(id, 10) }
 func formatUserID(id int64) string     { return "u_" + strconv.FormatInt(id, 10) }
-func formatEventID(id int64) string    { return "evt_" + strconv.FormatInt(id, 10) }
 func formatPhotoID(id int64) string    { return "ph_" + strconv.FormatInt(id, 10) }
 
 func parseID(prefix, s string) (int64, bool) {

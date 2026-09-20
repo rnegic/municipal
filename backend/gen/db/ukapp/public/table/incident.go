@@ -26,6 +26,7 @@ type incidentTable struct {
 	Entrance    postgres.ColumnString
 	Riser       postgres.ColumnString
 	Status      postgres.ColumnString
+	ExternalID  postgres.ColumnString
 	CreatedAt   postgres.ColumnTimestampz
 	DueAt       postgres.ColumnTimestampz
 	ResolvedAt  postgres.ColumnTimestampz
@@ -79,11 +80,12 @@ func newIncidentTableImpl(schemaName, tableName, alias string) incidentTable {
 		EntranceColumn    = postgres.StringColumn("entrance")
 		RiserColumn       = postgres.StringColumn("riser")
 		StatusColumn      = postgres.StringColumn("status")
+		ExternalIDColumn  = postgres.StringColumn("external_id")
 		CreatedAtColumn   = postgres.TimestampzColumn("created_at")
 		DueAtColumn       = postgres.TimestampzColumn("due_at")
 		ResolvedAtColumn  = postgres.TimestampzColumn("resolved_at")
-		allColumns        = postgres.ColumnList{IDColumn, HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn}
-		mutableColumns    = postgres.ColumnList{HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn}
+		allColumns        = postgres.ColumnList{IDColumn, HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn}
+		mutableColumns    = postgres.ColumnList{HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn}
 		defaultColumns    = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn}
 	)
 
@@ -100,6 +102,7 @@ func newIncidentTableImpl(schemaName, tableName, alias string) incidentTable {
 		Entrance:    EntranceColumn,
 		Riser:       RiserColumn,
 		Status:      StatusColumn,
+		ExternalID:  ExternalIDColumn,
 		CreatedAt:   CreatedAtColumn,
 		DueAt:       DueAtColumn,
 		ResolvedAt:  ResolvedAtColumn,

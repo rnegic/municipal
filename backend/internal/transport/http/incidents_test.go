@@ -32,7 +32,6 @@ func createIncident(t *testing.T, srv http.Handler, maxID int64, body string) (i
 
 func TestIncidents_DedupAndJoin(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 	h10 := bindUser(t, srv, 1, "f-10")
 	bindUser(t, srv, 2, "f-10")
@@ -117,7 +116,6 @@ func TestIncidents_DedupAndJoin(t *testing.T) {
 
 func TestIncidents_RequiresHouseAndValidInput(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 
 	w := httptest.NewRecorder()
@@ -135,7 +133,6 @@ func TestIncidents_RequiresHouseAndValidInput(t *testing.T) {
 
 func TestGetIncident(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
 	inc, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical","entrance":"2","riser":"7"}`)
@@ -154,7 +151,6 @@ func TestGetIncident(t *testing.T) {
 
 func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
 	bindUser(t, srv, 2, "f-10")
@@ -173,13 +169,7 @@ func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 	}
 
 	incID, _ := parseID("inc_", inc.Id)
-	makeDispatcher(t, srv, s, 100)
-	if c := setStatus(t, srv, 100, inc.Id, "in_progress"); c != 200 {
-		t.Fatalf("→ in_progress: %d", c)
-	}
-	if c := setStatus(t, srv, 100, inc.Id, "verifying"); c != 200 {
-		t.Fatalf("→ verifying: %d", c)
-	}
+	setVerifying(t, s, incID)
 
 	// 1 of 2 confirmations (50%, but under MinConfirmations=2) → stays verifying
 	w = httptest.NewRecorder()
@@ -217,7 +207,6 @@ func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 
 func TestListHouseRequests_Paginated(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 	h10 := bindUser(t, srv, 1, "f-10")
 	createIncident(t, srv, 1, `{"title":"A","description":"x","severity":"warning"}`)

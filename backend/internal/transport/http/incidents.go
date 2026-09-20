@@ -143,25 +143,6 @@ func (s *server) ListHouseRequests(ctx context.Context, req oapi.ListHouseReques
 	return oapi.ListHouseRequests200JSONResponse{Items: items, Total: int(total), Offset: int(offset), Limit: int(limit)}, nil
 }
 
-func (s *server) SetIncidentStatus(ctx context.Context, req oapi.SetIncidentStatusRequestObject) (oapi.SetIncidentStatusResponseObject, error) {
-	id, ok := parseID("inc_", req.Id)
-	if !ok {
-		return oapi.SetIncidentStatus404JSONResponse(apiErr("not_found", "авария не найдена")), nil
-	}
-	row, err := s.svc.SetIncidentStatus(ctx, id, userFromCtx(ctx).ID, string(req.Body.Status))
-	switch {
-	case errors.Is(err, service.ErrInvalidInput):
-		return oapi.SetIncidentStatus400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", "status must be one of accepted, in_progress, verifying, done"))}, nil
-	case errors.Is(err, service.ErrNotFound):
-		return oapi.SetIncidentStatus404JSONResponse(apiErr("not_found", "авария не найдена")), nil
-	case errors.Is(err, service.ErrInvalidStatus):
-		return oapi.SetIncidentStatus422JSONResponse(apiErr("business_rule_failed", "допустимы только переходы accepted → in_progress → verifying → done")), nil
-	case err != nil:
-		return nil, err
-	}
-	return oapi.SetIncidentStatus200JSONResponse(toIncident(row)), nil
-}
-
 const maxPhotoBytes = 10 << 20
 
 // UploadIncidentPhoto reads the `photo` part (≤10 МБ, jpeg/png by content sniffing, not by header).

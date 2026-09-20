@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"ukapp/internal/domain"
@@ -84,6 +85,9 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	if err != nil {
 		return IncidentRow{}, false, err
 	}
+	if err := s.syncUnregistered(ctx); err != nil {
+		slog.Warn("uk register deferred to worker", "incident", id, "err", err)
+	}
 	row, err = s.GetIncident(ctx, id, reporterID)
 	return row, true, err
 }
@@ -104,34 +108,6 @@ func (s *Service) ListRequests(ctx context.Context, houseID, userID, offset, lim
 	}
 	out, err := s.toIncidentRows(ctx, rows)
 	return out, total, err
-}
-
-// SetIncidentStatus (dispatcher) moves the incident one step along
-// accepted → in_progress → verifying → done; entering verifying asks subscribers to confirm.
-func (s *Service) SetIncidentStatus(ctx context.Context, incidentID, userID int64, statusStr string) (IncidentRow, error) {
-	to := domain.IncidentStatus(statusStr)
-	if !to.Valid() {
-		return IncidentRow{}, ErrInvalidInput
-	}
-	from, err := s.repo.FindIncidentStatus(ctx, incidentID)
-	if err != nil {
-		return IncidentRow{}, err
-	}
-	if !domain.CanTransition(from, to) {
-		return IncidentRow{}, ErrInvalidStatus
-	}
-	kind, payload := "", repository.OutboxPayload{}
-	if to == domain.IncidentVerifying {
-		kind, payload = "incident_verifying", repository.OutboxPayload{Text: "УК сообщает, что проблема устранена. Подтвердите, пожалуйста, что всё работает."}
-	}
-	moved, err := s.repo.TransitionIncident(ctx, incidentID, from, to, kind, payload)
-	if err != nil {
-		return IncidentRow{}, err
-	}
-	if !moved {
-		return IncidentRow{}, ErrInvalidStatus
-	}
-	return s.GetIncident(ctx, incidentID, userID)
 }
 
 // JoinIncident ("у меня тоже") is idempotent: joined is always true on success.

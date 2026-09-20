@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"strings"
 
 	oapi "ukapp/gen/api"
 )
@@ -26,58 +25,4 @@ func (s *server) HouseStats(ctx context.Context, req oapi.HouseStatsRequestObjec
 		ActiveIncidents: st.ActiveIncidents, InProgress: st.InProgress, ResolvedLast30Days: st.ResolvedLast30Days,
 		AvgResolutionHours: st.AvgResolutionHours, LastIncidentAt: st.LastIncidentAt,
 	}, nil
-}
-
-func (s *server) UkQueue(ctx context.Context, req oapi.UkQueueRequestObject) (oapi.UkQueueResponseObject, error) {
-	offset, limit := int64(0), int64(20)
-	if req.Params.Offset != nil {
-		offset = int64(*req.Params.Offset)
-	}
-	if req.Params.Limit != nil {
-		limit = int64(*req.Params.Limit)
-	}
-	rows, total, err := s.svc.UkQueue(ctx, userFromCtx(ctx), offset, limit)
-	if err != nil {
-		return nil, err
-	}
-	ids := make([]int64, len(rows))
-	for i, r := range rows {
-		ids[i] = r.ID
-	}
-	photos, err := s.svc.PhotoIDs(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-	items := make([]oapi.UkQueueItem, len(rows))
-	for i, r := range rows {
-		items[i] = oapi.UkQueueItem{
-			Id: formatIncidentID(r.ID), HouseId: formatHouseID(r.HouseID), HouseAddress: r.HouseAddress,
-			Title: r.Title, Description: r.Description, Entrance: r.Entrance, Riser: r.Riser,
-			Severity: oapi.Severity(r.Severity), Status: oapi.IncidentStatus(r.Status),
-			CreatedAt: r.CreatedAt, DueAt: r.DueAt, AffectedCount: r.Subscribers, ConfirmedCount: r.Confirmations,
-			ReporterName: shortName(r.ReporterName), Photos: toPhotos(photos[r.ID]),
-		}
-	}
-	return oapi.UkQueue200JSONResponse{Items: items, Total: int(total), Offset: int(offset), Limit: int(limit)}, nil
-}
-
-func (s *server) UkHouses(ctx context.Context, _ oapi.UkHousesRequestObject) (oapi.UkHousesResponseObject, error) {
-	houses, err := s.svc.UkHouses(ctx, userFromCtx(ctx))
-	if err != nil {
-		return nil, err
-	}
-	items := make([]oapi.House, len(houses))
-	for i, h := range houses {
-		items[i] = oapi.House{Id: formatHouseID(h.ID), Address: h.AddressRaw}
-	}
-	return oapi.UkHouses200JSONResponse{Items: items}, nil
-}
-
-// shortName: "Иван Иванов" → "Иван И." (surname reduced to an initial for the dispatcher list).
-func shortName(full string) string {
-	first, last, ok := strings.Cut(strings.TrimSpace(full), " ")
-	if !ok || last == "" {
-		return first
-	}
-	return first + " " + string([]rune(last)[:1]) + "."
 }

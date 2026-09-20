@@ -13,6 +13,7 @@
 #                константы), но не про service/transport и не про JSON-контракт.
 #   maxclient,
 #   dadata     — HTTP-клиенты внешних API. Не знают про repository/service/transport.
+#   ukclient   — адаптер порта service.UkProvider (gen/uk из contracts/uk.yaml).
 #   service    — бизнес-оркестрация: применяет domain-правила поверх repository и
 #                maxclient/dadata. Не знает про oapi/JSON — только сюда нельзя gen/api.
 #   transport/
@@ -24,7 +25,7 @@
 #
 # Нарушение границы = ошибка линта, а не ревью. Тестовым файлам (_test.go) depguard
 # не мешает: интеграционные тесты законно поднимают весь стек и трогают БД напрямую
-# для сценариев без HTTP-ручки (шатдаун таймеров, теневой бан, роль диспетчера).
+# для сценариев без HTTP-ручки (например, перевод инцидента в verifying — это действие системы УК).
 version: "2"
 
 run:
@@ -92,6 +93,21 @@ linters:
               desc: "внешний HTTP-клиент не знает про service"
             - pkg: "ukapp/gen/"
               desc: "внешний HTTP-клиент не отдаёт wire-типы"
+        ukclient-deps:
+          files: ["**/internal/ukclient/**"]
+          allow:
+            - "$gostd"
+            - "ukapp/internal/domain"
+            - "ukapp/internal/service"
+            - "ukapp/gen/uk"
+            - "github.com/oapi-codegen/runtime"
+          deny:
+            - pkg: "ukapp/internal/repository"
+              desc: "адаптер УК не знает про БД"
+            - pkg: "ukapp/internal/transport"
+              desc: "адаптер УК не знает про HTTP-контракт мини-аппа"
+            - pkg: "ukapp/gen/api"
+              desc: "адаптер УК не отдаёт wire-типы мини-аппа"
         service-deps:
           files: ["**/internal/service/**"]
           allow:
@@ -106,6 +122,10 @@ linters:
               desc: "зависимость только transport → service, не наоборот"
             - pkg: "ukapp/gen/api"
               desc: "service не знает про JSON-контракт — это забота transport"
+            - pkg: "ukapp/gen/uk"
+              desc: "service видит УК только через порт UkProvider"
+            - pkg: "ukapp/internal/ukclient"
+              desc: "service видит УК только через порт UkProvider"
         transport-deps:
           files: ["**/internal/transport/**"]
           allow:
@@ -132,6 +152,7 @@ linters:
             - "ukapp/internal/transport"
             - "ukapp/internal/maxclient"
             - "ukapp/internal/dadata"
+            - "ukapp/internal/ukclient"
           deny:
             - pkg: "ukapp/internal/domain"
               desc: "cmd только собирает зависимости; доменная логика — через service"

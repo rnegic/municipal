@@ -1,4 +1,5 @@
 # Прод: docker compose up -d --build. Секреты — в .env рядом (см. .env.example).
+# Диспетчер работает в системе УК; для MVP это mock-uk (docs/uk-integration.md).
 services:
   db:
     image: postgres:16-alpine
@@ -19,10 +20,39 @@ services:
       DATABASE_URL: postgres://ukapp:${POSTGRES_PASSWORD}@db:5432/ukapp?sslmode=disable
       MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}
       DADATA_TOKEN: ${DADATA_TOKEN:-}
+      UK_BASE_URL: http://mock-uk:8080
+      UK_API_TOKEN: ${UK_API_TOKEN:-demo-uk-token}
+      UK_SYNC_INTERVAL: 5s
     ports: ["127.0.0.1:8080:8080"] # наружу — через nginx на хосте
     depends_on:
       db: { condition: service_healthy }
+      mock-uk: { condition: service_started }
+    restart: unless-stopped
+
+  mock-uk-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mockuk
+      POSTGRES_PASSWORD: mockuk
+      POSTGRES_DB: mockuk
+    volumes: ["mockuk-pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mockuk"]
+      interval: 3s
+      retries: 20
+    restart: unless-stopped
+
+  mock-uk:
+    build: ./mock/uk
+    environment:
+      DATABASE_URL: postgres://mockuk:mockuk@mock-uk-db:5432/mockuk?sslmode=disable
+      MOCK_API_TOKEN: ${UK_API_TOKEN:-demo-uk-token}
+      MOCK_FAILURE_RATE: ${MOCK_FAILURE_RATE:-0}
+    ports: ["127.0.0.1:8081:8080"] # ЛК диспетчера, временно — за nginx на хосте при необходимости
+    depends_on:
+      mock-uk-db: { condition: service_healthy }
     restart: unless-stopped
 
 volumes:
   pgdata:
+  mockuk-pgdata:

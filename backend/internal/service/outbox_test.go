@@ -25,7 +25,7 @@ func testStore(t *testing.T) *repository.Store {
 		t.Fatal(err)
 	}
 	_, err = s.DB().ExecContext(context.Background(),
-		`TRUNCATE outbox_message, event_response, event, incident_confirmation, incident_subscription, incident, app_user, house, uk RESTART IDENTITY CASCADE`)
+		`TRUNCATE outbox_message, incident_confirmation, incident_subscription, incident, app_user, house, uk RESTART IDENTITY CASCADE`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func outboxCount(t *testing.T, s *repository.Store, status string) int {
 func TestOutboxWorker_DeliversAndRetries(t *testing.T) {
 	repo := testStore(t)
 	maxc, sent := fakeMax(t, 1) // first call fails, then succeeds
-	svc := New(repo, maxc, nil)
+	svc := New(repo, maxc, nil, nil)
 	ctx := context.Background()
 
 	tx, err := repo.DB().BeginTx(ctx, nil)

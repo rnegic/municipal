@@ -5,82 +5,47 @@ import (
 	"errors"
 	"time"
 
+	"ukapp/internal/domain"
 	"ukapp/internal/repository"
 
 	"ukapp/gen/db/ukapp/public/model"
 )
 
-// CanAccessHouse: a resident sees their own house, a dispatcher — every house of their UK.
-func (s *Service) CanAccessHouse(ctx context.Context, u model.AppUser, houseID int64) (bool, error) {
-	if u.HouseID != nil && *u.HouseID == houseID {
-		return true, nil
-	}
-	if u.Role != "uk_dispatcher" || u.UkID == nil {
-		return false, nil
-	}
-	h, err := s.repo.FindHouse(ctx, houseID)
-	if errors.Is(err, ErrNotFound) {
-		return false, nil
-	}
-	return h.UkID == *u.UkID, err
+// UkProvider — порт к системе управляющей компании (contracts/uk.yaml). Единственная
+// реализация в MVP — ukclient (HTTP к mock/uk); в production сюда встаёт адаптер
+// настоящей УК-системы, service об этом не узнаёт.
+type UkProvider interface {
+	FindHouse(ctx context.Context, fiasID string) (UkHouse, error)
+	RegisterIncident(ctx context.Context, in UkIncident) (id string, status domain.IncidentStatus, err error)
+	IncidentUpdates(ctx context.Context, since time.Time) ([]UkIncidentUpdate, error)
+	SetStatus(ctx context.Context, id string, status domain.IncidentStatus) error
+}
+
+var ErrUkHouseNotFound = errors.New("house not served by uk")
+
+type UkHouse struct {
+	ID, Address, OrgID, OrgName string
+}
+
+type UkIncident struct {
+	ExternalRef, HouseID, Title, Description, Severity string
+	Entrance, Riser                                    *string
+}
+
+type UkIncidentUpdate struct {
+	ID, ExternalRef string
+	Status          domain.IncidentStatus
+	UpdatedAt       time.Time
+}
+
+// CanAccessHouse: true only for the resident of that house — the dispatcher cabinet moved to
+// the external УК system (docs/uk-integration.md), so there's no other role to check here.
+func (s *Service) CanAccessHouse(_ context.Context, u model.AppUser, houseID int64) (bool, error) {
+	return u.HouseID != nil && *u.HouseID == houseID, nil
 }
 
 func (s *Service) HouseStats(ctx context.Context, houseID int64) (repository.HouseStats, error) {
 	return s.repo.HouseStats(ctx, houseID)
-}
-
-// UkQueue: empty for a dispatcher without a UK (nothing to serve).
-func (s *Service) UkQueue(ctx context.Context, u model.AppUser, offset, limit int64) ([]repository.UkQueueRow, int64, error) {
-	if u.UkID == nil {
-		return nil, 0, nil
-	}
-	return s.repo.UkQueue(ctx, *u.UkID, offset, limit)
-}
-
-// CreateEvent: the house must belong to the dispatcher's UK (ErrNotFound otherwise).
-func (s *Service) CreateEvent(ctx context.Context, u model.AppUser, houseID int64, entrance, riser *string, reason, responsible string, from, to time.Time) (model.Event, error) {
-	if reason == "" || responsible == "" || !to.After(from) {
-		return model.Event{}, ErrInvalidInput
-	}
-	ok, err := s.CanAccessHouse(ctx, u, houseID)
-	if err != nil {
-		return model.Event{}, err
-	}
-	if !ok {
-		return model.Event{}, ErrNotFound
-	}
-	return s.repo.CreateEvent(ctx, model.Event{
-		HouseID: houseID, UkDispatcherID: u.ID, Entrance: entrance, Riser: riser,
-		Reason: reason, Responsible: responsible, ScheduledFrom: from, ScheduledTo: to,
-	})
-}
-
-// GetEvent returns ErrNotFound both for a missing event and for one in a house the user can't see.
-func (s *Service) GetEvent(ctx context.Context, u model.AppUser, id int64) (model.Event, error) {
-	e, err := s.repo.GetEvent(ctx, id)
-	if err != nil {
-		return model.Event{}, err
-	}
-	ok, err := s.CanAccessHouse(ctx, u, e.HouseID)
-	if err != nil {
-		return model.Event{}, err
-	}
-	if !ok {
-		return model.Event{}, ErrNotFound
-	}
-	return e, nil
-}
-
-func (s *Service) ListEvents(ctx context.Context, houseID int64, activeOnly bool) ([]model.Event, error) {
-	return s.repo.ListEvents(ctx, houseID, activeOnly)
-}
-
-// UkHouses: empty for a dispatcher without a UK.
-func (s *Service) UkHouses(ctx context.Context, u model.AppUser) ([]model.House, error) {
-	if u.UkID == nil {
-		return nil, nil
-	}
-	return s.repo.UkHouses(ctx, *u.UkID)
 }
 
 const (

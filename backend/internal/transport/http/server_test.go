@@ -14,18 +14,22 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"ukapp/internal/dadata"
+	"ukapp/internal/domain"
 	"ukapp/internal/repository"
 	"ukapp/internal/service"
 )
 
 // These are integration tests exercising the whole stack (transport → service → repository)
-// against a real Postgres, per CLAUDE.md testing policy. Raw SQL setup below (assigning the
-// dispatcher role) has no HTTP endpoint, so it goes straight through repository.Store.DB() —
-// that's why depguard exempts _test.go files from the transport→repository boundary.
+// against a real Postgres, per CLAUDE.md testing policy. Raw SQL setup below (forcing an
+// incident into "verifying") has no HTTP endpoint on this API: that transition is performed
+// by the external УК system, not by any endpoint of ours, so the test goes straight through
+// repository.Store.DB() — that's why depguard exempts _test.go files from the
+// transport→repository boundary.
 
 func testStore(t *testing.T) *repository.Store {
 	t.Helper()
@@ -38,19 +42,12 @@ func testStore(t *testing.T) *repository.Store {
 		t.Fatal(err)
 	}
 	_, err = s.DB().ExecContext(context.Background(),
-		`TRUNCATE outbox_message, event_response, event, incident_confirmation, incident_subscription, incident, app_user, house, uk RESTART IDENTITY CASCADE`)
+		`TRUNCATE outbox_message, incident_confirmation, incident_subscription, incident, app_user, house, uk RESTART IDENTITY CASCADE`)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(s.Close)
 	return s
-}
-
-func seedUK(t *testing.T, s *repository.Store) {
-	t.Helper()
-	if _, err := s.DB().ExecContext(context.Background(), `INSERT INTO uk (name) VALUES ('Демо УК')`); err != nil {
-		t.Fatal(err)
-	}
 }
 
 // fakeDadata echoes the query back as both the normalized address and the house_fias_id, so
@@ -70,9 +67,44 @@ func fakeDadata(t *testing.T) *dadata.Client {
 	return c
 }
 
+// fakeUk — in-memory UkProvider: любой ФИАС, кроме "unknown", обслуживается организацией uk-1.
+type fakeUk struct {
+	mu         sync.Mutex
+	registered []service.UkIncident
+	updates    []service.UkIncidentUpdate
+	setStatus  []string
+}
+
+func (f *fakeUk) FindHouse(_ context.Context, fias string) (service.UkHouse, error) {
+	if fias == "unknown" {
+		return service.UkHouse{}, service.ErrUkHouseNotFound
+	}
+	return service.UkHouse{ID: "h-" + fias, Address: fias, OrgID: "uk-1", OrgName: "Демо УК"}, nil
+}
+
+func (f *fakeUk) RegisterIncident(_ context.Context, in service.UkIncident) (string, domain.IncidentStatus, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.registered = append(f.registered, in)
+	return "INC-" + in.ExternalRef, domain.IncidentAccepted, nil
+}
+
+func (f *fakeUk) IncidentUpdates(context.Context, time.Time) ([]service.UkIncidentUpdate, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.updates, nil
+}
+
+func (f *fakeUk) SetStatus(_ context.Context, id string, st domain.IncidentStatus) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.setStatus = append(f.setStatus, id+":"+string(st))
+	return nil
+}
+
 func newTestServer(t *testing.T, repo *repository.Store) http.Handler {
 	t.Helper()
-	return NewServer(service.New(repo, nil, fakeDadata(t)), testBotToken)
+	return NewServer(service.New(repo, nil, fakeDadata(t), &fakeUk{}), testBotToken)
 }
 
 func itoa(n int64) string              { return strconv.FormatInt(n, 10) }
@@ -150,25 +182,11 @@ func incidentStatus(t *testing.T, s *repository.Store, id int64) string {
 	return st
 }
 
-// makeDispatcher upserts the user (first authed request) and promotes it to uk_dispatcher of the seeded UK.
-func makeDispatcher(t *testing.T, srv http.Handler, s *repository.Store, maxID int64) {
+// setVerifying forces status=verifying directly — reachable via the UK cabinet (P2, not yet
+// implemented), so tests that exercise confirmIncident set it up this way.
+func setVerifying(t *testing.T, s *repository.Store, id int64) {
 	t.Helper()
-	w := httptest.NewRecorder()
-	srv.ServeHTTP(w, authedReq(t, "GET", "/api/me", "", maxID, "D"))
-	if w.Code != 200 {
-		t.Fatalf("me: %d %s", w.Code, w.Body)
-	}
-	_, err := s.DB().ExecContext(context.Background(),
-		`UPDATE app_user SET role='uk_dispatcher', uk_id=(SELECT id FROM uk ORDER BY id LIMIT 1) WHERE max_user_id=$1`, maxID)
-	if err != nil {
+	if _, err := s.DB().ExecContext(context.Background(), `UPDATE incident SET status='verifying' WHERE id=$1`, id); err != nil {
 		t.Fatal(err)
 	}
-}
-
-// setStatus drives PATCH /api/incidents/{id}/status as the dispatcher and returns the HTTP code.
-func setStatus(t *testing.T, srv http.Handler, dispatcherMaxID int64, incID, status string) int {
-	t.Helper()
-	w := httptest.NewRecorder()
-	srv.ServeHTTP(w, authedReq(t, "PATCH", "/api/incidents/"+incID+"/status", `{"status":"`+status+`"}`, dispatcherMaxID, "D"))
-	return w.Code
 }

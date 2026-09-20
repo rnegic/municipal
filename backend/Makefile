@@ -7,6 +7,7 @@ gen: gen-api gen-db
 
 gen-api:
 	go tool oapi-codegen -config oapi-codegen.yaml openapi.yaml
+	go tool oapi-codegen -config oapi-codegen-uk.yaml contracts/uk.yaml
 
 # ponytail: schema.sql — CREATE IF NOT EXISTS без миграций; локальную БД пересоздаём целиком.
 gen-db: db
@@ -16,7 +17,7 @@ gen-db: db
 	go tool jet -source=postgres -dsn="$(DATABASE_URL)" -schema=public -path=./gen/db
 
 db:
-	docker compose up -d --wait db
+	docker compose -f ../docker-compose.yml up -d --wait db
 
 lint:
 	golangci-lint run ./...
