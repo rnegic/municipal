@@ -1,0 +1,33 @@
+# Прод: docker compose up -d --build. Секреты — в .env рядом (MAX_BOT_TOKEN, DADATA_TOKEN).
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ukapp
+      POSTGRES_PASSWORD: ukapp
+      POSTGRES_DB: ukapp
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ukapp"]
+      interval: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://ukapp:ukapp@db:5432/ukapp?sslmode=disable
+      MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}
+      DADATA_TOKEN: ${DADATA_TOKEN:-}
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    ports: ["80:80"]
+    depends_on: [api]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
