@@ -8,19 +8,25 @@ export {
   useIncidentQuery,
   useJoinIncidentMutation,
   useMyRequestsQuery,
+  useUkQueueQuery,
+  useSetIncidentStatusMutation,
+  useUploadIncidentPhotoMutation,
 } from './api'
 export type {
   ConfirmResponse,
   CreateIncidentInput,
   Incident,
+  IncidentPhoto,
   IncidentListResponse,
   IncidentSeverity,
   IncidentStatus,
   JoinResponse,
   PaginatedResidentRequests,
   ResidentRequest,
+  PaginatedUkQueue,
+  UkQueueItem,
 } from './model/types'
 export {
-  IncidentStatusBadge,
-  type IncidentStatusBadgeProps,
-} from './ui/IncidentStatusBadge'
+  IncidentPhotos,
+} from './ui/IncidentPhotos'
+export { IncidentStatusBadge, type IncidentStatusBadgeProps } from './ui/IncidentStatusBadge'

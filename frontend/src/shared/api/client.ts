@@ -72,11 +72,11 @@ export const apiRequest = async <TResponse, TBody = never>(
     signal,
     headers: {
       Accept: 'application/json',
-      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      ...(body === undefined || body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(initData ? { [INIT_DATA_HEADER]: `tma ${initData}` } : {}),
       ...headers,
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
   })
 
   if (!response.ok) {
