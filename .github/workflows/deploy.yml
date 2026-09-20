@@ -12,6 +12,7 @@ env:
   HOST: 136.234.4.220
   DIR: /opt/municipal
   WWW: /var/www/municipal
+  SITE: https://nerionapp.ru
 
 jobs:
   deploy:
@@ -60,7 +61,9 @@ jobs:
           ssh "root@$HOST" "cd $DIR && docker compose up -d --build --remove-orphans && docker image prune -f"
 
       - name: Smoke test
-        run: ssh "root@$HOST" "curl -fsS 127.0.0.1:8080/health && echo && curl -fsSo /dev/null -w 'web %{http_code}\n' 127.0.0.1/"
+        run: |
+          curl -fsS "$SITE/health" && echo
+          curl -fsSo /dev/null -w 'web %{http_code}\n' "$SITE/"
 
       - name: Record deployed SHA
         run: ssh "root@$HOST" "echo $GITHUB_SHA > $DIR/.deployed"
