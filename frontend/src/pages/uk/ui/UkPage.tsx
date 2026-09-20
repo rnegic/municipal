@@ -7,6 +7,7 @@ import {
   useSetIncidentStatusMutation,
   useUkQueueQuery,
 } from '@/entities/incident'
+import { EventCreateFab } from '@/features/event-create'
 import { formatDateTime } from '@/shared/lib/date'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
@@ -142,6 +143,11 @@ export const UkPage = () => {
   }
 
   const items = queueQuery.data.items
+  const houses = Array.from(
+    new Map(
+      items.map((item) => [item.houseId, { id: item.houseId, address: item.houseAddress }] as const),
+    ).values(),
+  )
 
   return (
     <PageLayout
@@ -158,6 +164,7 @@ export const UkPage = () => {
           </Typography.Text>
         </div>
       }
+      floatingAction={houses.length > 0 ? <EventCreateFab houses={houses} /> : undefined}
     >
       <div className={s.board}>
         {QUEUE_COLUMNS.map((column) => (

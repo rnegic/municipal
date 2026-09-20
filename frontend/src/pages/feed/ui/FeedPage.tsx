@@ -9,6 +9,7 @@ import { LoadingState } from '@/shared/ui/loading-state'
 import { PageLayout } from '@/shared/ui/page-layout'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { AppHeader } from '@/widgets/app-header'
+import { EventBulletin } from '@/widgets/event-bulletin'
 import { IncidentFocus } from '@/widgets/incident-focus'
 import { MyRequests } from '@/widgets/my-requests'
 import s from './FeedPage.module.scss'
@@ -69,6 +70,7 @@ export const FeedPage = () => {
                   : { tone: 'success', label: incidentTexts.focus.houseOkTitle }
               }
             />
+            <EventBulletin houseId={houseQuery.data.id} tone="inverse" />
             <IncidentFocus incident={incident} tone="inverse" />
           </div>
         </div>

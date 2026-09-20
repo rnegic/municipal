@@ -1,0 +1,51 @@
+.form,
+.field,
+.actions {
+  display: flex;
+  flex-direction: column;
+}
+
+.form {
+  gap: var(--app-space-6);
+}
+
+.field {
+  gap: var(--app-space-3);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--app-space-4);
+}
+
+.input,
+.select {
+  width: 100%;
+  padding: var(--app-space-4);
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-control);
+  color: var(--app-color-text-primary);
+  background: var(--app-color-surface-card);
+  font: inherit;
+}
+
+.input:focus,
+.select:focus {
+  outline: 2px solid var(--app-color-progress);
+  outline-offset: 2px;
+}
+
+.error {
+  color: var(--app-color-danger);
+}
+
+.actions {
+  gap: var(--app-space-3);
+}
+
+@media (width <= 480px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
