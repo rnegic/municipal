@@ -1,6 +1,7 @@
 # Выкат по кнопке: Actions → Deploy → Run workflow.
 # Секрет DEPLOY_SSH_KEY — приватный ключ, чей pub лежит в /root/.ssh/authorized_keys на сервере.
-# Фронт собирается здесь и кладётся в /var/www/municipal (отдаёт nginx на хосте), бэк — docker compose.
+# Фронт собирается здесь → /var/www/municipal (отдаёт nginx на хосте), бэк → docker compose.
+# Что выкатывать, решаем по diff с SHA прошлого выката (хранится на сервере в $DIR/.deployed).
 name: Deploy
 on:
   workflow_dispatch:
@@ -16,20 +17,50 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
-      - name: build frontend
-        run: cd frontend && npm ci && npm run build
-      - name: ssh key
+      - name: Checkout
+        uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
-      - name: sync
+
+      - name: Detect changes since last deploy
+        id: changes
         run: |
-          rsync -az --delete --exclude .env backend docker-compose.yml "root@$HOST:$DIR/"
-          rsync -az --delete frontend/dist/ "root@$HOST:$WWW/"
-      - name: up
-        run: ssh "root@$HOST" "cd $DIR && docker compose up -d --build --remove-orphans && docker image prune -f && curl -fsS localhost/health"
+          last=$(ssh "root@$HOST" "cat $DIR/.deployed 2>/dev/null" || true)
+          if [ -n "$last" ] && git cat-file -e "$last" 2>/dev/null; then
+            git diff --quiet "$last" HEAD -- frontend || echo frontend=true >> "$GITHUB_OUTPUT"
+            git diff --quiet "$last" HEAD -- backend docker-compose.yml || echo backend=true >> "$GITHUB_OUTPUT"
+          else
+            printf 'frontend=true\nbackend=true\n' >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        if: steps.changes.outputs.frontend
+        uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+
+      - name: Build frontend
+        if: steps.changes.outputs.frontend
+        run: cd frontend && npm ci && npm run build
+
+      - name: Deploy frontend
+        if: steps.changes.outputs.frontend
+        run: rsync -az --delete frontend/dist/ "root@$HOST:$WWW/"
+
+      - name: Deploy backend
+        if: steps.changes.outputs.backend
+        run: |
+          rsync -az --delete backend docker-compose.yml "root@$HOST:$DIR/"
+          ssh "root@$HOST" "cd $DIR && docker compose up -d --build --remove-orphans && docker image prune -f"
+
+      - name: Smoke test
+        run: ssh "root@$HOST" "curl -fsS 127.0.0.1:8080/health && echo && curl -fsSo /dev/null -w 'web %{http_code}\n' 127.0.0.1/"
+
+      - name: Record deployed SHA
+        run: ssh "root@$HOST" "echo $GITHUB_SHA > $DIR/.deployed"
