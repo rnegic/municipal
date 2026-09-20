@@ -14,6 +14,8 @@ var (
 	ErrNotFound      = repository.ErrNotFound
 	ErrInvalidInput  = errors.New("invalid input")
 	ErrInvalidStatus = errors.New("status transition not allowed")
+	ErrForbidden     = errors.New("forbidden")
+	ErrRateLimited   = errors.New("rate limited")
 )
 
 type Service struct {

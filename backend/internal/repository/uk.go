@@ -34,6 +34,14 @@ func (s *Store) HouseStats(ctx context.Context, houseID int64) (HouseStats, erro
 	return st, err
 }
 
+// UkHouses lists the houses served by the UK, by id.
+func (s *Store) UkHouses(ctx context.Context, ukID int64) ([]model.House, error) {
+	var out []model.House
+	err := SELECT(House.ID, House.AddressRaw).FROM(House).WHERE(House.UkID.EQ(Int64(ukID))).ORDER_BY(House.ID).
+		QueryContext(ctx, s.db, &out)
+	return out, err
+}
+
 // UkQueueRow = incident + house address, reporter name and counters; aliases must match field names.
 type UkQueueRow struct {
 	model.Incident

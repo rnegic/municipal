@@ -46,6 +46,14 @@ func TestIncidents_DedupAndJoin(t *testing.T) {
 	if code != 200 || inc2.Id != inc1.Id {
 		t.Fatalf("same house+title must merge: code=%d id2=%s", code, inc2.Id)
 	}
+	// dedup'd report shows up in the joiner's "мои заявки"
+	w0 := httptest.NewRecorder()
+	srv.ServeHTTP(w0, authedReq(t, "GET", "/api/houses/"+h10+"/requests", "", 2, "U"))
+	var mine struct{ Items []struct{ Id string } }
+	_ = json.Unmarshal(w0.Body.Bytes(), &mine)
+	if w0.Code != 200 || len(mine.Items) != 1 || mine.Items[0].Id != inc1.Id {
+		t.Fatalf("joiner's requests: %d %s", w0.Code, w0.Body)
+	}
 	inc3, code := createIncident(t, srv, 2, `{"title":"Лифт не едет","description":"лифт","severity":"warning"}`)
 	if code != 201 || inc3.Id == inc1.Id {
 		t.Fatal("different title must not merge")
@@ -130,11 +138,11 @@ func TestGetIncident(t *testing.T) {
 	seedUK(t, s)
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
-	inc, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical"}`)
+	inc, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical","entrance":"2","riser":"7"}`)
 
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "GET", "/api/incidents/"+inc.Id, "", 1, "U"))
-	if w.Code != 200 {
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"entrance":"2"`) || !strings.Contains(w.Body.String(), `"riser":"7"`) {
 		t.Fatalf("get: %d %s", w.Code, w.Body)
 	}
 	w = httptest.NewRecorder()

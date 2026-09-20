@@ -40,16 +40,37 @@ func (s *server) UkQueue(ctx context.Context, req oapi.UkQueueRequestObject) (oa
 	if err != nil {
 		return nil, err
 	}
+	ids := make([]int64, len(rows))
+	for i, r := range rows {
+		ids[i] = r.ID
+	}
+	photos, err := s.svc.PhotoIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
 	items := make([]oapi.UkQueueItem, len(rows))
 	for i, r := range rows {
 		items[i] = oapi.UkQueueItem{
 			Id: formatIncidentID(r.ID), HouseId: formatHouseID(r.HouseID), HouseAddress: r.HouseAddress,
-			Title: r.Title, Description: r.Description, Severity: oapi.Severity(r.Severity), Status: oapi.IncidentStatus(r.Status),
+			Title: r.Title, Description: r.Description, Entrance: r.Entrance, Riser: r.Riser,
+			Severity: oapi.Severity(r.Severity), Status: oapi.IncidentStatus(r.Status),
 			CreatedAt: r.CreatedAt, DueAt: r.DueAt, AffectedCount: r.Subscribers, ConfirmedCount: r.Confirmations,
-			ReporterName: shortName(r.ReporterName),
+			ReporterName: shortName(r.ReporterName), Photos: toPhotos(photos[r.ID]),
 		}
 	}
 	return oapi.UkQueue200JSONResponse{Items: items, Total: int(total), Offset: int(offset), Limit: int(limit)}, nil
+}
+
+func (s *server) UkHouses(ctx context.Context, _ oapi.UkHousesRequestObject) (oapi.UkHousesResponseObject, error) {
+	houses, err := s.svc.UkHouses(ctx, userFromCtx(ctx))
+	if err != nil {
+		return nil, err
+	}
+	items := make([]oapi.House, len(houses))
+	for i, h := range houses {
+		items[i] = oapi.House{Id: formatHouseID(h.ID), Address: h.AddressRaw}
+	}
+	return oapi.UkHouses200JSONResponse{Items: items}, nil
 }
 
 // shortName: "Иван Иванов" → "Иван И." (surname reduced to an initial for the dispatcher list).

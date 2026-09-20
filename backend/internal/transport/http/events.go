@@ -29,7 +29,7 @@ func (s *server) ListEvents(ctx context.Context, req oapi.ListEventsRequestObjec
 	if !ok {
 		return oapi.ListEvents404JSONResponse(apiErr("not_found", "дом не найден")), nil
 	}
-	rows, err := s.svc.ListEvents(ctx, houseID)
+	rows, err := s.svc.ListEvents(ctx, houseID, req.Params.Scope != nil)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	. "github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
@@ -22,6 +23,17 @@ func (s *Store) InsertPhoto(ctx context.Context, incidentID, userID int64, conte
 		return 0, ErrNotFound
 	}
 	return p.ID, err
+}
+
+// PhotoCounts: photos already attached to the incident and uploaded by the user within the window
+// (inputs for the per-incident cap and the per-user rate limit).
+func (s *Store) PhotoCounts(ctx context.Context, incidentID, userID int64, window time.Duration) (byIncident, byUserRecent int, err error) {
+	err = s.db.QueryRowContext(ctx, `
+		SELECT count(*) FILTER (WHERE incident_id = $1),
+		       count(*) FILTER (WHERE user_id = $2 AND created_at > now() - make_interval(secs => $3))
+		FROM incident_photo WHERE incident_id = $1 OR user_id = $2`, incidentID, userID, window.Seconds()).
+		Scan(&byIncident, &byUserRecent)
+	return byIncident, byUserRecent, err
 }
 
 // GetPhoto returns the photo with its bytes; ErrNotFound if missing.

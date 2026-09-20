@@ -86,8 +86,11 @@ func TestUkQueueAndHouseStats(t *testing.T) {
 		}
 		Total int
 	}
-	if c := getJSON(t, srv, "/api/uk/queue?limit=2", 100, &q); c != 200 {
-		t.Fatalf("queue: %d", c)
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, authedReq(t, "GET", "/api/uk/queue?limit=2", "", 100, "D"))
+	_ = json.Unmarshal(w.Body.Bytes(), &q)
+	if w.Code != 200 {
+		t.Fatalf("queue: %d", w.Code)
 	}
 	if q.Total != 3 || len(q.Items) != 2 || q.Items[0].Id != inc.Id || q.Items[0].Severity != "critical" {
 		t.Fatalf("queue: %+v", q)
@@ -96,8 +99,21 @@ func TestUkQueueAndHouseStats(t *testing.T) {
 	if it.HouseId != h10 || it.HouseAddress != "f-10" || it.ReporterName != "U T." || it.DueAt == nil || it.AffectedCount != 1 || it.Status != "in_progress" {
 		t.Fatalf("queue item: %+v", it)
 	}
+	if !bytes.Contains(w.Body.Bytes(), []byte(`"photos":[]`)) || !bytes.Contains(w.Body.Bytes(), []byte(`"riser":null`)) {
+		t.Fatalf("queue items must carry photos and nullable riser: %s", w.Body)
+	}
 	if c := getJSON(t, srv, "/api/uk/queue", 1, nil); c != 403 {
 		t.Fatalf("resident queue: want 403 got %d", c)
+	}
+
+	var houses struct {
+		Items []struct{ Id, Address string }
+	}
+	if c := getJSON(t, srv, "/api/uk/houses", 100, &houses); c != 200 || len(houses.Items) != 2 || houses.Items[0].Id != h10 || houses.Items[0].Address != "f-10" {
+		t.Fatalf("uk houses: %d %+v", c, houses)
+	}
+	if c := getJSON(t, srv, "/api/uk/houses", 1, nil); c != 403 {
+		t.Fatalf("resident uk houses: want 403 got %d", c)
 	}
 
 	var st struct {
@@ -158,9 +174,21 @@ func TestEvents(t *testing.T) {
 		t.Fatalf("nullable keys must be present: %s", w.Body)
 	}
 
+	// a later event, then closed: visible in the full list (newest first), hidden with scope=active
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, authedReq(t, "POST", "/api/uk/events", `{"houseId":"`+h10+`","reason":"Лифт","responsible":"УК-1","scheduledFrom":"2026-09-21T09:00:00Z","scheduledTo":"2026-09-21T13:00:00Z"}`, 100, "D"))
+	var ev2 struct{ Id string }
+	_ = json.Unmarshal(w.Body.Bytes(), &ev2)
+	id2, _ := parseID("evt_", ev2.Id)
+	if _, err := s.DB().ExecContext(context.Background(), `UPDATE event SET status='closed' WHERE id=$1`, id2); err != nil {
+		t.Fatal(err)
+	}
 	var list struct{ Items []struct{ Id string } }
-	if c := getJSON(t, srv, "/api/events?houseId="+h10, 1, &list); c != 200 || len(list.Items) != 1 || list.Items[0].Id != ev.Id {
+	if c := getJSON(t, srv, "/api/events?houseId="+h10, 1, &list); c != 200 || len(list.Items) != 2 || list.Items[0].Id != ev2.Id {
 		t.Fatalf("list: %d %+v", c, list)
+	}
+	if c := getJSON(t, srv, "/api/events?houseId="+h10+"&scope=active", 1, &list); c != 200 || len(list.Items) != 1 || list.Items[0].Id != ev.Id {
+		t.Fatalf("active list: %d %+v", c, list)
 	}
 	if c := getJSON(t, srv, "/api/events?houseId="+h10, 3, nil); c != 404 {
 		t.Fatalf("list of another house: want 404 got %d", c)
@@ -177,13 +205,17 @@ func TestEvents(t *testing.T) {
 var pngBytes = []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82")
 
 func uploadPhoto(t *testing.T, srv http.Handler, incID string, field string, data []byte) *httptest.ResponseRecorder {
+	return uploadPhotoAs(t, srv, 1, incID, field, data)
+}
+
+func uploadPhotoAs(t *testing.T, srv http.Handler, maxID int64, incID string, field string, data []byte) *httptest.ResponseRecorder {
 	t.Helper()
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
 	fw, _ := mw.CreateFormFile(field, "p.png")
 	_, _ = fw.Write(data)
 	_ = mw.Close()
-	r := authedReq(t, "POST", "/api/incidents/"+incID+"/photos", "x", 1, "U")
+	r := authedReq(t, "POST", "/api/incidents/"+incID+"/photos", "x", maxID, "U")
 	r.Body = httptest.NewRequest("POST", "/", &buf).Body
 	r.Header.Set("Content-Type", mw.FormDataContentType())
 	w := httptest.NewRecorder()
@@ -230,4 +262,43 @@ func TestIncidentPhotos(t *testing.T) {
 	if c := getJSON(t, srv, "/api/incidents/"+inc.Id, 1, &got); c != 200 || len(got.Photos) != 1 || got.Photos[0].Id != ph.Id {
 		t.Fatalf("incident photos: %d %+v", c, got)
 	}
+
+	// neighbour who hasn't joined → 403; after join → allowed
+	bindUser(t, srv, 2, "f-10")
+	if w := uploadPhotoAs(t, srv, 2, inc.Id, "photo", pngBytes); w.Code != 403 {
+		t.Fatalf("stranger: want 403 got %d", w.Code)
+	}
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents/"+inc.Id+"/join", "", 2, "U"))
+	if w := uploadPhotoAs(t, srv, 2, inc.Id, "photo", pngBytes); w.Code != 201 {
+		t.Fatalf("subscriber: want 201 got %d", w.Code)
+	}
+	// per-incident cap: 5
+	for i := 0; i < 3; i++ {
+		if w := uploadPhoto(t, srv, inc.Id, "photo", pngBytes); w.Code != 201 {
+			t.Fatalf("photo %d: %d %s", i+3, w.Code, w.Body)
+		}
+	}
+	if w := uploadPhoto(t, srv, inc.Id, "photo", pngBytes); w.Code != 422 {
+		t.Fatalf("6th photo: want 422 got %d", w.Code)
+	}
+	// per-user rate limit: 20/hour across incidents
+	inc2, _ := createIncident(t, srv, 1, `{"title":"B","description":"x","severity":"warning"}`)
+	if _, err := s.DB().ExecContext(context.Background(),
+		`INSERT INTO incident_photo (incident_id, user_id, content_type, data) SELECT $1, user_id, 'image/png', ''::bytea FROM incident_photo, generate_series(1,4) WHERE incident_id=$2 AND user_id=(SELECT id FROM app_user WHERE max_user_id=1)`,
+		mustID(t, inc2.Id), mustID(t, inc.Id)); err != nil {
+		t.Fatal(err)
+	}
+	if w := uploadPhoto(t, srv, inc2.Id, "photo", pngBytes); w.Code != 429 {
+		t.Fatalf("21st photo in an hour: want 429 got %d %s", w.Code, w.Body)
+	}
+}
+
+func mustID(t *testing.T, wire string) int64 {
+	t.Helper()
+	id, ok := parseID("inc_", wire)
+	if !ok {
+		t.Fatalf("bad id %q", wire)
+	}
+	return id
 }

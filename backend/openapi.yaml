@@ -88,7 +88,7 @@ paths:
     get:
       operationId: listHouseRequests
       tags: [requests]
-      summary: "«Мои заявки» текущего пользователя в доме"
+      summary: "«Мои заявки»: аварии дома, где пользователь — автор или подписчик («у меня тоже»/дедуп)"
       parameters:
         - { $ref: "#/components/parameters/HouseID" }
         - name: offset
@@ -197,6 +197,9 @@ paths:
       operationId: uploadIncidentPhoto
       tags: [incidents]
       summary: Фото к обращению (jpeg/png, до 10 МБ); отдаётся по Photo.url без авторизации
+      description: |
+        Только автор или подписчик («у меня тоже») аварии — иначе 403. Не больше 5 фото на аварию
+        (422 business_rule_failed) и не больше 20 загрузок в час от одного пользователя (429 rate_limited).
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -215,7 +218,10 @@ paths:
               schema: { $ref: "#/components/schemas/Photo" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
 
   /api/photos/{id}:
     get:
@@ -268,9 +274,13 @@ paths:
           in: query
           required: true
           schema: { type: string }
+        - name: scope
+          in: query
+          description: "active — только planned/in_progress, ближайшие сверху (scheduledFrom asc); без scope — все, новые сверху"
+          schema: { type: string, enum: [active] }
       responses:
         "200":
-          description: Список (ближайшие сначала)
+          description: Список
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EventListResponse" }
@@ -310,6 +320,20 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PaginatedUkQueue" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /api/uk/houses:
+    get:
+      operationId: ukHouses
+      tags: [uk]
+      summary: Дома УК диспетчера (для выбора дома при создании объявления)
+      responses:
+        "200":
+          description: Список домов
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HouseListResponse" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
 
@@ -389,6 +413,14 @@ components:
         id: { type: string, example: h_123 }
         address: { type: string, example: "Казань, ул. Баумана, д. 10" }
 
+    HouseListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/House" }
+
     MeResponse:
       type: object
       required: [user, house]
@@ -414,13 +446,15 @@ components:
 
     Incident:
       type: object
-      required: [id, houseId, title, description, severity, status, affectedCount,
+      required: [id, houseId, title, description, entrance, riser, severity, status, affectedCount,
                  createdAt, dueAt, joinedByMe, confirmedByMe, photos]
       properties:
         id: { type: string, example: inc_01H }
         houseId: { type: string, example: h_123 }
         title: { type: string }
         description: { type: string }
+        entrance: { type: string, nullable: true }
+        riser: { type: string, nullable: true }
         severity: { $ref: "#/components/schemas/Severity" }
         status: { $ref: "#/components/schemas/IncidentStatus" }
         affectedCount: { type: integer, minimum: 0 }
@@ -498,14 +532,16 @@ components:
 
     UkQueueItem:
       type: object
-      required: [id, houseId, houseAddress, title, description, severity, status, createdAt,
-                 dueAt, affectedCount, confirmedCount, reporterName]
+      required: [id, houseId, houseAddress, title, description, entrance, riser, severity, status, createdAt,
+                 dueAt, affectedCount, confirmedCount, reporterName, photos]
       properties:
         id: { type: string, example: inc_42 }
         houseId: { type: string, example: h_1 }
         houseAddress: { type: string, example: "Казань, ул. Баумана, д. 10" }
         title: { type: string }
         description: { type: string }
+        entrance: { type: string, nullable: true }
+        riser: { type: string, nullable: true }
         severity: { $ref: "#/components/schemas/Severity" }
         status: { $ref: "#/components/schemas/IncidentStatus" }
         createdAt: { type: string, format: date-time }
@@ -513,6 +549,9 @@ components:
         affectedCount: { type: integer, minimum: 0 }
         confirmedCount: { type: integer, minimum: 0 }
         reporterName: { type: string, example: Иван И. }
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/Photo" }
 
     PaginatedUkQueue:
       type: object

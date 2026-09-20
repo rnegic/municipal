@@ -53,7 +53,7 @@ func authMiddleware(svc *service.Service, botToken string) oapi.StrictMiddleware
 func userFromCtx(ctx context.Context) model.AppUser { return ctx.Value(ctxKey{}).(model.AppUser) }
 
 // dispatcherMiddleware: uk-cabinet operations require role uk_dispatcher.
-var dispatcherOps = map[string]bool{"SetIncidentStatus": true, "UkQueue": true, "UkCreateEvent": true}
+var dispatcherOps = map[string]bool{"SetIncidentStatus": true, "UkQueue": true, "UkHouses": true, "UkCreateEvent": true}
 
 func dispatcherMiddleware(next oapi.StrictHandlerFunc, opID string) oapi.StrictHandlerFunc {
 	if !dispatcherOps[opID] {

@@ -31,10 +31,16 @@ func (s *Store) GetEvent(ctx context.Context, id int64) (model.Event, error) {
 	return e, err
 }
 
-// ListEvents returns the house's events, latest scheduledFrom first (upcoming on top, then history).
-func (s *Store) ListEvents(ctx context.Context, houseID int64) ([]model.Event, error) {
+// ListEvents returns the house's events. activeOnly: planned/in_progress only, soonest first
+// (banner); otherwise everything, latest scheduledFrom first (history).
+func (s *Store) ListEvents(ctx context.Context, houseID int64, activeOnly bool) ([]model.Event, error) {
+	where := Event.HouseID.EQ(Int64(houseID))
+	order := Event.ScheduledFrom.DESC()
+	if activeOnly {
+		where = where.AND(Event.Status.IN(String("planned"), String("in_progress")))
+		order = Event.ScheduledFrom.ASC()
+	}
 	var out []model.Event
-	err := SELECT(Event.AllColumns).FROM(Event).WHERE(Event.HouseID.EQ(Int64(houseID))).
-		ORDER_BY(Event.ScheduledFrom.DESC()).QueryContext(ctx, s.db, &out)
+	err := SELECT(Event.AllColumns).FROM(Event).WHERE(where).ORDER_BY(order).QueryContext(ctx, s.db, &out)
 	return out, err
 }

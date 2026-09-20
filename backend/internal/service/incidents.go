@@ -15,6 +15,8 @@ type IncidentRow struct {
 	HouseID       int64
 	Title         string
 	Description   string
+	Entrance      *string
+	Riser         *string
 	Severity      string
 	Status        string
 	AffectedCount int
@@ -38,7 +40,7 @@ func (s *Service) toIncidentRows(ctx context.Context, rs []repository.IncidentRo
 	out := make([]IncidentRow, len(rs))
 	for i, r := range rs {
 		out[i] = IncidentRow{
-			ID: r.ID, HouseID: r.HouseID, Title: r.Title, Description: r.Description,
+			ID: r.ID, HouseID: r.HouseID, Title: r.Title, Description: r.Description, Entrance: r.Entrance, Riser: r.Riser,
 			Severity: r.Severity, Status: r.Status, AffectedCount: r.Subscribers,
 			CreatedAt: r.CreatedAt, DueAt: r.DueAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
 			PhotoIDs: photos[r.ID],
@@ -94,9 +96,9 @@ func (s *Service) ListActiveIncidents(ctx context.Context, houseID, userID int64
 	return s.toIncidentRows(ctx, rows)
 }
 
-// ListRequests returns the reporter's own incidents in the house, paginated.
-func (s *Service) ListRequests(ctx context.Context, houseID, reporterID, offset, limit int64) ([]IncidentRow, int64, error) {
-	rows, total, err := s.repo.ListReporterIncidents(ctx, houseID, reporterID, offset, limit)
+// ListRequests returns the incidents the user reported or joined in the house, paginated.
+func (s *Service) ListRequests(ctx context.Context, houseID, userID, offset, limit int64) ([]IncidentRow, int64, error) {
+	rows, total, err := s.repo.ListUserIncidents(ctx, houseID, userID, offset, limit)
 	if err != nil {
 		return nil, 0, err
 	}
