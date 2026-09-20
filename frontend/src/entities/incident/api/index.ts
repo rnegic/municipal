@@ -4,9 +4,11 @@ export {
   fetchActiveIncidents,
   fetchIncident,
   fetchMyRequests,
+  fetchUkQueue,
   useActiveIncidentsQuery,
   useIncidentQuery,
   useMyRequestsQuery,
+  useUkQueueQuery,
 } from './queries'
 export {
   confirmIncident,
@@ -15,4 +17,6 @@ export {
   useConfirmIncidentMutation,
   useCreateIncidentMutation,
   useJoinIncidentMutation,
+  setIncidentStatus,
+  useSetIncidentStatusMutation,
 } from './mutations'
