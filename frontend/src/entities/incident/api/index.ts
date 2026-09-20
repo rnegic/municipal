@@ -14,9 +14,11 @@ export {
   confirmIncident,
   createIncident,
   joinIncident,
+  uploadIncidentPhoto,
   useConfirmIncidentMutation,
   useCreateIncidentMutation,
   useJoinIncidentMutation,
+  useUploadIncidentPhotoMutation,
   setIncidentStatus,
   useSetIncidentStatusMutation,
 } from './mutations'

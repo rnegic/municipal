@@ -1,22 +1,245 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 
-import { IconPlus } from '@/shared/assets/icons'
-import { ROUTES } from '@/shared/config/routes'
-import { commonTexts } from '@/shared/config/texts'
+import { Typography } from '@maxhub/max-ui'
+import { useNavigate } from 'react-router-dom'
+
+import {
+  useCreateIncidentMutation,
+  useUploadIncidentPhotoMutation,
+  type Incident,
+  type IncidentSeverity,
+} from '@/entities/incident'
+import { describeApiError } from '@/shared/lib/api-error'
 import { Button } from '@/shared/ui/button'
-import { EmptyState } from '@/shared/ui/empty-state'
 import { PageLayout } from '@/shared/ui/page-layout'
+import { ROUTES } from '@/shared/config/routes'
+import { incidentCreateTexts as texts } from '../config/texts'
+import s from './IncidentCreatePage.module.scss'
 
-export const IncidentCreatePage = () => (
-  <PageLayout>
-    <EmptyState
-      icon={<IconPlus size={24} />}
-      title={commonTexts.underConstruction.title}
-      action={
-        <Button tone="secondary" asChild>
-          <Link to={ROUTES.feed}>{commonTexts.actions.goHome}</Link>
-        </Button>
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024
+const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png']
+
+export const IncidentCreatePage = () => {
+  const navigate = useNavigate()
+  const createMutation = useCreateIncidentMutation()
+  const uploadMutation = useUploadIncidentPhotoMutation()
+  const [step, setStep] = useState<1 | 2>(1)
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [severity, setSeverity] = useState<IncidentSeverity>('critical')
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [createdIncident, setCreatedIncident] = useState<Incident | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
       }
-    />
-  </PageLayout>
-)
+    }
+  }, [previewUrl])
+
+  const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!selectedFile) {
+      return
+    }
+
+    if (!ACCEPTED_PHOTO_TYPES.includes(selectedFile.type)) {
+      setValidationError(texts.photoType)
+      return
+    }
+
+    if (selectedFile.size > MAX_PHOTO_BYTES) {
+      setValidationError(texts.photoSize)
+      return
+    }
+
+    setPhoto(selectedFile)
+    setPreviewUrl(URL.createObjectURL(selectedFile))
+    setValidationError(null)
+  }
+
+  const handleDetailsSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (!title.trim() || !description.trim()) {
+      setValidationError(texts.detailsRequired)
+      return
+    }
+
+    setValidationError(null)
+    setStep(2)
+  }
+
+  const uploadPhoto = async (incident: Incident) => {
+    if (!photo) {
+      setValidationError(texts.photoRequired)
+      return
+    }
+
+    try {
+      await uploadMutation.mutateAsync({ incidentId: incident.id, file: photo })
+      navigate(ROUTES.feed, { replace: true })
+    } catch {
+      setValidationError(null)
+    }
+  }
+
+  const handlePhotoSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (!photo) {
+      setValidationError(texts.photoRequired)
+      return
+    }
+
+    if (createdIncident) {
+      await uploadPhoto(createdIncident)
+      return
+    }
+
+    try {
+      const incident = await createMutation.mutateAsync({
+        title: title.trim(),
+        description: description.trim(),
+        severity,
+      })
+      setCreatedIncident(incident)
+      await uploadPhoto(incident)
+    } catch {
+      setValidationError(null)
+    }
+  }
+
+  const isSubmitting = createMutation.isPending || uploadMutation.isPending
+  const mutationError = createMutation.error ?? uploadMutation.error
+
+  return (
+    <PageLayout>
+      <main className={s.content}>
+        <div className={s.intro}>
+          <Typography.Title variant="large-strong">{texts.title}</Typography.Title>
+          <Typography.Text variant="description" color="secondary">
+            {texts.description}
+          </Typography.Text>
+        </div>
+
+        {step === 1 ? (
+          <form className={s.form} onSubmit={handleDetailsSubmit}>
+            <Typography.Text className={s.stepLabel} variant="note-strong">
+              {texts.detailsStep}
+            </Typography.Text>
+            <label className={s.field}>
+              <Typography.Text variant="description" color="secondary">
+                {texts.titleLabel}
+              </Typography.Text>
+              <input
+                className={s.input}
+                maxLength={120}
+                placeholder={texts.titlePlaceholder}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+              />
+            </label>
+            <label className={s.field}>
+              <Typography.Text variant="description" color="secondary">
+                {texts.descriptionLabel}
+              </Typography.Text>
+              <textarea
+                className={s.textarea}
+                maxLength={2000}
+                placeholder={texts.descriptionPlaceholder}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </label>
+            <label className={s.field}>
+              <Typography.Text variant="description" color="secondary">
+                {texts.severityLabel}
+              </Typography.Text>
+              <select
+                className={s.select}
+                value={severity}
+                onChange={(event) => setSeverity(event.target.value as IncidentSeverity)}
+              >
+                <option value="critical">{texts.critical}</option>
+                <option value="warning">{texts.warning}</option>
+              </select>
+            </label>
+            {validationError ? (
+              <Typography.Text className={s.error} variant="note">
+                {validationError}
+              </Typography.Text>
+            ) : null}
+            <Button type="submit" stretched>
+              {texts.next}
+            </Button>
+          </form>
+        ) : (
+          <form className={s.form} onSubmit={handlePhotoSubmit}>
+            <div className={s.step}>
+              <Typography.Text className={s.stepLabel} variant="note-strong">
+                {texts.photoStep}
+              </Typography.Text>
+              <Typography.Title variant="medium-strong">{texts.photoTitle}</Typography.Title>
+              <Typography.Text variant="description" color="secondary">
+                {texts.photoDescription}
+              </Typography.Text>
+            </div>
+            <div className={s.photoPicker}>
+              {previewUrl ? <img className={s.preview} src={previewUrl} alt="Предпросмотр фото" /> : null}
+              <label>
+                <input
+                  className={s.fileInput}
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  capture="environment"
+                  onChange={handlePhotoChange}
+                />
+                <Button asChild tone="secondary" type="button">
+                  <span>{photo ? texts.changePhoto : texts.choosePhoto}</span>
+                </Button>
+              </label>
+              {photo ? (
+                <div className={s.photoMeta}>
+                  <Typography.Text variant="body-strong">{photo.name}</Typography.Text>
+                  <Typography.Text variant="note" color="tertiary">
+                    {texts.photoHint}
+                  </Typography.Text>
+                </div>
+              ) : (
+                <Typography.Text variant="note" color="tertiary">
+                  {texts.photoHint}
+                </Typography.Text>
+              )}
+            </div>
+            {validationError ? (
+              <Typography.Text className={s.error} variant="note">
+                {validationError}
+              </Typography.Text>
+            ) : null}
+            {mutationError ? (
+              <Typography.Text className={s.error} variant="note">
+                {describeApiError(mutationError).description}
+              </Typography.Text>
+            ) : null}
+            <div className={s.actions}>
+              <Button type="submit" stretched disabled={isSubmitting}>
+                {createdIncident ? texts.retryUpload : texts.upload}
+              </Button>
+              {!createdIncident ? (
+                <Button type="button" tone="ghost" stretched onClick={() => setStep(1)} disabled={isSubmitting}>
+                  {texts.back}
+                </Button>
+              ) : null}
+            </div>
+          </form>
+        )}
+      </main>
+    </PageLayout>
+  )
+}

@@ -10,6 +10,7 @@ import {
   confirmResponseSchema,
   createIncidentRequestSchema,
   incidentSchema,
+  incidentPhotoSchema,
   joinResponseSchema,
   type CreateIncidentInput,
   type Incident,
@@ -34,6 +35,17 @@ export const createIncident = (input: CreateIncidentInput) =>
     { method: 'POST', body: createIncidentRequestSchema.parse(input) },
     incidentSchema,
   )
+
+export const uploadIncidentPhoto = (incidentId: string, file: File) => {
+  const body = new FormData()
+  body.append('photo', file)
+
+  return apiRequest(
+    `/incidents/${incidentId}/photos`,
+    { method: 'POST', body },
+    incidentPhotoSchema,
+  )
+}
 
 export const setIncidentStatus = (incidentId: string, status: Incident['status']) =>
   apiRequest(
@@ -127,6 +139,16 @@ export const useCreateIncidentMutation = () => {
 
   return useMutation({
     mutationFn: createIncident,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: incidentKeys.all }),
+  })
+}
+
+export const useUploadIncidentPhotoMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ incidentId, file }: { incidentId: string; file: File }) =>
+      uploadIncidentPhoto(incidentId, file),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: incidentKeys.all }),
   })
 }

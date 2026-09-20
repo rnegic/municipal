@@ -1,0 +1,32 @@
+.root {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--app-space-2);
+}
+
+.item {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--app-radius-semi-round);
+  background: var(--app-color-surface-muted);
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.more {
+  position: absolute;
+  right: var(--app-space-2);
+  bottom: var(--app-space-2);
+  padding: var(--app-space-1) var(--app-space-2);
+  border-radius: var(--app-radius-semi-round);
+  color: var(--app-color-text-on-brand);
+  background: rgb(0 0 0 / 64%);
+  font-size: 0.75rem;
+  font-weight: 700;
+}

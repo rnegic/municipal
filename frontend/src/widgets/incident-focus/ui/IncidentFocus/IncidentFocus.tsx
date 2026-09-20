@@ -2,6 +2,7 @@ import { Typography } from '@maxhub/max-ui'
 
 import {
   IncidentStatusBadge,
+  IncidentPhotos,
   incidentTexts,
   type Incident,
   type IncidentSeverity,
@@ -44,6 +45,7 @@ export const IncidentFocus = ({ incident, tone = 'default', className }: Inciden
         <Typography.Text variant="description" color="secondary">
           {incident.description}
         </Typography.Text>
+        <IncidentPhotos photos={incident.photos} />
         {incident.status === 'verifying' ? (
           <div className={s.footer}>
             <IncidentConfirmButton
