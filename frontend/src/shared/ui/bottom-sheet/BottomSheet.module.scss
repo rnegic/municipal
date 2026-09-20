@@ -21,6 +21,8 @@
   gap: var(--app-space-8);
   width: 100%;
   max-width: var(--size-base-platform-width-normal);
+  max-height: calc(100dvh - env(safe-area-inset-top));
+  overflow-y: auto;
   padding: var(--app-space-3) var(--app-space-8)
     calc(var(--app-space-8) + env(safe-area-inset-bottom));
   border-radius: var(--app-radius-paper) var(--app-radius-paper) 0 0;

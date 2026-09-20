@@ -36,6 +36,7 @@ export const residentRequestSchema = z.object({
   status: incidentStatusSchema,
   createdAt: timestampSchema,
   dueAt: timestampSchema.nullable(),
+  confirmedByMe: z.boolean(),
 })
 
 export const paginatedResidentRequestsSchema = z.object({

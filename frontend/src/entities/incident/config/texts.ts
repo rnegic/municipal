@@ -15,7 +15,7 @@ export const incidentTexts = {
   statuses: {
     accepted: 'Принята',
     in_progress: 'В работе',
-    verifying: 'Решена',
+    verifying: 'Проверка жителями',
     done: 'Решена',
   },
   confirm: {
