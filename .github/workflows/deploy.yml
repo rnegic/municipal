@@ -18,7 +18,7 @@ env:
   DIR: /opt/municipal
   WWW: /var/www/municipal
   SITE: https://nerionapp.ru
-  REGISTRY: ghcr.io/rnegic
+  REGISTRY: ghcr.io/rnegic/municipal
 
 jobs:
   deploy:
