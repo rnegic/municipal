@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS uk (
   rating      INT  NOT NULL DEFAULT 0
 );
 
+ALTER TABLE uk ADD COLUMN IF NOT EXISTS external_id TEXT;
+
 CREATE TABLE IF NOT EXISTS house (
   id              BIGSERIAL PRIMARY KEY,
   address_raw     TEXT NOT NULL,
@@ -42,6 +44,7 @@ CREATE TABLE IF NOT EXISTS incident (
 );
 -- ponytail: миграций нет — для уже созданных БД колонку доливаем идемпотентным ALTER.
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS due_at TIMESTAMPTZ;
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS external_id TEXT;
 CREATE INDEX IF NOT EXISTS incident_house_open ON incident(house_id, title, created_at)
   WHERE status IN ('accepted','in_progress');
 CREATE INDEX IF NOT EXISTS incident_house_status ON incident(house_id, status, created_at DESC);
