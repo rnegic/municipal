@@ -1,4 +1,4 @@
-import type { IconProps } from './types'
+import type { IconProps } from '../types'
 
 export const IconPlus = ({ size = 20, ...rest }: IconProps) => (
   <svg
