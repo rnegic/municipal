@@ -1,4 +1,5 @@
-# Прод: docker compose up -d --build. Секреты — в .env рядом (см. .env.example).
+# Прод: docker compose pull && docker compose up -d. Образы api/mock-uk собираются
+# и пушатся в GHCR из GitHub Actions (deploy.yml). Секреты — в .env рядом (см. .env.example).
 # Диспетчер работает в системе УК; для MVP это mock-uk (docs/uk-integration.md).
 services:
   db:
@@ -15,7 +16,7 @@ services:
     restart: unless-stopped
 
   api:
-    build: ./backend
+    image: ghcr.io/rnegic/municipal-api:latest
     environment:
       DATABASE_URL: postgres://ukapp:${POSTGRES_PASSWORD}@db:5432/ukapp?sslmode=disable
       MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}
@@ -43,7 +44,7 @@ services:
     restart: unless-stopped
 
   mock-uk:
-    build: ./mock/uk
+    image: ghcr.io/rnegic/municipal-mockuk:latest
     environment:
       DATABASE_URL: postgres://mockuk:mockuk@mock-uk-db:5432/mockuk?sslmode=disable
       MOCK_API_TOKEN: ${UK_API_TOKEN:-demo-uk-token}
