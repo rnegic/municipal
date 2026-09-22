@@ -7,7 +7,7 @@ from itertools import combinations
 
 from dedup.vocab import ENTRANCE_OBJECTS, OBJECTS, PLUMBING, WATER_KEYWORD_OBJECTS
 
-GENERATION_METHOD = "template_v2"
+GENERATION_METHOD = "template_v3"
 SALIENT = {"diff_entrance": "entrance", "diff_riser": "riser", "diff_apartment": "apartment"}
 
 
@@ -60,6 +60,12 @@ class Scene:
         if self.overlaps(obj, problem, loc):
             return None
         inc = {"id": f"{self.id}-i{len(self.incidents)}", "object": obj, "problem": problem, "t": t, **loc}
+        for x in self.incidents:
+            if x["object"] == obj and x["problem"] == problem:
+                attr = {"entrance": "entrance", "riser": "riser", "apartment": "apartment"}.get(loc["scope"])
+                if attr:
+                    x.setdefault("salient", attr)
+                    inc["salient"] = attr
         self.incidents.append(inc)
         return inc
 
@@ -205,8 +211,8 @@ def make_report(rng, scene, inc):
         "incident": inc["id"],
         "title": title,
         "description": desc,
-        "entrance": str(reporter["entrance"]) if rng.random() < 0.6 else None,
-        "riser": reporter["riser"] if reporter["riser"] and rng.random() < 0.35 else None,
+        "entrance": str(reporter["entrance"]) if rng.random() < (0.9 if inc.get("salient") == "entrance" else 0.6) else None,
+        "riser": reporter["riser"] if reporter["riser"] and rng.random() < (0.9 if inc.get("salient") == "riser" else 0.35) else None,
         "severity": sev,
         "created_at": t.isoformat(),
     }
@@ -263,7 +269,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scenes", type=int, default=1500)
     ap.add_argument("--seed", type=int, default=13)
-    ap.add_argument("--out", default="data/raw/synthetic_template_v2.jsonl.gz")
+    ap.add_argument("--out", default="data/raw/synthetic_template_v3.jsonl.gz")
     args = ap.parse_args()
     rng = random.Random(args.seed)
     n = 0

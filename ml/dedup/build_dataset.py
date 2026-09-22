@@ -78,7 +78,7 @@ def clean_train(pairs):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--synthetic", default="data/raw/synthetic_template_v2.jsonl.gz")
+    ap.add_argument("--synthetic", default="data/raw/synthetic_template_v3.jsonl.gz")
     ap.add_argument("--handwritten-test", default="data/raw/handwritten_eval_v1.json")
     ap.add_argument("--handwritten-val", default="data/raw/handwritten_val_v1.json")
     ap.add_argument("--real", nargs="*", default=sorted(str(p) for p in Path("data/labels").glob("*.jsonl")))
