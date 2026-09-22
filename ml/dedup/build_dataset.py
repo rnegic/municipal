@@ -95,9 +95,16 @@ def main():
     splits["test_hw"] = handwritten_pairs(args.handwritten_test)
     if Path(args.handwritten_val).exists():
         splits["val_hw"] = handwritten_pairs(args.handwritten_val)
-    real = [p for path in args.real for p in read_jsonl(path)]
+    real_by_id = {}
+    for p in (p for path in args.real for p in read_jsonl(path)):
+        if p["pair_id"] not in real_by_id or p["source"] == "manual":
+            real_by_id[p["pair_id"]] = p
+    real = list(real_by_id.values())
     for p in real:
-        splits[{"train": "train", "val": "val_real", "test": "test_real"}[bucket(p["group_id"], args.salt)]].append(p)
+        b = bucket(p["group_id"], args.salt)
+        if p["source"] == "weak_joined" and b != "train":
+            continue
+        splits[{"train": "train", "val": "val_real", "test": "test_real"}[b]].append(p)
 
     raw_train = splits["train"]
     splits["train"], train_clean = clean_train(raw_train)

@@ -1,0 +1,14 @@
+{
+  "name": "ft-rubert-tiny2-struct",
+  "base_model": "cointegrated/rubert-tiny2",
+  "format": "struct",
+  "dataset_version": "ds-bfbffb9326",
+  "seed": 13,
+  "epochs": 3,
+  "batch_size": 32,
+  "lr": 5e-5,
+  "max_length": 128,
+  "easy_neg_ratio": 2.0,
+  "val_sample": 4000,
+  "threads": 6
+}
