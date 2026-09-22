@@ -1,3 +1,10 @@
+const ruPlural = new Intl.PluralRules('ru')
+
+const affectedForms: Partial<Record<Intl.LDMLPluralRule, string>> = {
+  one: 'житель подтвердил',
+  few: 'жителя подтвердили',
+}
+
 export const incidentTexts = {
   focus: {
     sectionTitle: 'Аварии в вашем доме',
@@ -7,7 +14,8 @@ export const incidentTexts = {
     headerStatusAlert: 'Есть активная авария',
     joinAction: 'У меня тоже (Подписаться)',
     joinedAction: 'Вы подписались',
-    affectedCount: (count: number) => `+${count} жителей подтвердили`,
+    affectedCount: (count: number) =>
+      `+${count} ${affectedForms[ruPlural.select(count)] ?? 'жителей подтвердили'}`,
   },
   severity: {
     critical: 'Авария',

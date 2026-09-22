@@ -1,4 +1,4 @@
-import { lazy, useEffect } from 'react'
+import { lazy, useEffect, useRef } from 'react'
 
 import { Route, Routes, useNavigate } from 'react-router-dom'
 
@@ -27,8 +27,14 @@ const INCIDENT_START_PARAM_PREFIX = 'inc_'
 
 const useIncidentDeepLink = () => {
   const navigate = useNavigate()
+  // navigate меняется при каждой смене пути (HashRouter), без флага диплинк
+  // перехватывал бы любой уход со страницы инцидента обратно на неё
+  const handledRef = useRef(false)
 
   useEffect(() => {
+    if (handledRef.current) return
+    handledRef.current = true
+
     const startParam = getStartParam()
 
     if (startParam?.startsWith(INCIDENT_START_PARAM_PREFIX)) {

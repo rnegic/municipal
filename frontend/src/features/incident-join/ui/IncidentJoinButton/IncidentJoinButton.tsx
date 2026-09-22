@@ -25,22 +25,24 @@ export const IncidentJoinButton = ({
 
   return (
     <div className={cn(s.root, className)}>
-      <div className={s.confirmations}>
-        <div className={s.avatars} aria-hidden="true">
-          <Avatar.Container size={32}>
-            <Avatar.Text gradient="blue">АМ</Avatar.Text>
-          </Avatar.Container>
-          <Avatar.Container size={32}>
-            <Avatar.Text gradient="green">ИК</Avatar.Text>
-          </Avatar.Container>
-          <Avatar.Container size={32}>
-            <Avatar.Text gradient="purple">ОР</Avatar.Text>
-          </Avatar.Container>
+      {affectedCount > 0 ? (
+        <div className={s.confirmations}>
+          <div className={s.avatars} aria-hidden="true">
+            <Avatar.Container size={32}>
+              <Avatar.Text gradient="blue">АМ</Avatar.Text>
+            </Avatar.Container>
+            <Avatar.Container size={32}>
+              <Avatar.Text gradient="green">ИК</Avatar.Text>
+            </Avatar.Container>
+            <Avatar.Container size={32}>
+              <Avatar.Text gradient="purple">ОР</Avatar.Text>
+            </Avatar.Container>
+          </div>
+          <Typography.Text variant="note" color="secondary">
+            {incidentTexts.focus.affectedCount(affectedCount)}
+          </Typography.Text>
         </div>
-        <Typography.Text variant="note" color="secondary">
-          {incidentTexts.focus.affectedCount(affectedCount)}
-        </Typography.Text>
-      </div>
+      ) : null}
       {joinMutation.isError ? (
         <Typography.Text variant="note" color="secondary">
           {describeApiError(joinMutation.error).description}
