@@ -12,21 +12,25 @@ import (
 )
 
 func toIncident(r service.IncidentRow) oapi.Incident {
-	photos := make([]oapi.Photo, len(r.PhotoIDs)) // non-nil: "photos": [] rather than null
-	for i, id := range r.PhotoIDs {
-		photos[i] = toPhoto(id)
-	}
 	return oapi.Incident{
 		Id: formatIncidentID(r.ID), HouseId: formatHouseID(r.HouseID),
-		Title: r.Title, Description: r.Description, Severity: oapi.Severity(r.Severity),
+		Title: r.Title, Description: r.Description, Entrance: r.Entrance, Riser: r.Riser, Severity: oapi.Severity(r.Severity),
 		Status: oapi.IncidentStatus(r.Status), AffectedCount: r.AffectedCount,
 		CreatedAt: r.CreatedAt, DueAt: r.DueAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
-		Photos: photos,
+		Photos: toPhotos(r.PhotoIDs),
 	}
 }
 
 func toPhoto(id int64) oapi.Photo {
 	return oapi.Photo{Id: formatPhotoID(id), Url: "/api/photos/" + formatPhotoID(id)}
+}
+
+func toPhotos(ids []int64) []oapi.Photo {
+	photos := make([]oapi.Photo, len(ids)) // non-nil: "photos": [] rather than null
+	for i, id := range ids {
+		photos[i] = toPhoto(id)
+	}
+	return photos
 }
 
 func (s *server) CreateIncident(ctx context.Context, req oapi.CreateIncidentRequestObject) (oapi.CreateIncidentResponseObject, error) {
@@ -139,25 +143,6 @@ func (s *server) ListHouseRequests(ctx context.Context, req oapi.ListHouseReques
 	return oapi.ListHouseRequests200JSONResponse{Items: items, Total: int(total), Offset: int(offset), Limit: int(limit)}, nil
 }
 
-func (s *server) SetIncidentStatus(ctx context.Context, req oapi.SetIncidentStatusRequestObject) (oapi.SetIncidentStatusResponseObject, error) {
-	id, ok := parseID("inc_", req.Id)
-	if !ok {
-		return oapi.SetIncidentStatus404JSONResponse(apiErr("not_found", "авария не найдена")), nil
-	}
-	row, err := s.svc.SetIncidentStatus(ctx, id, userFromCtx(ctx).ID, string(req.Body.Status))
-	switch {
-	case errors.Is(err, service.ErrInvalidInput):
-		return oapi.SetIncidentStatus400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", "status must be one of accepted, in_progress, verifying, done"))}, nil
-	case errors.Is(err, service.ErrNotFound):
-		return oapi.SetIncidentStatus404JSONResponse(apiErr("not_found", "авария не найдена")), nil
-	case errors.Is(err, service.ErrInvalidStatus):
-		return oapi.SetIncidentStatus422JSONResponse(apiErr("business_rule_failed", "допустимы только переходы accepted → in_progress → verifying → done")), nil
-	case err != nil:
-		return nil, err
-	}
-	return oapi.SetIncidentStatus200JSONResponse(toIncident(row)), nil
-}
-
 const maxPhotoBytes = 10 << 20
 
 // UploadIncidentPhoto reads the `photo` part (≤10 МБ, jpeg/png by content sniffing, not by header).
@@ -195,10 +180,16 @@ func (s *server) UploadIncidentPhoto(ctx context.Context, req oapi.UploadInciden
 		return bad("photo must be image/jpeg or image/png")
 	}
 	photoID, err := s.svc.AddPhoto(ctx, id, userFromCtx(ctx).ID, ct, data)
-	if errors.Is(err, service.ErrNotFound) {
+	switch {
+	case errors.Is(err, service.ErrNotFound):
 		return oapi.UploadIncidentPhoto404JSONResponse(apiErr("not_found", "авария не найдена")), nil
-	}
-	if err != nil {
+	case errors.Is(err, service.ErrForbidden):
+		return oapi.UploadIncidentPhoto403JSONResponse(apiErr("forbidden", "фото могут добавлять только автор и подписчики аварии")), nil
+	case errors.Is(err, service.ErrInvalidStatus):
+		return oapi.UploadIncidentPhoto422JSONResponse(apiErr("business_rule_failed", "к аварии можно прикрепить не больше 5 фото")), nil
+	case errors.Is(err, service.ErrRateLimited):
+		return oapi.UploadIncidentPhoto429JSONResponse(apiErr("rate_limited", "не больше 20 фото в час")), nil
+	case err != nil:
 		return nil, err
 	}
 	return oapi.UploadIncidentPhoto201JSONResponse(toPhoto(photoID)), nil

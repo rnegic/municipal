@@ -28,21 +28,6 @@ const (
 	IncidentDone       IncidentStatus = "done"
 )
 
-// next is the only allowed status transition from each status (linear pipeline).
-var next = map[IncidentStatus]IncidentStatus{
-	IncidentAccepted:   IncidentInProgress,
-	IncidentInProgress: IncidentVerifying,
-	IncidentVerifying:  IncidentDone,
-}
-
-func (s IncidentStatus) Valid() bool {
-	_, ok := next[s]
-	return ok || s == IncidentDone
-}
-
-// CanTransition: accepted → in_progress → verifying → done, one step at a time.
-func CanTransition(from, to IncidentStatus) bool { return next[from] == to }
-
 // SLA per severity: dueAt = createdAt + SLA. ponytail: стартовые значения, согласовать с продуктом.
 var sla = map[Severity]time.Duration{SeverityCritical: 4 * time.Hour, SeverityWarning: 24 * time.Hour}
 

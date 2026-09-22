@@ -26,13 +26,28 @@ func (s *Store) UpsertUser(ctx context.Context, iu domain.InitUser) (model.AppUs
 	return u, err
 }
 
+// UpsertUk creates or renames the organization by its id in the UK system.
+func (s *Store) UpsertUk(ctx context.Context, externalID, name string) (int64, error) {
+	var u model.Uk
+	err := Uk.INSERT(Uk.ExternalID, Uk.Name).
+		VALUES(externalID, name).
+		ON_CONFLICT(Uk.ExternalID).DO_UPDATE(SET(Uk.Name.SET(Uk.EXCLUDED.Name))).
+		RETURNING(Uk.ID).
+		QueryContext(ctx, s.db, &u)
+	return u.ID, err
+}
+
 // BindHouse upserts the house by FIAS id (two residents of one building share a row)
-// and attaches it to the user. uk_id = first UK in the table (demo: single UK).
-func (s *Store) BindHouse(ctx context.Context, userID int64, addressRaw, houseFiasID string) (int64, error) {
+// and attaches it to the user. uk_id/external_id come from the UK system (UkProvider.FindHouse).
+func (s *Store) BindHouse(ctx context.Context, userID int64, addressRaw, houseFiasID string, ukID int64, houseExternalID string) (int64, error) {
 	var h model.House
-	err := House.INSERT(House.AddressRaw, House.HouseFiasID, House.UkID).
-		VALUES(addressRaw, houseFiasID, SELECT(Uk.ID).FROM(Uk).ORDER_BY(Uk.ID).LIMIT(1)).
-		ON_CONFLICT(House.HouseFiasID).DO_UPDATE(SET(House.AddressRaw.SET(House.AddressRaw))).
+	err := House.INSERT(House.AddressRaw, House.HouseFiasID, House.UkID, House.ExternalID).
+		VALUES(addressRaw, houseFiasID, ukID, houseExternalID).
+		ON_CONFLICT(House.HouseFiasID).DO_UPDATE(SET(
+		House.AddressRaw.SET(House.EXCLUDED.AddressRaw),
+		House.UkID.SET(House.EXCLUDED.UkID),
+		House.ExternalID.SET(House.EXCLUDED.ExternalID),
+	)).
 		RETURNING(House.ID).
 		QueryContext(ctx, s.db, &h)
 	if err != nil {

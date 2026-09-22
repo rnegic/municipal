@@ -1,0 +1,7 @@
+# oapi-codegen: ../../backend/contracts/uk.yaml → gen/api/server.gen.go (gin strict-server)
+package: ukapi
+output: gen/api/server.gen.go
+generate:
+  models: true
+  gin-server: true
+  strict-server: true

@@ -1,9 +1,10 @@
 // Package service — бизнес-оркестрация: применяет domain-правила поверх repository и внешних
-// клиентов (MAX, DaData). Ничего не знает про HTTP/JSON — ни oapi, ни net/http сюда не попадают.
+// клиентов (MAX, DaData, UkProvider). Ничего не знает про HTTP/JSON — ни oapi, ни net/http сюда не попадают.
 package service
 
 import (
 	"errors"
+	"time"
 
 	"ukapp/internal/dadata"
 	"ukapp/internal/maxclient"
@@ -14,14 +15,18 @@ var (
 	ErrNotFound      = repository.ErrNotFound
 	ErrInvalidInput  = errors.New("invalid input")
 	ErrInvalidStatus = errors.New("status transition not allowed")
+	ErrForbidden     = errors.New("forbidden")
+	ErrRateLimited   = errors.New("rate limited")
 )
 
 type Service struct {
-	repo *repository.Store
-	maxc *maxclient.Client
-	dd   *dadata.Client
+	repo    *repository.Store
+	maxc    *maxclient.Client
+	dd      *dadata.Client
+	uk      UkProvider
+	ukSince time.Time
 }
 
-func New(repo *repository.Store, maxc *maxclient.Client, dd *dadata.Client) *Service {
-	return &Service{repo: repo, maxc: maxc, dd: dd}
+func New(repo *repository.Store, maxc *maxclient.Client, dd *dadata.Client, uk UkProvider) *Service {
+	return &Service{repo: repo, maxc: maxc, dd: dd, uk: uk}
 }

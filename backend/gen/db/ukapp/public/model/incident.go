@@ -21,6 +21,7 @@ type Incident struct {
 	Entrance    *string
 	Riser       *string
 	Status      string
+	ExternalID  *string
 	CreatedAt   time.Time
 	DueAt       *time.Time
 	ResolvedAt  *time.Time

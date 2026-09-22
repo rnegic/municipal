@@ -32,7 +32,6 @@ func createIncident(t *testing.T, srv http.Handler, maxID int64, body string) (i
 
 func TestIncidents_DedupAndJoin(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 	h10 := bindUser(t, srv, 1, "f-10")
 	bindUser(t, srv, 2, "f-10")
@@ -45,6 +44,14 @@ func TestIncidents_DedupAndJoin(t *testing.T) {
 	inc2, code := createIncident(t, srv, 2, `{"title":"Нет воды","description":"течёт кипяток","severity":"critical"}`)
 	if code != 200 || inc2.Id != inc1.Id {
 		t.Fatalf("same house+title must merge: code=%d id2=%s", code, inc2.Id)
+	}
+	// dedup'd report shows up in the joiner's "мои заявки"
+	w0 := httptest.NewRecorder()
+	srv.ServeHTTP(w0, authedReq(t, "GET", "/api/houses/"+h10+"/requests", "", 2, "U"))
+	var mine struct{ Items []struct{ Id string } }
+	_ = json.Unmarshal(w0.Body.Bytes(), &mine)
+	if w0.Code != 200 || len(mine.Items) != 1 || mine.Items[0].Id != inc1.Id {
+		t.Fatalf("joiner's requests: %d %s", w0.Code, w0.Body)
 	}
 	inc3, code := createIncident(t, srv, 2, `{"title":"Лифт не едет","description":"лифт","severity":"warning"}`)
 	if code != 201 || inc3.Id == inc1.Id {
@@ -109,7 +116,6 @@ func TestIncidents_DedupAndJoin(t *testing.T) {
 
 func TestIncidents_RequiresHouseAndValidInput(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 
 	w := httptest.NewRecorder()
@@ -127,14 +133,13 @@ func TestIncidents_RequiresHouseAndValidInput(t *testing.T) {
 
 func TestGetIncident(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
-	inc, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical"}`)
+	inc, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical","entrance":"2","riser":"7"}`)
 
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "GET", "/api/incidents/"+inc.Id, "", 1, "U"))
-	if w.Code != 200 {
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"entrance":"2"`) || !strings.Contains(w.Body.String(), `"riser":"7"`) {
 		t.Fatalf("get: %d %s", w.Code, w.Body)
 	}
 	w = httptest.NewRecorder()
@@ -146,7 +151,6 @@ func TestGetIncident(t *testing.T) {
 
 func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
 	bindUser(t, srv, 2, "f-10")
@@ -165,13 +169,7 @@ func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 	}
 
 	incID, _ := parseID("inc_", inc.Id)
-	makeDispatcher(t, srv, s, 100)
-	if c := setStatus(t, srv, 100, inc.Id, "in_progress"); c != 200 {
-		t.Fatalf("→ in_progress: %d", c)
-	}
-	if c := setStatus(t, srv, 100, inc.Id, "verifying"); c != 200 {
-		t.Fatalf("→ verifying: %d", c)
-	}
+	setVerifying(t, s, incID)
 
 	// 1 of 2 confirmations (50%, but under MinConfirmations=2) → stays verifying
 	w = httptest.NewRecorder()
@@ -209,7 +207,6 @@ func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 
 func TestListHouseRequests_Paginated(t *testing.T) {
 	s := testStore(t)
-	seedUK(t, s)
 	srv := newTestServer(t, s)
 	h10 := bindUser(t, srv, 1, "f-10")
 	createIncident(t, srv, 1, `{"title":"A","description":"x","severity":"warning"}`)

@@ -11,8 +11,6 @@ package table
 // this method only once at the beginning of the program.
 func UseSchema(schema string) {
 	AppUser = AppUser.FromSchema(schema)
-	Event = Event.FromSchema(schema)
-	EventResponse = EventResponse.FromSchema(schema)
 	House = House.FromSchema(schema)
 	Incident = Incident.FromSchema(schema)
 	IncidentConfirmation = IncidentConfirmation.FromSchema(schema)

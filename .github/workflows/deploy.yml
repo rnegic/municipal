@@ -1,0 +1,109 @@
+# Выкат по кнопке: Actions → Deploy → Run workflow.
+# Секрет DEPLOY_SSH_KEY — приватный ключ, чей pub лежит в /root/.ssh/authorized_keys на сервере.
+# Фронт собирается здесь → /var/www/municipal (отдаёт nginx на хосте).
+# Бэк: образы api/mock-uk собираются и пушатся в GHCR здесь же, на сервере — только docker compose pull.
+# Что выкатывать, решаем по diff с SHA прошлого выката (хранится на сервере в $DIR/.deployed).
+name: Deploy
+on:
+  workflow_dispatch:
+
+concurrency: deploy
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  HOST: 136.234.4.220
+  DIR: /opt/municipal
+  WWW: /var/www/municipal
+  SITE: https://nerionapp.ru
+  REGISTRY: ghcr.io/rnegic/municipal
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          printf 'Host %s\n  ServerAliveInterval 30\n  ServerAliveCountMax 10\n' "$HOST" >> ~/.ssh/config
+
+      - name: Detect changes since last deploy
+        id: changes
+        run: |
+          last=$(ssh "root@$HOST" "cat $DIR/.deployed 2>/dev/null" || true)
+          if [ -n "$last" ] && git cat-file -e "$last" 2>/dev/null; then
+            git diff --quiet "$last" HEAD -- frontend || echo frontend=true >> "$GITHUB_OUTPUT"
+            git diff --quiet "$last" HEAD -- backend mock docker-compose.yml || echo backend=true >> "$GITHUB_OUTPUT"
+          else
+            printf 'frontend=true\nbackend=true\n' >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        if: steps.changes.outputs.frontend
+        uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+
+      - name: Build frontend
+        if: steps.changes.outputs.frontend
+        run: cd frontend && npm ci && npm run build
+
+      - name: Deploy frontend
+        if: steps.changes.outputs.frontend
+        run: rsync -az --delete frontend/dist/ "root@$HOST:$WWW/"
+
+      - name: Set up Docker Buildx
+        if: steps.changes.outputs.backend
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: steps.changes.outputs.backend
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push api image
+        if: steps.changes.outputs.backend
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: ${{ env.REGISTRY }}-api:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push mock-uk image
+        if: steps.changes.outputs.backend
+        uses: docker/build-push-action@v6
+        with:
+          context: mock/uk
+          push: true
+          tags: ${{ env.REGISTRY }}-mockuk:latest
+          cache-from: type=gha,scope=mockuk
+          cache-to: type=gha,mode=max,scope=mockuk
+
+      - name: Deploy backend
+        if: steps.changes.outputs.backend
+        run: |
+          rsync -az docker-compose.yml "root@$HOST:$DIR/"
+          ssh "root@$HOST" "docker login ghcr.io -u ${{ github.actor }} --password-stdin" <<< "${{ secrets.GITHUB_TOKEN }}"
+          ssh "root@$HOST" "cd $DIR && docker compose pull && docker compose up -d --remove-orphans && docker image prune -f"
+
+      - name: Smoke test
+        run: |
+          curl -fsS "$SITE/health" && echo
+          curl -fsSo /dev/null -w 'web %{http_code}\n' "$SITE/"
+
+      - name: Record deployed SHA
+        run: ssh "root@$HOST" "echo $GITHUB_SHA > $DIR/.deployed"

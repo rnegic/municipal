@@ -113,19 +113,21 @@ func (s *Store) ListActiveIncidents(ctx context.Context, houseID, userID int64) 
 	return rows, err
 }
 
-// ListReporterIncidents returns the current user's own incidents in the house ("мои заявки"),
-// newest first, with the total count for pagination.
-func (s *Store) ListReporterIncidents(ctx context.Context, houseID, reporterID int64, offset, limit int64) ([]IncidentRow, int64, error) {
+// ListUserIncidents returns the house incidents the user reported or subscribed to ("мои заявки":
+// own reports, "у меня тоже" and dedup joins), newest first, with the total count for pagination.
+func (s *Store) ListUserIncidents(ctx context.Context, houseID, userID int64, offset, limit int64) ([]IncidentRow, int64, error) {
+	mine := Incident.HouseID.EQ(Int64(houseID)).AND(
+		Incident.ReporterID.EQ(Int64(userID)).OR(EXISTS(
+			SELECT(IncidentSubscription.UserID).FROM(IncidentSubscription).
+				WHERE(IncidentSubscription.IncidentID.EQ(Incident.ID).AND(IncidentSubscription.UserID.EQ(Int64(userID)))))))
 	var total struct{ Count int64 }
-	err := SELECT(COUNT(Incident.ID).AS("count")).FROM(Incident).
-		WHERE(Incident.HouseID.EQ(Int64(houseID)).AND(Incident.ReporterID.EQ(Int64(reporterID)))).
-		QueryContext(ctx, s.db, &total)
+	err := SELECT(COUNT(Incident.ID).AS("count")).FROM(Incident).WHERE(mine).QueryContext(ctx, s.db, &total)
 	if err != nil {
 		return nil, 0, err
 	}
 	var rows []IncidentRow
-	err = incidentSelect(reporterID).
-		WHERE(Incident.HouseID.EQ(Int64(houseID)).AND(Incident.ReporterID.EQ(Int64(reporterID)))).
+	err = incidentSelect(userID).
+		WHERE(mine).
 		ORDER_BY(Incident.CreatedAt.DESC()).
 		OFFSET(offset).LIMIT(limit).
 		QueryContext(ctx, s.db, &rows)

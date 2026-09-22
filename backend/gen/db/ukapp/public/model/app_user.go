@@ -12,13 +12,11 @@ import (
 )
 
 type AppUser struct {
-	ID                  int64 `sql:"primary_key"`
-	MaxUserID           int64
-	FullName            string
-	Role                string
-	HouseID             *int64
-	UkID                *int64
-	FalseRejectionCount int32
-	ShadowBanned        bool
-	CreatedAt           time.Time
+	ID        int64 `sql:"primary_key"`
+	MaxUserID int64
+	FullName  string
+	Role      string
+	HouseID   *int64
+	UkID      *int64
+	CreatedAt time.Time
 }

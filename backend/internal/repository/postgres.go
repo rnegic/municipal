@@ -8,10 +8,15 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib" // database/sql driver "pgx"
 )
+
+// maxOpenConns caps the pool well under Postgres' default max_connections (100),
+// leaving headroom for autovacuum and other clients (mock-uk-db is separate).
+const maxOpenConns = 20
 
 //go:embed schema.sql
 var schemaSQL string
@@ -28,6 +33,9 @@ func Open(ctx context.Context, databaseURL string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
 	}
+	db.SetMaxOpenConns(maxOpenConns)
+	db.SetMaxIdleConns(maxOpenConns)
+	db.SetConnMaxLifetime(30 * time.Minute)
 	if _, err := db.ExecContext(ctx, schemaSQL); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("apply schema: %w", err)

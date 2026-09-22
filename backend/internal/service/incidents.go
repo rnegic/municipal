@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"ukapp/internal/domain"
@@ -15,6 +16,8 @@ type IncidentRow struct {
 	HouseID       int64
 	Title         string
 	Description   string
+	Entrance      *string
+	Riser         *string
 	Severity      string
 	Status        string
 	AffectedCount int
@@ -38,7 +41,7 @@ func (s *Service) toIncidentRows(ctx context.Context, rs []repository.IncidentRo
 	out := make([]IncidentRow, len(rs))
 	for i, r := range rs {
 		out[i] = IncidentRow{
-			ID: r.ID, HouseID: r.HouseID, Title: r.Title, Description: r.Description,
+			ID: r.ID, HouseID: r.HouseID, Title: r.Title, Description: r.Description, Entrance: r.Entrance, Riser: r.Riser,
 			Severity: r.Severity, Status: r.Status, AffectedCount: r.Subscribers,
 			CreatedAt: r.CreatedAt, DueAt: r.DueAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
 			PhotoIDs: photos[r.ID],
@@ -82,6 +85,9 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	if err != nil {
 		return IncidentRow{}, false, err
 	}
+	if err := s.syncUnregistered(ctx); err != nil {
+		slog.Warn("uk register deferred to worker", "incident", id, "err", err)
+	}
 	row, err = s.GetIncident(ctx, id, reporterID)
 	return row, true, err
 }
@@ -94,42 +100,14 @@ func (s *Service) ListActiveIncidents(ctx context.Context, houseID, userID int64
 	return s.toIncidentRows(ctx, rows)
 }
 
-// ListRequests returns the reporter's own incidents in the house, paginated.
-func (s *Service) ListRequests(ctx context.Context, houseID, reporterID, offset, limit int64) ([]IncidentRow, int64, error) {
-	rows, total, err := s.repo.ListReporterIncidents(ctx, houseID, reporterID, offset, limit)
+// ListRequests returns the incidents the user reported or joined in the house, paginated.
+func (s *Service) ListRequests(ctx context.Context, houseID, userID, offset, limit int64) ([]IncidentRow, int64, error) {
+	rows, total, err := s.repo.ListUserIncidents(ctx, houseID, userID, offset, limit)
 	if err != nil {
 		return nil, 0, err
 	}
 	out, err := s.toIncidentRows(ctx, rows)
 	return out, total, err
-}
-
-// SetIncidentStatus (dispatcher) moves the incident one step along
-// accepted → in_progress → verifying → done; entering verifying asks subscribers to confirm.
-func (s *Service) SetIncidentStatus(ctx context.Context, incidentID, userID int64, statusStr string) (IncidentRow, error) {
-	to := domain.IncidentStatus(statusStr)
-	if !to.Valid() {
-		return IncidentRow{}, ErrInvalidInput
-	}
-	from, err := s.repo.FindIncidentStatus(ctx, incidentID)
-	if err != nil {
-		return IncidentRow{}, err
-	}
-	if !domain.CanTransition(from, to) {
-		return IncidentRow{}, ErrInvalidStatus
-	}
-	kind, payload := "", repository.OutboxPayload{}
-	if to == domain.IncidentVerifying {
-		kind, payload = "incident_verifying", repository.OutboxPayload{Text: "УК сообщает, что проблема устранена. Подтвердите, пожалуйста, что всё работает."}
-	}
-	moved, err := s.repo.TransitionIncident(ctx, incidentID, from, to, kind, payload)
-	if err != nil {
-		return IncidentRow{}, err
-	}
-	if !moved {
-		return IncidentRow{}, ErrInvalidStatus
-	}
-	return s.GetIncident(ctx, incidentID, userID)
 }
 
 // JoinIncident ("у меня тоже") is idempotent: joined is always true on success.

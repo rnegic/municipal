@@ -14,7 +14,7 @@ import (
 	"ukapp/internal/service"
 )
 
-// Middlewares are applied in reverse order: auth wraps dispatcher wraps handler.
+// Middlewares are applied in reverse order.
 // server implements oapi.StrictServerInterface. Handlers live in per-feature files
 // (users.go, incidents.go, events.go, uk.go).
 type server struct {
@@ -23,7 +23,7 @@ type server struct {
 
 func NewServer(svc *service.Service, botToken string) http.Handler {
 	srv := &server{svc: svc}
-	h := oapi.NewStrictHandlerWithOptions(srv, []oapi.StrictMiddlewareFunc{dispatcherMiddleware, authMiddleware(svc, botToken)}, oapi.StrictGinServerOptions{
+	h := oapi.NewStrictHandlerWithOptions(srv, []oapi.StrictMiddlewareFunc{authMiddleware(svc, botToken)}, oapi.StrictGinServerOptions{
 		RequestErrorHandlerFunc: func(c *gin.Context, err error) {
 			writeError(c.Writer, http.StatusBadRequest, "validation_failed", err.Error())
 		},
