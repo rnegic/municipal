@@ -1,4 +1,4 @@
-import { IconAlertTriangle } from '@/shared/assets/icons'
+import { ErrorIllustration } from '@/shared/assets/illustrations'
 import { commonTexts } from '@/shared/config/texts'
 import { describeApiError } from '@/shared/lib/api-error'
 import { Button } from '@/shared/ui/button'
@@ -17,7 +17,7 @@ export const ApiErrorState = ({ error, onRetry, className }: ApiErrorStateProps)
     <EmptyState
       className={className}
       tone="danger"
-      icon={<IconAlertTriangle size={24} />}
+      illustration={<ErrorIllustration />}
       title={title}
       description={description}
       action={

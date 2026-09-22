@@ -1,4 +1,6 @@
 export {
+  buildMiniAppLink,
+  buildShareDeepLink,
   expand,
   getInitData,
   getInitDataUnsafe,
@@ -6,6 +8,14 @@ export {
   getUser,
   getWebApp,
   isInsideMax,
+  openMaxLink,
   ready,
+  shareMaxContent,
 } from './webapp'
-export type { MaxWebAppApi, MaxWebAppInitData, MaxWebAppUser } from './types'
+export type {
+  MaxWebAppApi,
+  MaxWebAppChat,
+  MaxWebAppInitData,
+  MaxWebAppShareContentParams,
+  MaxWebAppUser,
+} from './types'

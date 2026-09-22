@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo } from 'react'
 
-import { IconAlertTriangle } from '@/shared/assets/icons'
+import { ErrorIllustration } from '@/shared/assets/illustrations'
 import { commonTexts } from '@/shared/config/texts'
 import { Button } from '@/shared/ui/button'
 import { EmptyState } from '@/shared/ui/empty-state'
@@ -36,7 +36,7 @@ class ErrorBoundary extends Component<ProviderWrapperProps, ErrorBoundaryState> 
       <PageLayout>
         <EmptyState
           tone="danger"
-          icon={<IconAlertTriangle size={24} />}
+          illustration={<ErrorIllustration />}
           title={commonTexts.errors.unexpectedTitle}
           description={commonTexts.errors.unexpectedDescription}
           action={

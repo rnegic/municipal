@@ -10,6 +10,17 @@
   text-align: center;
 }
 
+.illustration {
+  width: calc(var(--app-space-12) * 4);
+  max-width: 100%;
+}
+
+.illustration svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .icon {
   display: flex;
   align-items: center;
