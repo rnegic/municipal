@@ -13,7 +13,6 @@ import (
 	"time"
 )
 
-// MaxInitDataAge: initData is rejected once auth_date is older than this.
 const MaxInitDataAge = 24 * time.Hour
 
 type InitUser struct {
@@ -22,10 +21,6 @@ type InitUser struct {
 	LastName  string `json:"last_name"`
 }
 
-// ValidateInitData implements https://dev.max.ru/docs/webapps/validation:
-// secret = HMAC_SHA256(key="WebAppData", data=botToken)
-// check  = sorted "key=value" pairs (hash excluded, values url-decoded) joined by "\n"
-// hash   == hex(HMAC_SHA256(key=secret, data=check))
 func ValidateInitData(raw, botToken string) (InitUser, error) {
 	q, err := url.ParseQuery(raw)
 	if err != nil {

@@ -14,7 +14,6 @@ import (
 	. "ukapp/gen/db/ukapp/public/table"
 )
 
-// FindIncidentStatus returns ErrNotFound for a missing incident.
 func (s *Store) FindIncidentStatus(ctx context.Context, incidentID int64) (domain.IncidentStatus, error) {
 	var inc model.Incident
 	err := SELECT(Incident.Status).FROM(Incident).WHERE(Incident.ID.EQ(Int64(incidentID))).QueryContext(ctx, s.db, &inc)
@@ -27,7 +26,6 @@ func (s *Store) FindIncidentStatus(ctx context.Context, incidentID int64) (domai
 	return domain.IncidentStatus(inc.Status), nil
 }
 
-// UpsertConfirmation is idempotent; returns the (first or existing) confirmed_at.
 func (s *Store) UpsertConfirmation(ctx context.Context, incidentID, userID int64) (time.Time, error) {
 	var row model.IncidentConfirmation
 	err := IncidentConfirmation.INSERT(IncidentConfirmation.IncidentID, IncidentConfirmation.UserID).
@@ -46,9 +44,6 @@ func (s *Store) ConfirmationCount(ctx context.Context, incidentID int64) (int, e
 	return cnt.Count, err
 }
 
-// TransitionIncident atomically moves the incident from → to (done also stamps resolved_at)
-// and, when kind != "", enqueues the notification to subscribers in the same transaction.
-// moved=false if the incident wasn't in `from` any more (racing confirmation/dispatcher).
 func (s *Store) TransitionIncident(ctx context.Context, incidentID int64, from, to domain.IncidentStatus, kind string, payload OutboxPayload) (moved bool, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

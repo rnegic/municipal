@@ -14,7 +14,6 @@ import (
 	. "ukapp/gen/db/ukapp/public/table"
 )
 
-// UpsertUser creates the user on first visit; on later visits refreshes the name from MAX.
 func (s *Store) UpsertUser(ctx context.Context, iu domain.InitUser) (model.AppUser, error) {
 	name := strings.TrimSpace(iu.FirstName + " " + iu.LastName)
 	var u model.AppUser
@@ -26,7 +25,6 @@ func (s *Store) UpsertUser(ctx context.Context, iu domain.InitUser) (model.AppUs
 	return u, err
 }
 
-// UpsertUk creates or renames the organization by its id in the UK system.
 func (s *Store) UpsertUk(ctx context.Context, externalID, name string) (int64, error) {
 	var u model.Uk
 	err := Uk.INSERT(Uk.ExternalID, Uk.Name).
@@ -37,8 +35,6 @@ func (s *Store) UpsertUk(ctx context.Context, externalID, name string) (int64, e
 	return u.ID, err
 }
 
-// BindHouse upserts the house by FIAS id (two residents of one building share a row)
-// and attaches it to the user. uk_id/external_id come from the UK system (UkProvider.FindHouse).
 func (s *Store) BindHouse(ctx context.Context, userID int64, addressRaw, houseFiasID string, ukID int64, houseExternalID string) (int64, error) {
 	var h model.House
 	err := House.INSERT(House.AddressRaw, House.HouseFiasID, House.UkID, House.ExternalID).
@@ -57,7 +53,6 @@ func (s *Store) BindHouse(ctx context.Context, userID int64, addressRaw, houseFi
 	return h.ID, err
 }
 
-// FindHouse returns ErrNotFound for a missing house.
 func (s *Store) FindHouse(ctx context.Context, id int64) (model.House, error) {
 	var h model.House
 	err := SELECT(House.ID, House.AddressRaw, House.UkID).FROM(House).WHERE(House.ID.EQ(Int64(id))).QueryContext(ctx, s.db, &h)

@@ -13,7 +13,6 @@ type HouseStats struct {
 	LastIncidentAt     *time.Time
 }
 
-// HouseStats aggregates the house's incidents in one scan.
 func (s *Store) HouseStats(ctx context.Context, houseID int64) (HouseStats, error) {
 	var st HouseStats
 	err := s.db.QueryRowContext(ctx, `

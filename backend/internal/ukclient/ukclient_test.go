@@ -59,9 +59,7 @@ func fakeUkServer(t *testing.T) *httptest.Server {
 		}
 		_, _ = w.Write([]byte(`{"id":"INC-001","externalRef":"7","status":"done","updatedAt":"2026-09-19T10:06:00Z"}`))
 	}))
-	// gen/uk only parses JSON200/JSON201/... when the response Content-Type contains
-	// "json" (see ParseFindHouseResponse etc.) — httptest's default sniffed type is
-	// text/plain, so set it explicitly here rather than in every handler.
+
 	withJSON := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		mux.ServeHTTP(w, r)
@@ -83,9 +81,6 @@ func TestFindHouse(t *testing.T) {
 	}
 }
 
-// TestFindHouse_200WithoutJSONBody guards against a real UK system (misconfigured proxy,
-// stripped headers, ...) returning 2xx with a Content-Type gen/uk doesn't parse as JSON:
-// resp.JSON200 stays nil there, and the adapter must return an error instead of panicking.
 func TestFindHouse_200WithoutJSONBody(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /houses/{fias}", func(w http.ResponseWriter, r *http.Request) {

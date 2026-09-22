@@ -16,11 +16,8 @@ import (
 
 type ctxKey struct{}
 
-// publicOps are operations served without initData (see openapi.yaml `security: []`).
 var publicOps = map[string]bool{"Health": true, "GetPhoto": true}
 
-// authMiddleware validates `Authorization: tma <initData>`, upserts the user and puts
-// model.AppUser into the request context. Writes 401 itself and returns (nil, nil) on failure.
 func authMiddleware(svc *service.Service, botToken string) oapi.StrictMiddlewareFunc {
 	return func(next oapi.StrictHandlerFunc, opID string) oapi.StrictHandlerFunc {
 		if publicOps[opID] {
@@ -41,9 +38,7 @@ func authMiddleware(svc *service.Service, botToken string) oapi.StrictMiddleware
 			if err != nil {
 				return nil, err
 			}
-			// StrictServerInterface handlers receive *gin.Context as context.Context (it
-			// implements the interface); its Value() falls through to the request's context
-			// for non-string keys, so the user must live there, not in gin's own key/value store.
+
 			c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), ctxKey{}, u))
 			return next(c, req)
 		}

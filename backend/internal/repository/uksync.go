@@ -13,13 +13,11 @@ import (
 	. "ukapp/gen/db/ukapp/public/table"
 )
 
-// UnregisteredRow = incident + house.external_id; alias must match the field name.
 type UnregisteredRow struct {
 	model.Incident
 	HouseExternalID *string
 }
 
-// UnregisteredIncidents returns incidents not yet known to the UK system, oldest first.
 func (s *Store) UnregisteredIncidents(ctx context.Context, limit int64) ([]UnregisteredRow, error) {
 	var rows []UnregisteredRow
 	err := SELECT(Incident.AllColumns, House.ExternalID.AS("unregistered_row.house_external_id")).
@@ -36,9 +34,6 @@ func (s *Store) SetIncidentExternalID(ctx context.Context, id int64, externalID 
 	return err
 }
 
-// ApplyUkStatus applies a status reported by the UK system and enqueues the push to
-// subscribers in the same transaction. changed=false when the incident is unknown, already
-// in that status, or already done (residents' verdict is final).
 func (s *Store) ApplyUkStatus(ctx context.Context, externalID string, status domain.IncidentStatus, kind string, payload OutboxPayload) (bool, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

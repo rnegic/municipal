@@ -9,7 +9,6 @@ gen-api:
 	go tool oapi-codegen -config oapi-codegen.yaml openapi.yaml
 	go tool oapi-codegen -config oapi-codegen-uk.yaml contracts/uk.yaml
 
-# ponytail: schema.sql — CREATE IF NOT EXISTS без миграций; локальную БД пересоздаём целиком.
 gen-db: db
 	psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -q -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 	psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -q -f internal/repository/schema.sql

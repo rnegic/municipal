@@ -9,9 +9,6 @@ import (
 	"ukapp/internal/repository"
 )
 
-// ConfirmIncident records the resident's "починили" confirmation. Only allowed while the
-// incident is verifying (ErrInvalidStatus otherwise). Once enough residents confirmed
-// (domain.ShouldClose), the incident is atomically closed and subscribers notified.
 func (s *Service) ConfirmIncident(ctx context.Context, incidentID, userID int64) (domain.IncidentStatus, time.Time, error) {
 	status, err := s.repo.FindIncidentStatus(ctx, incidentID)
 	if err != nil {
@@ -43,7 +40,7 @@ func (s *Service) ConfirmIncident(ctx context.Context, incidentID, userID int64)
 	if !closed {
 		return domain.IncidentVerifying, confirmedAt, nil
 	}
-	// ponytail: best effort, без реконсиляции; воркер done в УК не досылает.
+
 	if r, err := s.repo.GetIncident(ctx, incidentID, userID); err != nil {
 		slog.Warn("uk: set done skipped, incident lookup failed", "incident", incidentID, "err", err)
 	} else if r.ExternalID != nil {

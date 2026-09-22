@@ -73,7 +73,7 @@ func outboxCount(t *testing.T, s *repository.Store, status string) int {
 
 func TestOutboxWorker_DeliversAndRetries(t *testing.T) {
 	repo := testStore(t)
-	maxc, sent := fakeMax(t, 1) // first call fails, then succeeds
+	maxc, sent := fakeMax(t, 1)
 	svc := New(repo, maxc, nil, nil, "testbot")
 	ctx := context.Background()
 
@@ -97,7 +97,6 @@ func TestOutboxWorker_DeliversAndRetries(t *testing.T) {
 
 	deadline := time.Now().Add(7 * time.Second)
 	for time.Now().Before(deadline) && outboxCount(t, repo, "sent") < 2 {
-		// make retry immediate for the test
 		_, _ = repo.DB().ExecContext(ctx, `UPDATE outbox_message SET next_attempt_at = now() WHERE status='pending'`)
 		time.Sleep(200 * time.Millisecond)
 	}

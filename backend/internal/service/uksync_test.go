@@ -50,7 +50,6 @@ func (f *fakeUk) SetStatus(_ context.Context, id string, st domain.IncidentStatu
 	return nil
 }
 
-// seedResidentWithIncident: one UK, one house, one resident, one incident (via repo, no HTTP).
 func seedResidentWithIncident(t *testing.T, s *repository.Store, maxID int64) (incidentID, userID int64) {
 	t.Helper()
 	ctx := context.Background()
@@ -146,7 +145,7 @@ func TestSyncStatuses_AppliesOnceAndNotifies(t *testing.T) {
 	if n := outboxCount(t, s, "pending"); n != 1 {
 		t.Fatalf("want 1 push to the reporter, got %d", n)
 	}
-	// same update again → no-op, no duplicate push
+
 	if err := svc.syncStatuses(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +185,7 @@ func TestConfirm_PushesDoneToUk(t *testing.T) {
 	if err := svc.syncUnregistered(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	// second subscriber so MinConfirmations=2 is reachable
+
 	u2, err := s.UpsertUser(context.Background(), domain.InitUser{ID: 6, FirstName: "S"})
 	if err != nil {
 		t.Fatal(err)
@@ -234,7 +233,6 @@ func TestSyncStatuses_CursorNotAdvancedOnError(t *testing.T) {
 		t.Fatalf("cursor must advance to last update on success, want %v got %v", t2, svc.ukSince)
 	}
 
-	// accepted (and other unannounced statuses) must still advance the cursor.
 	t3 := t2.Add(time.Minute)
 	uk.updates = []UkIncidentUpdate{{ID: "INC-nope", ExternalRef: "999", Status: domain.IncidentAccepted, UpdatedAt: t3}}
 	if err := svc.syncStatuses(context.Background()); err != nil {

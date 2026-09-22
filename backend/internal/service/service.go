@@ -1,5 +1,3 @@
-// Package service — бизнес-оркестрация: применяет domain-правила поверх repository и внешних
-// клиентов (MAX, DaData, UkProvider). Ничего не знает про HTTP/JSON — ни oapi, ни net/http сюда не попадают.
 package service
 
 import (

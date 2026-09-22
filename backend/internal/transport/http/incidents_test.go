@@ -48,7 +48,7 @@ func TestIncidents_DedupAndJoin(t *testing.T) {
 	if code != 200 || inc2.Id != inc1.Id {
 		t.Fatalf("same house+title must merge: code=%d id2=%s", code, inc2.Id)
 	}
-	// dedup'd report shows up in the joiner's "мои заявки"
+
 	w0 := httptest.NewRecorder()
 	srv.ServeHTTP(w0, authedReq(t, "GET", "/api/houses/"+h10+"/requests", "", 2, "U"))
 	var mine struct{ Items []struct{ Id string } }
@@ -65,7 +65,6 @@ func TestIncidents_DedupAndJoin(t *testing.T) {
 		t.Fatal("different house must not merge")
 	}
 
-	// active list for house f-10: critical first, then createdAt desc
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "GET", "/api/houses/"+h10+"/incidents?status=active", "", 1, "U"))
 	if w.Code != 200 {
@@ -92,7 +91,6 @@ func TestIncidents_DedupAndJoin(t *testing.T) {
 		}
 	}
 
-	// join ("у меня тоже") is idempotent
 	for i := 0; i < 2; i++ {
 		w = httptest.NewRecorder()
 		srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents/"+inc3.Id+"/join", "", 1, "U"))
@@ -109,7 +107,6 @@ func TestIncidents_DedupAndJoin(t *testing.T) {
 		}
 	}
 
-	// join of a missing incident → 404
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents/inc_999999/join", "", 1, "U"))
 	if w.Code != 404 {
@@ -164,7 +161,6 @@ func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 		t.Fatalf("join: %d", w.Code)
 	}
 
-	// not verifying yet → 422
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents/"+inc.Id+"/confirm", "", 1, "U"))
 	if w.Code != 422 {
@@ -174,7 +170,6 @@ func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 	incID, _ := parseID("inc_", inc.Id)
 	setVerifying(t, s, incID)
 
-	// 1 of 2 confirmations (50%, but under MinConfirmations=2) → stays verifying
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents/"+inc.Id+"/confirm", "", 1, "U"))
 	if w.Code != 200 {
@@ -186,7 +181,6 @@ func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 		t.Fatalf("want still verifying, got %s", cr.Status)
 	}
 
-	// 2 of 2 confirmations → done
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents/"+inc.Id+"/confirm", "", 2, "U"))
 	if w.Code != 200 {
@@ -200,7 +194,6 @@ func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 		t.Fatalf("db status: %s", st)
 	}
 
-	// idempotent repeat
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents/"+inc.Id+"/confirm", "", 1, "U"))
 	if w.Code != 422 {
@@ -240,7 +233,6 @@ func TestSetIncidentStatus_DispatcherTransitionsAndNotifies(t *testing.T) {
 		return w.Code
 	}
 
-	// skipping straight to verifying from accepted is not allowed
 	if code := setStatus("verifying"); code != 422 {
 		t.Fatalf("out-of-order transition: want 422 got %d", code)
 	}
@@ -255,7 +247,6 @@ func TestSetIncidentStatus_DispatcherTransitionsAndNotifies(t *testing.T) {
 		t.Fatalf("db status: %s", st)
 	}
 
-	// repeating a transition once past it is rejected (from no longer matches)
 	if code := setStatus("in_progress"); code != 422 {
 		t.Fatalf("repeat transition: want 422 got %d", code)
 	}
@@ -302,7 +293,6 @@ func TestListHouseRequests_Paginated(t *testing.T) {
 		t.Fatalf("bad page: %+v", page)
 	}
 	for _, it := range page.Items {
-		// id is the incident id (usable with /confirm), dueAt = createdAt + SLA(warning)=24h
 		if !strings.HasPrefix(it.Id, "inc_") || it.DueAt == nil || !it.DueAt.Equal(it.CreatedAt.Add(24*time.Hour)) || it.ConfirmedByMe == nil {
 			t.Fatalf("bad item: %+v", it)
 		}

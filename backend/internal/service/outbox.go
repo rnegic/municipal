@@ -11,11 +11,10 @@ import (
 
 const (
 	outboxTick        = 2 * time.Second
-	outboxBatch       = 25 // < 30 rps limit of MAX Bot API
+	outboxBatch       = 25
 	outboxMaxAttempts = 5
 )
 
-// ponytail: single in-process worker, no leader election. Run one api replica or accept duplicate sends.
 func (s *Service) RunOutboxWorker(ctx context.Context) {
 	t := time.NewTicker(outboxTick)
 	defer t.Stop()

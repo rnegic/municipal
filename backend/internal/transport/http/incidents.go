@@ -27,7 +27,7 @@ func toPhoto(id int64) oapi.Photo {
 }
 
 func toPhotos(ids []int64) []oapi.Photo {
-	photos := make([]oapi.Photo, len(ids)) // non-nil: "photos": [] rather than null
+	photos := make([]oapi.Photo, len(ids))
 	for i, id := range ids {
 		photos[i] = toPhoto(id)
 	}
@@ -164,7 +164,6 @@ func (s *server) ListHouseRequests(ctx context.Context, req oapi.ListHouseReques
 
 const maxPhotoBytes = 10 << 20
 
-// UploadIncidentPhoto reads the `photo` part (≤10 МБ, jpeg/png by content sniffing, not by header).
 func (s *server) UploadIncidentPhoto(ctx context.Context, req oapi.UploadIncidentPhotoRequestObject) (oapi.UploadIncidentPhotoResponseObject, error) {
 	id, ok := parseID("inc_", req.Id)
 	if !ok {

@@ -1,5 +1,3 @@
-// Package domain — чистая доменная логика: дедуп, порог подтверждения «починили».
-// Без I/O: принимает данные, возвращает решение.
 package domain
 
 import "time"
@@ -28,7 +26,6 @@ const (
 	IncidentDone       IncidentStatus = "done"
 )
 
-// SLA per severity: dueAt = createdAt + SLA. ponytail: стартовые значения, согласовать с продуктом.
 var sla = map[Severity]time.Duration{SeverityCritical: 4 * time.Hour, SeverityWarning: 24 * time.Hour}
 
 func SLA(sev Severity) time.Duration { return sla[sev] }
@@ -44,8 +41,6 @@ type OpenIncident struct {
 	CreatedAt time.Time
 }
 
-// FindDuplicate returns the id of an open incident a new report should join, or 0:
-// same house, same title and riser, still open (accepted/in_progress), opened within DedupWindow.
 func FindDuplicate(houseID int64, title string, riser *string, now time.Time, open []OpenIncident) int64 {
 	for _, inc := range open {
 		if inc.HouseID != houseID || inc.Title != title || !sameRiser(inc.Riser, riser) {
@@ -61,15 +56,12 @@ func FindDuplicate(houseID int64, title string, riser *string, now time.Time, op
 	return 0
 }
 
-// dispatcherFrom is the required current status for a dispatcher-requested transition to `to`.
 var dispatcherFrom = map[IncidentStatus]IncidentStatus{
 	IncidentInProgress: IncidentAccepted,
 	IncidentVerifying:  IncidentInProgress,
 	IncidentDone:       IncidentVerifying,
 }
 
-// DispatcherTransition returns the required current status for a dispatcher setting the
-// incident to `to`, and false if `to` isn't a valid dispatcher-driven target.
 func DispatcherTransition(to IncidentStatus) (from IncidentStatus, ok bool) {
 	from, ok = dispatcherFrom[to]
 	return from, ok
