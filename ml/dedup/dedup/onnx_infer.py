@@ -9,7 +9,7 @@ from dedup.data import FORMATS
 
 
 class OnnxDeduper:
-    def __init__(self, bundle, model_file="model.int8.onnx", threads=2):
+    def __init__(self, bundle, model_file="model.onnx", threads=2):
         bundle = Path(bundle)
         self.meta = json.loads((bundle / "bundle.json").read_text())
         thr = json.loads((bundle / "threshold.json").read_text())

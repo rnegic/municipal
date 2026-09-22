@@ -61,7 +61,7 @@ curl -s localhost:8090/score -d '{"request_a":{"title":"Нет горячей в
 
 Ответ: `{"duplicate_probability": …, "decision": …, "model_version": …, "threshold": …}`.
 `POST /match` принимает `{request, candidates[]}` и возвращает лучшего кандидата выше порога.
-Скор симметричный: среднее по порядкам (A,B) и (B,A).
+Скор симметричный: среднее по порядкам (A,B) и (B,A). По умолчанию используется `model.onnx` (fp32); `model.int8.onnx` не прошёл сверку с PyTorch (см. `export_check.json`).
 
 Из Python:
 

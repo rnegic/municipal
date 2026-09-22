@@ -1,5 +1,6 @@
 import argparse
 import csv
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 from itertools import combinations
@@ -13,10 +14,11 @@ CANDIDATE_COLUMNS = ["pair_id", "house_id", "report_a", "report_b", "incident_a"
 
 
 def parse_ts(s):
-    s = s.strip().replace(" ", "T")
-    if len(s) > 3 and s[-3] in "+-" and s[-3:].replace("+", "").replace("-", "").isdigit():
-        s += ":00"
-    return datetime.fromisoformat(s)
+    m = re.fullmatch(r"(\d{4}-\d\d-\d\d)[ T](\d\d:\d\d:\d\d)(?:\.(\d+))?([+-]\d\d)(?::?(\d\d))?", s.strip())
+    if not m:
+        raise ValueError(f"bad timestamp: {s!r}")
+    date, time, frac, tz_h, tz_m = m.groups()
+    return datetime.fromisoformat(f"{date}T{time}.{(frac or '0')[:6].ljust(6, '0')}{tz_h}:{tz_m or '00'}")
 
 
 def load(path):
