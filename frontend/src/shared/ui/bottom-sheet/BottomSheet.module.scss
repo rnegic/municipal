@@ -1,10 +1,25 @@
 .root {
   position: fixed;
-  z-index: 10;
   inset: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+
+  &[open] {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  &::backdrop {
+    background: transparent;
+  }
 }
 
 .backdrop {
