@@ -1,12 +1,15 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"ukapp/internal/repository"
 )
 
 type incidentResp struct {
@@ -202,6 +205,69 @@ func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 	srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents/"+inc.Id+"/confirm", "", 1, "U"))
 	if w.Code != 422 {
 		t.Fatalf("confirm on a done incident: want 422 got %d", w.Code)
+	}
+}
+
+func outboxTexts(t *testing.T, s *repository.Store) []string {
+	t.Helper()
+	rows, err := s.DB().QueryContext(context.Background(), `SELECT payload FROM outbox_message ORDER BY id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var texts []string
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			t.Fatal(err)
+		}
+		var p struct{ Text string }
+		_ = json.Unmarshal([]byte(raw), &p)
+		texts = append(texts, p.Text)
+	}
+	return texts
+}
+
+func TestSetIncidentStatus_DispatcherTransitionsAndNotifies(t *testing.T) {
+	s := testStore(t)
+	srv := newTestServer(t, s)
+	bindUser(t, srv, 1, "f-10")
+	inc, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical"}`)
+
+	setStatus := func(status string) int {
+		w := httptest.NewRecorder()
+		srv.ServeHTTP(w, authedReq(t, "PATCH", "/api/incidents/"+inc.Id+"/status", `{"status":"`+status+`"}`, 1, "U"))
+		return w.Code
+	}
+
+	// skipping straight to verifying from accepted is not allowed
+	if code := setStatus("verifying"); code != 422 {
+		t.Fatalf("out-of-order transition: want 422 got %d", code)
+	}
+
+	for _, status := range []string{"in_progress", "verifying", "done"} {
+		if code := setStatus(status); code != 200 {
+			t.Fatalf("transition to %s: want 200 got %d", status, code)
+		}
+	}
+	incID, _ := parseID("inc_", inc.Id)
+	if st := incidentStatus(t, s, incID); st != "done" {
+		t.Fatalf("db status: %s", st)
+	}
+
+	// repeating a transition once past it is rejected (from no longer matches)
+	if code := setStatus("in_progress"); code != 422 {
+		t.Fatalf("repeat transition: want 422 got %d", code)
+	}
+
+	texts := outboxTexts(t, s)
+	if len(texts) != 3 {
+		t.Fatalf("want 3 pushes, got %d: %v", len(texts), texts)
+	}
+	for _, text := range texts {
+		if !strings.Contains(text, "https://max.ru/testbot?startapp="+inc.Id) {
+			t.Fatalf("push missing deeplink: %q", text)
+		}
 	}
 }
 

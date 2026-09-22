@@ -61,6 +61,20 @@ func FindDuplicate(houseID int64, title string, riser *string, now time.Time, op
 	return 0
 }
 
+// dispatcherFrom is the required current status for a dispatcher-requested transition to `to`.
+var dispatcherFrom = map[IncidentStatus]IncidentStatus{
+	IncidentInProgress: IncidentAccepted,
+	IncidentVerifying:  IncidentInProgress,
+	IncidentDone:       IncidentVerifying,
+}
+
+// DispatcherTransition returns the required current status for a dispatcher setting the
+// incident to `to`, and false if `to` isn't a valid dispatcher-driven target.
+func DispatcherTransition(to IncidentStatus) (from IncidentStatus, ok bool) {
+	from, ok = dispatcherFrom[to]
+	return from, ok
+}
+
 func sameRiser(a, b *string) bool {
 	if a == nil || b == nil {
 		return a == b

@@ -24,9 +24,10 @@ type Service struct {
 	maxc    *maxclient.Client
 	dd      *dadata.Client
 	uk      UkProvider
+	botName string
 	ukSince time.Time
 }
 
-func New(repo *repository.Store, maxc *maxclient.Client, dd *dadata.Client, uk UkProvider) *Service {
-	return &Service{repo: repo, maxc: maxc, dd: dd, uk: uk}
+func New(repo *repository.Store, maxc *maxclient.Client, dd *dadata.Client, uk UkProvider, botName string) *Service {
+	return &Service{repo: repo, maxc: maxc, dd: dd, uk: uk, botName: botName}
 }

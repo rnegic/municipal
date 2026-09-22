@@ -190,6 +190,27 @@ paths:
         "404": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
 
+  /api/incidents/{id}/status:
+    patch:
+      operationId: setIncidentStatus
+      tags: [incidents]
+      summary: Смена статуса диспетчером УК (accepted→in_progress, in_progress→verifying, verifying→done)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetIncidentStatusRequest" }
+      responses:
+        "200":
+          description: Авария с новым статусом
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Incident" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+
   /api/incidents/{id}/photos:
     post:
       operationId: uploadIncidentPhoto
@@ -370,6 +391,12 @@ components:
         severity: { $ref: "#/components/schemas/Severity" }
         entrance: { type: string }
         riser: { type: string }
+
+    SetIncidentStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/IncidentStatus" }
 
     JoinResponse:
       type: object

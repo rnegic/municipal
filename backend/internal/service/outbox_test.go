@@ -74,7 +74,7 @@ func outboxCount(t *testing.T, s *repository.Store, status string) int {
 func TestOutboxWorker_DeliversAndRetries(t *testing.T) {
 	repo := testStore(t)
 	maxc, sent := fakeMax(t, 1) // first call fails, then succeeds
-	svc := New(repo, maxc, nil, nil)
+	svc := New(repo, maxc, nil, nil, "testbot")
 	ctx := context.Background()
 
 	tx, err := repo.DB().BeginTx(ctx, nil)

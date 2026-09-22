@@ -104,7 +104,7 @@ func (f *fakeUk) SetStatus(_ context.Context, id string, st domain.IncidentStatu
 
 func newTestServer(t *testing.T, repo *repository.Store) http.Handler {
 	t.Helper()
-	return NewServer(service.New(repo, nil, fakeDadata(t), &fakeUk{}), testBotToken)
+	return NewServer(service.New(repo, nil, fakeDadata(t), &fakeUk{}, "testbot"), testBotToken)
 }
 
 func itoa(n int64) string              { return strconv.FormatInt(n, 10) }

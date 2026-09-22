@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	oapi "ukapp/gen/api"
+	"ukapp/internal/domain"
 	"ukapp/internal/service"
 )
 
@@ -97,6 +98,24 @@ func (s *server) ConfirmIncident(ctx context.Context, req oapi.ConfirmIncidentRe
 		return nil, err
 	}
 	return oapi.ConfirmIncident200JSONResponse{IncidentId: req.Id, Status: oapi.IncidentStatus(status), ConfirmedAt: confirmedAt}, nil
+}
+
+func (s *server) SetIncidentStatus(ctx context.Context, req oapi.SetIncidentStatusRequestObject) (oapi.SetIncidentStatusResponseObject, error) {
+	id, ok := parseID("inc_", req.Id)
+	if !ok {
+		return oapi.SetIncidentStatus404JSONResponse(apiErr("not_found", "авария не найдена")), nil
+	}
+	row, err := s.svc.SetIncidentStatus(ctx, id, userFromCtx(ctx).ID, domain.IncidentStatus(req.Body.Status))
+	if errors.Is(err, service.ErrNotFound) {
+		return oapi.SetIncidentStatus404JSONResponse(apiErr("not_found", "авария не найдена")), nil
+	}
+	if errors.Is(err, service.ErrInvalidStatus) {
+		return oapi.SetIncidentStatus422JSONResponse(apiErr("business_rule_failed", "недопустимый переход статуса")), nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return oapi.SetIncidentStatus200JSONResponse(toIncident(row)), nil
 }
 
 func (s *server) ListHouseIncidents(ctx context.Context, req oapi.ListHouseIncidentsRequestObject) (oapi.ListHouseIncidentsResponseObject, error) {

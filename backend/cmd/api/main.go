@@ -25,7 +25,7 @@ func main() {
 
 	botToken := os.Getenv("MAX_BOT_TOKEN")
 	svc := service.New(repo, maxclient.NewClient(botToken), dadata.NewClient(os.Getenv("DADATA_TOKEN")),
-		ukclient.New(os.Getenv("UK_BASE_URL"), os.Getenv("UK_API_TOKEN")))
+		ukclient.New(os.Getenv("UK_BASE_URL"), os.Getenv("UK_API_TOKEN")), os.Getenv("MAX_BOT_NAME"))
 	go svc.RunOutboxWorker(ctx)
 	go svc.RunUkSyncWorker(ctx)
 

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -117,4 +118,28 @@ func (s *Service) JoinIncident(ctx context.Context, incidentID, userID int64) (a
 	}
 	n, err := s.repo.SubscriberCount(ctx, incidentID)
 	return n, true, err
+}
+
+// deepLink opens the mini-app directly on the incident's card.
+func (s *Service) deepLink(incidentID int64) string {
+	return fmt.Sprintf("https://max.ru/%s?startapp=inc_%d", s.botName, incidentID)
+}
+
+// SetIncidentStatus applies a dispatcher-driven status change (accepted→in_progress,
+// in_progress→verifying, verifying→done) and notifies subscribers by push. ErrInvalidStatus if
+// `to` isn't a valid dispatcher target or the incident isn't currently in the matching `from`.
+func (s *Service) SetIncidentStatus(ctx context.Context, incidentID, userID int64, to domain.IncidentStatus) (IncidentRow, error) {
+	from, ok := domain.DispatcherTransition(to)
+	if !ok {
+		return IncidentRow{}, ErrInvalidStatus
+	}
+	text := ukStatusText[to] + " " + s.deepLink(incidentID)
+	moved, err := s.repo.TransitionIncident(ctx, incidentID, from, to, "incident_"+string(to), repository.OutboxPayload{Text: text})
+	if err != nil {
+		return IncidentRow{}, err
+	}
+	if !moved {
+		return IncidentRow{}, ErrInvalidStatus
+	}
+	return s.GetIncident(ctx, incidentID, userID)
 }

@@ -85,7 +85,7 @@ func externalID(t *testing.T, s *repository.Store, id int64) *string {
 func TestSyncUnregistered_RegistersAndIsIdempotent(t *testing.T) {
 	s := testStore(t)
 	uk := &fakeUk{}
-	svc := New(s, nil, nil, uk)
+	svc := New(s, nil, nil, uk, "testbot")
 	incID, _ := seedResidentWithIncident(t, s, 1)
 	if ext := externalID(t, s, incID); ext != nil {
 		t.Fatalf("fresh incident must be unregistered, got %s", *ext)
@@ -108,7 +108,7 @@ func TestSyncUnregistered_RegistersAndIsIdempotent(t *testing.T) {
 func TestSyncUnregistered_UkDownLeavesNull(t *testing.T) {
 	s := testStore(t)
 	uk := &fakeUk{fail: true}
-	svc := New(s, nil, nil, uk)
+	svc := New(s, nil, nil, uk, "testbot")
 	incID, _ := seedResidentWithIncident(t, s, 2)
 	if err := svc.syncUnregistered(context.Background()); err == nil {
 		t.Fatal("want error when uk is down")
@@ -130,7 +130,7 @@ func status(t *testing.T, s *repository.Store, id int64) string {
 func TestSyncStatuses_AppliesOnceAndNotifies(t *testing.T) {
 	s := testStore(t)
 	uk := &fakeUk{}
-	svc := New(s, nil, nil, uk)
+	svc := New(s, nil, nil, uk, "testbot")
 	incID, _ := seedResidentWithIncident(t, s, 3)
 	if err := svc.syncUnregistered(context.Background()); err != nil {
 		t.Fatal(err)
@@ -158,7 +158,7 @@ func TestSyncStatuses_AppliesOnceAndNotifies(t *testing.T) {
 func TestSyncStatuses_DoneIsFinal(t *testing.T) {
 	s := testStore(t)
 	uk := &fakeUk{}
-	svc := New(s, nil, nil, uk)
+	svc := New(s, nil, nil, uk, "testbot")
 	incID, _ := seedResidentWithIncident(t, s, 4)
 	if err := svc.syncUnregistered(context.Background()); err != nil {
 		t.Fatal(err)
@@ -181,7 +181,7 @@ func TestSyncStatuses_DoneIsFinal(t *testing.T) {
 func TestConfirm_PushesDoneToUk(t *testing.T) {
 	s := testStore(t)
 	uk := &fakeUk{}
-	svc := New(s, nil, nil, uk)
+	svc := New(s, nil, nil, uk, "testbot")
 	incID, userID := seedResidentWithIncident(t, s, 5)
 	if err := svc.syncUnregistered(context.Background()); err != nil {
 		t.Fatal(err)
@@ -212,7 +212,7 @@ func TestConfirm_PushesDoneToUk(t *testing.T) {
 func TestSyncStatuses_CursorNotAdvancedOnError(t *testing.T) {
 	s := testStore(t)
 	uk := &fakeUk{}
-	svc := New(s, nil, nil, uk)
+	svc := New(s, nil, nil, uk, "testbot")
 
 	someTime := time.Now().Add(-time.Hour)
 	svc.ukSince = someTime
