@@ -7,7 +7,7 @@ from itertools import combinations
 
 from dedup.vocab import ENTRANCE_OBJECTS, OBJECTS, PLUMBING, WATER_KEYWORD_OBJECTS
 
-GENERATION_METHOD = "template_v1"
+GENERATION_METHOD = "template_v2"
 SALIENT = {"diff_entrance": "entrance", "diff_riser": "riser", "diff_apartment": "apartment"}
 
 
@@ -40,7 +40,25 @@ class Scene:
             loc["apartment"], loc["floor"] = apt, floor
         return loc
 
+    def overlaps(self, obj, problem, loc):
+        for x in self.incidents:
+            if x["object"] != obj or x["problem"] != problem:
+                continue
+            if "house" in (x["scope"], loc["scope"]):
+                return True
+            if "entrance" in (x["scope"], loc["scope"]):
+                if x["entrance"] == loc["entrance"]:
+                    return True
+            elif "riser" in (x["scope"], loc["scope"]):
+                if x["riser"] == loc["riser"]:
+                    return True
+            elif x["apartment"] == loc["apartment"]:
+                return True
+        return False
+
     def add(self, obj, problem, loc, t):
+        if self.overlaps(obj, problem, loc):
+            return None
         inc = {"id": f"{self.id}-i{len(self.incidents)}", "object": obj, "problem": problem, "t": t, **loc}
         self.incidents.append(inc)
         return inc
@@ -52,7 +70,14 @@ class Scene:
         problem = rng.choice(list(spec["problems"]))
         scope = rng.choice(spec["scopes"])
         t = self.t0 + timedelta(minutes=rng.randint(0, 60 * 24 * 7))
-        return self.add(obj, problem, self.random_location(scope), t)
+        for _ in range(20):
+            inc = self.add(obj, problem, self.random_location(scope), t)
+            if inc:
+                return inc
+            obj = rng.choice(list(OBJECTS))
+            problem = rng.choice(list(OBJECTS[obj]["problems"]))
+            scope = rng.choice(OBJECTS[obj]["scopes"])
+        return None
 
     def sibling(self, base):
         rng = self.rng
@@ -104,6 +129,8 @@ class Scene:
             loc2 = {**self.random_location(OBJECTS[o2]["scopes"][0]), **({"entrance": loc2["entrance"]} if loc2.get("entrance") and "entrance" in OBJECTS[o2]["scopes"] else {})}
         t = base["t"] + timedelta(minutes=rng.randint(-60 * 24, 60 * 24))
         sib = self.add(o2, p2, loc2, t)
+        if sib is None:
+            return None
         self.relations[(base["id"], sib["id"])] = cls
         if cls in SALIENT:
             base["salient"] = sib["salient"] = SALIENT[cls]
@@ -189,6 +216,8 @@ def build_scene(rng, idx):
     scene = Scene(rng, f"syn{idx:05d}")
     for _ in range(rng.randint(3, 6)):
         base = scene.base_incident()
+        if base is None:
+            continue
         for _ in range(rng.choices([0, 1, 2], [0.3, 0.5, 0.2])[0]):
             scene.sibling(base)
     reports = []
@@ -234,7 +263,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scenes", type=int, default=1500)
     ap.add_argument("--seed", type=int, default=13)
-    ap.add_argument("--out", default="data/raw/synthetic_template_v1.jsonl.gz")
+    ap.add_argument("--out", default="data/raw/synthetic_template_v2.jsonl.gz")
     args = ap.parse_args()
     rng = random.Random(args.seed)
     n = 0

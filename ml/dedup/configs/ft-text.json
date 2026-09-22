@@ -2,7 +2,7 @@
   "name": "ft-rubert-tiny2-text",
   "base_model": "cointegrated/rubert-tiny2",
   "format": "text",
-  "dataset_version": "ds-bfbffb9326",
+  "dataset_version": "ds-804d7f838a",
   "seed": 13,
   "epochs": 3,
   "batch_size": 32,
