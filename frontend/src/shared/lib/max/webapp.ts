@@ -22,6 +22,17 @@ export const getWebApp = (): MaxWebAppApi | null => {
 
 export const isInsideMax = (): boolean => getWebApp() !== null
 
+const LAUNCH_DATA_PARAM = 'WebAppData'
+
+/** MAX кладёт initData в hash (#WebAppData=…) — чистим его, иначе HashRouter примет его за маршрут */
+export const normalizeLaunchHash = (): void => {
+  if (typeof window === 'undefined' || !window.location.hash.includes(`${LAUNCH_DATA_PARAM}=`)) {
+    return
+  }
+
+  window.history.replaceState(null, '', `${window.location.href.split('#')[0]}#/`)
+}
+
 export const getInitData = (): string => getWebApp()?.initData ?? ''
 
 export const getInitDataUnsafe = (): MaxWebAppInitData => getWebApp()?.initDataUnsafe ?? {}

@@ -8,6 +8,7 @@ export {
   getUser,
   getWebApp,
   isInsideMax,
+  normalizeLaunchHash,
   openMaxLink,
   ready,
   shareMaxContent,
