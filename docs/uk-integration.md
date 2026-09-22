@@ -39,15 +39,20 @@
 
 ## Демо-дом
 
-В сиде `mock/uk/internal/store/seed.sql` один дом (`h-1`, «г Казань, ул Баумана, д 10») с
-плейсхолдером `fias_id = REPLACE-WITH-DADATA-HOUSE-FIAS-ID`. Пока он не заменён, любой
-`POST /api/houses/bind` отвечает `422` (система УК не знает дом). Перед демо:
+В сиде `mock/uk/internal/store/seed.sql` (и синхронизированном
+`backend/internal/repository/seed.sql`) один дом (`h-1`, «г Казань, ул Баумана, д 7/10»,
+`fias_id = c6f16fa1-aa2d-4507-bda5-d0ab2cc7a531`). Точного «д. 10» в ФИАС нет
+(`house_fias_id` у DaData для него `null`, только street-level) — поэтому демо-адрес
+сдвинут на ближайший реальный дом. Если меняете демо-адрес на другой:
 
-1. Получите `house_fias_id` демо-адреса из DaData (тот же запрос, что делает бэкенд:
+1. Получите его `house_fias_id` из DaData (тот же запрос, что делает бэкенд:
    `POST https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address` с
-   `{"query": "Казань, ул. Баумана, д. 10"}`, поле `data.house_fias_id`).
-2. Вставьте его в `seed.sql` вместо плейсхолдера.
-3. `docker compose restart mock-uk` — сид идемпотентен и обновит `fias_id` существующей строки.
+   `{"query": "<адрес>"}`, поле `data.house_fias_id` — если `null`, DaData не знает дом на
+   этом уровне, возьмите другой адрес или ближайший вариант из выдачи).
+2. Вставьте его в оба `seed.sql` вместо старого id.
+3. Закоммитьте и задеплойте (Actions → Deploy → Run workflow, или `gh workflow run deploy.yml`).
+   `seed.sql` вшивается в бинарь через `//go:embed` на этапе сборки — простой
+   `docker compose restart` на старом образе новый сид не подхватит, нужна пересборка.
 
 Полный сброс обеих баз: `docker compose down -v`. Учтите: `make gen-db` в `backend/`
 пересоздаёт только нашу БД, а mock-uk помнит `externalRef` старых инцидентов — после
