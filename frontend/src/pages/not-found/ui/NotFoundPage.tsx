@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 
-import { IconAlertTriangle } from '@/shared/assets/icons'
+import { ErrorIllustration } from '@/shared/assets/illustrations'
 import { ROUTES } from '@/shared/config/routes'
 import { commonTexts } from '@/shared/config/texts'
 import { Button } from '@/shared/ui/button'
@@ -10,7 +10,7 @@ import { PageLayout } from '@/shared/ui/page-layout'
 export const NotFoundPage = () => (
   <PageLayout>
     <EmptyState
-      icon={<IconAlertTriangle size={24} />}
+      illustration={<ErrorIllustration />}
       title={commonTexts.notFound.title}
       description={commonTexts.notFound.description}
       action={

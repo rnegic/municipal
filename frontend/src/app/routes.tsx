@@ -1,13 +1,17 @@
-import { lazy } from 'react'
+import { lazy, useEffect } from 'react'
 
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useNavigate } from 'react-router-dom'
 
 import { ROUTES } from '@/shared/config/routes'
+import { getStartParam } from '@/shared/lib/max'
 
 import { RequireAddress } from './providers/require-address'
 import { RequireRole } from './providers/require-role'
 
 const FeedPage = lazy(() => import('@/pages/feed').then((module) => ({ default: module.FeedPage })))
+const IncidentPage = lazy(() =>
+  import('@/pages/incident').then((module) => ({ default: module.IncidentPage })),
+)
 const IncidentCreatePage = lazy(() =>
   import('@/pages/incident-create').then((module) => ({ default: module.IncidentCreatePage })),
 )
@@ -19,28 +23,47 @@ const NotFoundPage = lazy(() =>
 )
 const UkPage = lazy(() => import('@/pages/uk').then((module) => ({ default: module.UkPage })))
 
-export const AppRoutes = () => (
-  <Routes>
-    <Route
-      path={ROUTES.feed}
-      element={
-        <RequireAddress>
-          <RequireRole role="resident">
-            <FeedPage />
+const INCIDENT_START_PARAM_PREFIX = 'inc_'
+
+const useIncidentDeepLink = () => {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const startParam = getStartParam()
+
+    if (startParam?.startsWith(INCIDENT_START_PARAM_PREFIX)) {
+      navigate(ROUTES.incident(startParam), { replace: true })
+    }
+  }, [navigate])
+}
+
+export const AppRoutes = () => {
+  useIncidentDeepLink()
+
+  return (
+    <Routes>
+      <Route
+        path={ROUTES.feed}
+        element={
+          <RequireAddress>
+            <RequireRole role="resident">
+              <FeedPage />
+            </RequireRole>
+          </RequireAddress>
+        }
+      />
+      <Route path={ROUTES.incidentCreate} element={<IncidentCreatePage />} />
+      <Route path={ROUTES.incident()} element={<IncidentPage />} />
+      <Route
+        path={ROUTES.dispatcher}
+        element={
+          <RequireRole role="dispatcher">
+            <UkPage />
           </RequireRole>
-        </RequireAddress>
-      }
-    />
-    <Route path={ROUTES.incidentCreate} element={<IncidentCreatePage />} />
-    <Route
-      path={ROUTES.dispatcher}
-      element={
-        <RequireRole role="dispatcher">
-          <UkPage />
-        </RequireRole>
-      }
-    />
-    <Route path={ROUTES.onboarding} element={<OnboardingPage />} />
-    <Route path="*" element={<NotFoundPage />} />
-  </Routes>
-)
+        }
+      />
+      <Route path={ROUTES.onboarding} element={<OnboardingPage />} />
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
+  )
+}

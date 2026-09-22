@@ -7,10 +7,23 @@ export interface MaxWebAppUser {
 }
 
 export interface MaxWebAppInitData {
+  query_id?: string
+  ip?: string
   user?: MaxWebAppUser
+  chat?: MaxWebAppChat
   start_param?: string
   auth_date?: number
   hash?: string
+}
+
+export interface MaxWebAppChat {
+  id: number
+  type: 'DIALOG' | 'CHAT' | 'CHANNEL'
+}
+
+export interface MaxWebAppShareContentParams {
+  text?: string
+  link?: string
 }
 
 export interface MaxWebAppApi {
@@ -20,4 +33,6 @@ export interface MaxWebAppApi {
   version?: string
   ready?: () => void
   expand?: () => void
+  openMaxLink?: (url: string) => void
+  shareMaxContent?: (params: MaxWebAppShareContentParams) => void | Promise<unknown>
 }

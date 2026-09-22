@@ -9,7 +9,9 @@ import {
 } from '@/entities/incident'
 import { IncidentConfirmButton } from '@/features/incident-confirm'
 import { IncidentJoinButton } from '@/features/incident-join'
-import { IconAlertTriangle, IconCheckCircle } from '@/shared/assets/icons'
+import { IncidentShareButton } from '@/features/incident-share'
+import { IconAlertTriangle } from '@/shared/assets/icons'
+import { AllOkIllustration } from '@/shared/assets/illustrations'
 import { cn } from '@/shared/lib/cn'
 import { Card } from '@/shared/ui/card'
 import { EmptyState } from '@/shared/ui/empty-state'
@@ -46,6 +48,7 @@ export const IncidentFocus = ({ incident, tone = 'default', className }: Inciden
           {incident.description}
         </Typography.Text>
         <IncidentPhotos photos={incident.photos} />
+        <IncidentShareButton incident={incident} />
         {incident.status === 'verifying' ? (
           <div className={s.footer}>
             <IncidentConfirmButton
@@ -66,9 +69,9 @@ export const IncidentFocus = ({ incident, tone = 'default', className }: Inciden
     ) : (
       <EmptyState
         tone={tone === 'inverse' ? 'inverse' : 'success'}
-        icon={<IconCheckCircle size={24} />}
-        title={incidentTexts.focus.houseOkTitle}
-        description={incidentTexts.focus.houseOkDescription}
+        illustration={<AllOkIllustration />}
+        title={incidentTexts.focus.houseOkEmptyTitle}
+        description={incidentTexts.focus.houseOkEmptyDescription}
       />
     )}
   </Section>

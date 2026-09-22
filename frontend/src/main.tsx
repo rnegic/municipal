@@ -2,7 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { App } from '@/app'
+import { normalizeLaunchHash } from '@/shared/lib/max'
 import '@/app/styles/index.scss'
+
+normalizeLaunchHash()
 
 const container = document.getElementById('root')
 

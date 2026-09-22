@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 import { Input, Typography } from '@maxhub/max-ui'
 
@@ -7,8 +7,9 @@ import { IconLocation } from '@/shared/assets/icons'
 import { describeApiError } from '@/shared/lib/api-error'
 import { BottomSheet } from '@/shared/ui/bottom-sheet'
 import { Button } from '@/shared/ui/button'
-import { useBindHouseMutation } from '../../api'
+import { useAddressSuggestionsQuery, useBindHouseMutation } from '../../api'
 import { addressBindTexts } from '../../config/texts'
+import { AddressSuggestions } from '../AddressSuggestions'
 import s from './AddressBindSheet.module.scss'
 
 export interface AddressBindSheetProps {
@@ -20,9 +21,59 @@ export interface AddressBindSheetProps {
 const MIN_ADDRESS_LENGTH = 5
 
 export const AddressBindSheet = ({ open, onClose, onSuccess }: AddressBindSheetProps) => {
+  const captionId = useId()
+  const listId = useId()
   const [address, setAddress] = useState('')
   const [invalid, setInvalid] = useState(false)
+  const [isSuggestOpen, setIsSuggestOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const bindMutation = useBindHouseMutation()
+  const { suggestions, isFetching, isSettled } = useAddressSuggestionsQuery(isSuggestOpen ? address : '')
+
+  const showSuggestions = isSuggestOpen && suggestions.length > 0
+
+  const selectSuggestion = (value: string) => {
+    setAddress(value)
+    setInvalid(false)
+    setIsSuggestOpen(false)
+    setActiveIndex(-1)
+  }
+
+  const handleChange = (value: string) => {
+    setAddress(value)
+    setInvalid(false)
+    setIsSuggestOpen(true)
+    setActiveIndex(-1)
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Escape') {
+      setIsSuggestOpen(false)
+      setActiveIndex(-1)
+      return
+    }
+
+    if (!showSuggestions) {
+      return
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setActiveIndex((index) => (index + 1) % suggestions.length)
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setActiveIndex((index) => (index - 1 + suggestions.length) % suggestions.length)
+      return
+    }
+
+    if (event.key === 'Enter' && activeIndex >= 0) {
+      event.preventDefault()
+      selectSuggestion(suggestions[activeIndex].value)
+    }
+  }
 
   const handleSubmit = (event: React.SubmitEvent) => {
     event.preventDefault()
@@ -34,6 +85,8 @@ export const AddressBindSheet = ({ open, onClose, onSuccess }: AddressBindSheetP
       return
     }
 
+    setIsSuggestOpen(false)
+
     bindMutation.mutate(value, {
       onSuccess: (house) => {
         saveBoundHouse(house)
@@ -41,6 +94,24 @@ export const AddressBindSheet = ({ open, onClose, onSuccess }: AddressBindSheetP
       },
     })
   }
+
+  const resolveStatusText = () => {
+    if (showSuggestions) {
+      return null
+    }
+
+    if (isFetching) {
+      return addressBindTexts.suggestionsLoading
+    }
+
+    if (isSuggestOpen && isSettled) {
+      return addressBindTexts.suggestionsEmpty
+    }
+
+    return null
+  }
+
+  const statusText = resolveStatusText()
 
   return (
     <BottomSheet
@@ -50,26 +121,47 @@ export const AddressBindSheet = ({ open, onClose, onSuccess }: AddressBindSheetP
       onClose={onClose}
     >
       <form className={s.form} onSubmit={handleSubmit}>
-        <label className={s.field}>
-          <Typography.Text variant="description" color="secondary">
-            {addressBindTexts.label}
-          </Typography.Text>
+        <div className={s.field}>
+          <span id={captionId}>
+            <Typography.Text variant="description" color="secondary">
+              {addressBindTexts.label}
+            </Typography.Text>
+          </span>
           <Input
             autoFocus
             withClearButton
             size="large"
             autoComplete="street-address"
+            role="combobox"
+            aria-labelledby={captionId}
+            aria-autocomplete="list"
+            aria-expanded={showSuggestions}
+            aria-controls={showSuggestions ? listId : undefined}
+            aria-invalid={invalid}
             value={address}
             placeholder={addressBindTexts.placeholder}
             iconBefore={<IconLocation />}
-            aria-invalid={invalid}
             hint={invalid ? addressBindTexts.validation : undefined}
-            onChange={(event) => {
-              setAddress(event.target.value)
-              setInvalid(false)
-            }}
+            onChange={(event) => handleChange(event.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setIsSuggestOpen(true)}
+            onBlur={() => setIsSuggestOpen(false)}
           />
-        </label>
+          {showSuggestions ? (
+            <AddressSuggestions
+              listId={listId}
+              suggestions={suggestions}
+              activeIndex={activeIndex}
+              onSelect={selectSuggestion}
+              onHighlight={setActiveIndex}
+            />
+          ) : null}
+          {statusText ? (
+            <Typography.Text variant="note" color="tertiary">
+              {statusText}
+            </Typography.Text>
+          ) : null}
+        </div>
         {bindMutation.isError ? (
           <Typography.Text variant="note" color="secondary">
             {describeApiError(bindMutation.error).description}

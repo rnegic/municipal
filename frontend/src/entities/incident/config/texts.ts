@@ -2,7 +2,8 @@ export const incidentTexts = {
   focus: {
     sectionTitle: 'Аварии в вашем доме',
     houseOkTitle: 'Всё работает штатно',
-    houseOkDescription: 'Активных аварий и отключений по вашему адресу нет',
+    houseOkEmptyTitle: 'В вашем доме всё работает штатно',
+    houseOkEmptyDescription: 'УК на страже',
     headerStatusAlert: 'Есть активная авария',
     joinAction: 'У меня тоже (Подписаться)',
     joinedAction: 'Вы подписались',
@@ -24,7 +25,7 @@ export const incidentTexts = {
   },
   requests: {
     sectionTitle: 'Мои заявки',
-    emptyTitle: 'Заявок пока нет',
+    emptyTitle: 'Вы еще не сообщали о проблемах',
     emptyDescription: 'Расскажите о проблеме — УК увидит обращение и возьмёт его в работу',
     createdAt: (dateTime: string) => `Отправлена ${dateTime}`,
     dueAt: (time: string) => `Срок — до ${time}`,

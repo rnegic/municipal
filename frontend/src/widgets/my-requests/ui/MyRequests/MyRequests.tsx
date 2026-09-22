@@ -1,7 +1,7 @@
 import { Typography } from '@maxhub/max-ui'
 
 import { IncidentStatusBadge, incidentTexts, type ResidentRequest } from '@/entities/incident'
-import { IconDocument } from '@/shared/assets/icons'
+import { NoIncidentsIllustration } from '@/shared/assets/illustrations'
 import { cn } from '@/shared/lib/cn'
 import { formatDate, formatDateTime } from '@/shared/lib/date'
 import { Card } from '@/shared/ui/card'
@@ -18,7 +18,7 @@ export const MyRequests = ({ requests, className }: MyRequestsProps) => (
   <Section title={incidentTexts.requests.sectionTitle} className={cn(s.root, className)}>
     {requests.length === 0 ? (
       <EmptyState
-        icon={<IconDocument size={24} />}
+        illustration={<NoIncidentsIllustration />}
         title={incidentTexts.requests.emptyTitle}
         description={incidentTexts.requests.emptyDescription}
       />

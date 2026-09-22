@@ -115,3 +115,38 @@ func TestBindHouse_CreatesUkFromProvider(t *testing.T) {
 		t.Fatalf("got uk %s/%s house %s", ext, name, houseExt)
 	}
 }
+
+func TestSuggestAddresses(t *testing.T) {
+	s := testStore(t)
+	srv := newTestServer(t, s)
+
+	w := httptest.NewRecorder()
+	srv.ServeHTTP(w, authedReq(t, "GET", "/api/houses/suggest?query=f-10&count=3", "", 900, "Resident"))
+	if w.Code != 200 {
+		t.Fatalf("code %d body %s", w.Code, w.Body)
+	}
+	var resp struct {
+		Suggestions []struct {
+			Value       string
+			HouseFiasId string
+		}
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Suggestions) != 1 || resp.Suggestions[0].Value != "f-10" || resp.Suggestions[0].HouseFiasId != "f-10" {
+		t.Fatalf("unexpected suggestions %+v", resp)
+	}
+
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, authedReq(t, "GET", "/api/houses/suggest?query=", "", 900, "Resident"))
+	if w.Code != 400 || !strings.Contains(w.Body.String(), `"code":"validation_failed"`) {
+		t.Fatalf("want 400 validation_failed, got %d %s", w.Code, w.Body)
+	}
+
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, httptest.NewRequest("GET", "/api/houses/suggest?query=f-10", nil))
+	if w.Code != 401 {
+		t.Fatalf("want 401, got %d", w.Code)
+	}
+}

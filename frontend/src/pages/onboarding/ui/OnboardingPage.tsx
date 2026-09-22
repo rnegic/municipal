@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { getBoundHouse } from '@/entities/house'
 import { AddressBindSheet } from '@/features/address-bind'
-import { IconLocation } from '@/shared/assets/icons'
+import { OnboardingIllustration } from '@/shared/assets/illustrations'
 import { ROUTES } from '@/shared/config/routes'
 import { Button } from '@/shared/ui/button'
 import { PageLayout } from '@/shared/ui/page-layout'
@@ -28,8 +28,8 @@ export const OnboardingPage = () => {
   return (
     <PageLayout className={s.root}>
       <main className={s.hero}>
-        <span className={s.icon}>
-          <IconLocation size={40} />
+        <span className={s.illustration}>
+          <OnboardingIllustration />
         </span>
         <div className={s.content}>
           <Typography.Title variant="large-strong">{onboardingTexts.title}</Typography.Title>
@@ -45,6 +45,9 @@ export const OnboardingPage = () => {
             {onboardingTexts.consent}
           </Typography.Text>
         </div>
+        <Typography.Text className={s.slogan} variant="description" color="secondary">
+          {onboardingTexts.slogan}
+        </Typography.Text>
       </main>
       <AddressBindSheet
         open={isSheetOpen}

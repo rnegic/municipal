@@ -8,6 +8,7 @@ import s from './EmptyState.module.scss'
 export type EmptyStateTone = 'neutral' | 'success' | 'danger' | 'inverse'
 
 export interface EmptyStateProps {
+  illustration?: ReactNode
   icon?: ReactNode
   title: string
   description?: string
@@ -24,6 +25,7 @@ const TONE_CLASS: Record<EmptyStateTone, string | undefined> = {
 }
 
 export const EmptyState = ({
+  illustration,
   icon,
   title,
   description,
@@ -32,6 +34,7 @@ export const EmptyState = ({
   className,
 }: EmptyStateProps) => (
   <div className={cn(s.root, TONE_CLASS[tone], className)}>
+    {illustration ? <span className={s.illustration}>{illustration}</span> : null}
     {icon ? <span className={s.icon}>{icon}</span> : null}
     <div className={s.content}>
       <Typography.Text variant="body-strong">{title}</Typography.Text>
