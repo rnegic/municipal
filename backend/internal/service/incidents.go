@@ -69,10 +69,16 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	if err != nil {
 		return IncidentRow{}, false, err
 	}
+	report := repository.ReportInput{
+		ReporterID: reporterID, HouseID: houseID, Title: title, Description: description,
+		Severity: sev, Entrance: entrance, Riser: riser, DedupVersion: domain.DedupVersion,
+	}
 	if dup := domain.FindDuplicate(houseID, title, riser, time.Now(), open); dup != 0 {
 		if err := s.repo.Subscribe(ctx, dup, reporterID); err != nil {
 			return IncidentRow{}, false, err
 		}
+		report.IncidentID, report.Outcome = dup, domain.ReportJoined
+		s.saveReport(ctx, report)
 		row, err = s.GetIncident(ctx, dup, reporterID)
 		return row, false, err
 	}
@@ -80,11 +86,19 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	if err != nil {
 		return IncidentRow{}, false, err
 	}
+	report.IncidentID, report.Outcome = id, domain.ReportCreated
+	s.saveReport(ctx, report)
 	if err := s.syncUnregistered(ctx); err != nil {
 		slog.Warn("uk register deferred to worker", "incident", id, "err", err)
 	}
 	row, err = s.GetIncident(ctx, id, reporterID)
 	return row, true, err
+}
+
+func (s *Service) saveReport(ctx context.Context, r repository.ReportInput) {
+	if err := s.repo.AddReport(ctx, r); err != nil {
+		slog.Warn("incident report not saved", "incident", r.IncidentID, "outcome", r.Outcome, "err", err)
+	}
 }
 
 func (s *Service) ListActiveIncidents(ctx context.Context, houseID, userID int64) ([]IncidentRow, error) {

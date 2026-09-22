@@ -67,6 +67,23 @@ CREATE TABLE IF NOT EXISTS incident_confirmation (
   PRIMARY KEY (incident_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS incident_report (
+  id                BIGSERIAL PRIMARY KEY,
+  incident_id       BIGINT NOT NULL REFERENCES incident(id),
+  reporter_id       BIGINT NOT NULL REFERENCES app_user(id),
+  house_id          BIGINT NOT NULL,
+  title             TEXT NOT NULL,
+  description       TEXT NOT NULL,
+  severity          TEXT NOT NULL CHECK (severity IN ('critical','warning')),
+  entrance          TEXT,
+  riser             TEXT,
+  outcome           TEXT NOT NULL CHECK (outcome IN ('created','joined')),
+  dedup_version     TEXT NOT NULL,
+  source_request_id UUID,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (incident_id, reporter_id)
+);
+
 CREATE TABLE IF NOT EXISTS incident_photo (
   id           BIGSERIAL PRIMARY KEY,
   incident_id  BIGINT NOT NULL REFERENCES incident(id),

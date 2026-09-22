@@ -15,6 +15,7 @@ func UseSchema(schema string) {
 	Incident = Incident.FromSchema(schema)
 	IncidentConfirmation = IncidentConfirmation.FromSchema(schema)
 	IncidentPhoto = IncidentPhoto.FromSchema(schema)
+	IncidentReport = IncidentReport.FromSchema(schema)
 	IncidentSubscription = IncidentSubscription.FromSchema(schema)
 	OutboxMessage = OutboxMessage.FromSchema(schema)
 	Uk = Uk.FromSchema(schema)

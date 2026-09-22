@@ -32,6 +32,12 @@ func SLA(sev Severity) time.Duration { return sla[sev] }
 
 const DedupWindow = 2 * time.Hour
 
+const (
+	DedupVersion  = "exact-title-riser-v1"
+	ReportCreated = "created"
+	ReportJoined  = "joined"
+)
+
 type OpenIncident struct {
 	ID        int64
 	HouseID   int64
