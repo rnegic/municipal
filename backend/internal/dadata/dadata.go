@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const defaultSuggestCount = 5
+
 type Client struct {
 	Token   string
 	BaseURL string
@@ -30,8 +32,11 @@ type Suggestion struct {
 }
 
 // Suggest returns only suggestions resolved down to a building (house_fias_id present).
-func (c *Client) Suggest(ctx context.Context, q string) ([]Suggestion, error) {
-	body, _ := json.Marshal(map[string]any{"query": q, "count": 5})
+func (c *Client) Suggest(ctx context.Context, q string, count int) ([]Suggestion, error) {
+	if count < 1 {
+		count = defaultSuggestCount
+	}
+	body, _ := json.Marshal(map[string]any{"query": q, "count": count})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, err

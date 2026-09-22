@@ -1,0 +1,1 @@
+export { AddressSuggestions, type AddressSuggestionsProps } from './AddressSuggestions'

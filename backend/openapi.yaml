@@ -63,6 +63,29 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
 
+  /api/houses/suggest:
+    get:
+      operationId: suggestAddresses
+      tags: [profile]
+      summary: Подсказки адреса для автокомплита (прокси к DaData — токен живёт на сервере)
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+        - name: count
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 10, default: 5 }
+      responses:
+        "200":
+          description: Подсказки (только объекты с house_fias_id)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AddressSuggestResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+
   /api/houses/{houseId}/incidents:
     get:
       operationId: listHouseIncidents
@@ -305,6 +328,21 @@ components:
       required: [address]
       properties:
         address: { type: string, minLength: 1 }
+
+    AddressSuggestion:
+      type: object
+      required: [value, houseFiasId]
+      properties:
+        value: { type: string, example: "г Казань, ул Баумана, д 10" }
+        houseFiasId: { type: string, example: abc-123 }
+
+    AddressSuggestResponse:
+      type: object
+      required: [suggestions]
+      properties:
+        suggestions:
+          type: array
+          items: { $ref: "#/components/schemas/AddressSuggestion" }
 
     Severity:
       type: string

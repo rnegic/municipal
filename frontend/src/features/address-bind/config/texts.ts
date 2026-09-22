@@ -5,4 +5,7 @@ export const addressBindTexts = {
   placeholder: 'Например, Казань, ул. Баумана, д. 10',
   submit: 'Сохранить адрес',
   validation: 'Введите улицу и номер дома',
+  suggestionsLabel: 'Подсказки адреса',
+  suggestionsLoading: 'Ищем адрес…',
+  suggestionsEmpty: 'Ничего не нашли. Уточните улицу и номер дома',
 } as const

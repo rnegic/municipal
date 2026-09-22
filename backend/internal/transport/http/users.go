@@ -43,3 +43,22 @@ func (s *server) BindHouse(ctx context.Context, req oapi.BindHouseRequestObject)
 	}
 	return oapi.BindHouse200JSONResponse{Id: formatHouseID(houseID), Address: address}, nil
 }
+
+func (s *server) SuggestAddresses(ctx context.Context, req oapi.SuggestAddressesRequestObject) (oapi.SuggestAddressesResponseObject, error) {
+	count := service.DefaultSuggestCount
+	if req.Params.Count != nil {
+		count = *req.Params.Count
+	}
+	sugs, err := s.svc.SuggestAddresses(ctx, req.Params.Query, count)
+	if errors.Is(err, service.ErrInvalidInput) {
+		return oapi.SuggestAddresses400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", "query required"))}, nil
+	}
+	if err != nil {
+		return oapi.SuggestAddresses502JSONResponse(apiErr("upstream_unavailable", "сервис подсказок адреса недоступен")), nil
+	}
+	items := make([]oapi.AddressSuggestion, 0, len(sugs))
+	for _, sug := range sugs {
+		items = append(items, oapi.AddressSuggestion{Value: sug.Value, HouseFiasId: sug.HouseFiasID})
+	}
+	return oapi.SuggestAddresses200JSONResponse{Suggestions: items}, nil
+}

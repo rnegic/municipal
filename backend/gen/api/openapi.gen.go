@@ -96,6 +96,20 @@ func (e ListHouseIncidentsParamsStatus) Valid() bool {
 	}
 }
 
+// AddressSuggestResponse defines model for AddressSuggestResponse.
+type AddressSuggestResponse struct {
+	Suggestions []AddressSuggestion `json:"suggestions"`
+}
+
+// AddressSuggestion defines model for AddressSuggestion.
+type AddressSuggestion struct {
+	// HouseFiasId Example: abc-123
+	HouseFiasId string `json:"houseFiasId"`
+
+	// Value Example: г Казань, ул Баумана, д 10
+	Value string `json:"value"`
+}
+
 // ApiErrorResponse defines model for ApiErrorResponse.
 type ApiErrorResponse struct {
 	// Code Example: validation_failed
@@ -240,6 +254,12 @@ type ID = string
 // Error defines model for Error.
 type Error = ApiErrorResponse
 
+// SuggestAddressesParams defines parameters for SuggestAddresses.
+type SuggestAddressesParams struct {
+	Query string `form:"query" json:"query"`
+	Count *int   `form:"count,omitempty" json:"count,omitempty"`
+}
+
 // ListHouseIncidentsParams defines parameters for ListHouseIncidents.
 type ListHouseIncidentsParams struct {
 	Status *ListHouseIncidentsParamsStatus `form:"status,omitempty" json:"status,omitempty"`
@@ -273,6 +293,9 @@ type ServerInterface interface {
 	// BindHouse Привязать дом по свободному адресу (нормализуется через DaData)
 	// (POST /api/houses/bind)
 	BindHouse(c *gin.Context)
+	// SuggestAddresses Подсказки адреса для автокомплита (прокси к DaData — токен живёт на сервере)
+	// (GET /api/houses/suggest)
+	SuggestAddresses(c *gin.Context, params SuggestAddressesParams)
 	// ListHouseIncidents Активные аварии дома (critical сначала, затем createdAt desc)
 	// (GET /api/houses/{houseId}/incidents)
 	ListHouseIncidents(c *gin.Context, houseId HouseID, params ListHouseIncidentsParams)
@@ -328,6 +351,41 @@ func (siw *ServerInterfaceWrapper) BindHouse(c *gin.Context) {
 	}
 
 	siw.Handler.BindHouse(c)
+}
+
+// SuggestAddresses operation middleware
+func (siw *ServerInterfaceWrapper) SuggestAddresses(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SuggestAddressesParams
+
+	// ------------- Required query parameter "query" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "query", c.Request.URL.Query(), &params.Query, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter query: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "count" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "count", c.Request.URL.Query(), &params.Count, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter count: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.SuggestAddresses(c, params)
 }
 
 // ListHouseIncidents operation middleware
@@ -629,6 +687,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	router.GET(options.BaseURL+"/health", wrapper.Health)
 	router.GET(options.BaseURL+"/api/me", wrapper.GetMe)
 	router.POST(options.BaseURL+"/api/houses/bind", wrapper.BindHouse)
+	router.GET(options.BaseURL+"/api/houses/suggest", wrapper.SuggestAddresses)
 	router.GET(options.BaseURL+"/api/houses/:houseId/incidents", wrapper.ListHouseIncidents)
 	router.GET(options.BaseURL+"/api/houses/:houseId/requests", wrapper.ListHouseRequests)
 	router.GET(options.BaseURL+"/api/houses/:houseId/stats", wrapper.HouseStats)
@@ -702,6 +761,70 @@ func (response BindHouse422JSONResponse) VisitBindHouseResponse(w http.ResponseW
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SuggestAddressesRequestObject struct {
+	Params SuggestAddressesParams
+}
+
+type SuggestAddressesResponseObject interface {
+	VisitSuggestAddressesResponse(w http.ResponseWriter) error
+}
+
+type SuggestAddresses200JSONResponse AddressSuggestResponse
+
+func (response SuggestAddresses200JSONResponse) VisitSuggestAddressesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SuggestAddresses400JSONResponse struct{ ErrorJSONResponse }
+
+func (response SuggestAddresses400JSONResponse) VisitSuggestAddressesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SuggestAddresses401JSONResponse ApiErrorResponse
+
+func (response SuggestAddresses401JSONResponse) VisitSuggestAddressesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SuggestAddresses502JSONResponse ApiErrorResponse
+
+func (response SuggestAddresses502JSONResponse) VisitSuggestAddressesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(502)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -1327,6 +1450,9 @@ type StrictServerInterface interface {
 	// BindHouse Привязать дом по свободному адресу (нормализуется через DaData)
 	// (POST /api/houses/bind)
 	BindHouse(ctx context.Context, request BindHouseRequestObject) (BindHouseResponseObject, error)
+	// SuggestAddresses Подсказки адреса для автокомплита (прокси к DaData — токен живёт на сервере)
+	// (GET /api/houses/suggest)
+	SuggestAddresses(ctx context.Context, request SuggestAddressesRequestObject) (SuggestAddressesResponseObject, error)
 	// ListHouseIncidents Активные аварии дома (critical сначала, затем createdAt desc)
 	// (GET /api/houses/{houseId}/incidents)
 	ListHouseIncidents(ctx context.Context, request ListHouseIncidentsRequestObject) (ListHouseIncidentsResponseObject, error)
@@ -1443,6 +1569,32 @@ func (sh *strictHandler) BindHouse(ctx *gin.Context) {
 		sh.options.HandlerErrorFunc(ctx, err)
 	} else if validResponse, ok := response.(BindHouseResponseObject); ok {
 		if err := validResponse.VisitBindHouseResponse(ctx.Writer); err != nil {
+			sh.options.ResponseErrorHandlerFunc(ctx, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(ctx, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SuggestAddresses operation middleware
+func (sh *strictHandler) SuggestAddresses(ctx *gin.Context, params SuggestAddressesParams) {
+	var request SuggestAddressesRequestObject
+
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.SuggestAddresses(ctx, request.(SuggestAddressesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SuggestAddresses")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		sh.options.HandlerErrorFunc(ctx, err)
+	} else if validResponse, ok := response.(SuggestAddressesResponseObject); ok {
+		if err := validResponse.VisitSuggestAddressesResponse(ctx.Writer); err != nil {
 			sh.options.ResponseErrorHandlerFunc(ctx, err)
 		}
 	} else if response != nil {
@@ -1751,60 +1903,64 @@ func (sh *strictHandler) Health(ctx *gin.Context) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

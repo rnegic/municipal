@@ -1,0 +1,36 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+  max-height: 15rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--app-color-border);
+  border-radius: var(--app-radius-control);
+  background-color: var(--app-color-surface-card);
+  list-style: none;
+}
+
+.option {
+  display: block;
+  width: 100%;
+  padding: var(--app-space-4);
+  border: 0;
+  border-radius: var(--app-radius-control);
+  color: var(--app-color-text-primary);
+  background-color: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover,
+.optionActive {
+  background-color: var(--app-color-progress-surface);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--app-color-progress);
+  outline-offset: -2px;
+}
