@@ -21,13 +21,16 @@ const maxOpenConns = 20
 //go:embed schema.sql
 var schemaSQL string
 
+//go:embed seed.sql
+var seedSQL string
+
 var ErrNotFound = errors.New("not found")
 
 type Store struct {
 	db *sql.DB
 }
 
-// Open connects to Postgres and applies schema.sql (idempotent CREATE IF NOT EXISTS).
+// Open connects to Postgres and applies schema.sql and seed.sql (both idempotent).
 func Open(ctx context.Context, databaseURL string) (*Store, error) {
 	db, err := sql.Open("pgx", databaseURL)
 	if err != nil {
@@ -36,9 +39,11 @@ func Open(ctx context.Context, databaseURL string) (*Store, error) {
 	db.SetMaxOpenConns(maxOpenConns)
 	db.SetMaxIdleConns(maxOpenConns)
 	db.SetConnMaxLifetime(30 * time.Minute)
-	if _, err := db.ExecContext(ctx, schemaSQL); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("apply schema: %w", err)
+	for _, q := range []string{schemaSQL, seedSQL} {
+		if _, err := db.ExecContext(ctx, q); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("apply sql: %w", err)
+		}
 	}
 	return &Store{db: db}, nil
 }

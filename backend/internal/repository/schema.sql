@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS uk (
 );
 
 ALTER TABLE uk ADD COLUMN IF NOT EXISTS external_id TEXT;
+-- ponytail: ALTER ADD COLUMN не переносит UNIQUE — ON_CONFLICT(Uk.ExternalID) (UpsertUk) требует
+-- индекс явно; на уже созданных БД без него падает "no unique or exclusion constraint".
+CREATE UNIQUE INDEX IF NOT EXISTS uk_external_id_key ON uk(external_id);
 
 CREATE TABLE IF NOT EXISTS house (
   id              BIGSERIAL PRIMARY KEY,
@@ -45,6 +48,7 @@ CREATE TABLE IF NOT EXISTS incident (
 -- ponytail: миграций нет — для уже созданных БД колонку доливаем идемпотентным ALTER.
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS due_at TIMESTAMPTZ;
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS external_id TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS incident_external_id_key ON incident(external_id);
 CREATE INDEX IF NOT EXISTS incident_house_open ON incident(house_id, title, created_at)
   WHERE status IN ('accepted','in_progress');
 CREATE INDEX IF NOT EXISTS incident_house_status ON incident(house_id, status, created_at DESC);
