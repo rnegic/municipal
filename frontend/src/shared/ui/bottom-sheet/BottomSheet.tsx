@@ -1,4 +1,4 @@
-import { useEffect, useId, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 
 import {
   Icon16CloseIos,
@@ -20,6 +20,7 @@ export interface BottomSheetProps {
 }
 
 export const BottomSheet = ({ open, title, description, children, onClose }: BottomSheetProps) => {
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const platform = usePlatform()
 
@@ -28,15 +29,21 @@ export const BottomSheet = ({ open, title, description, children, onClose }: Bot
       return undefined
     }
 
+    const dialog = dialogRef.current
+    const restoreOverflow = document.body.style.overflow
+
+    if (dialog && !dialog.open) {
+      dialog.showModal()
+    }
+
+    document.body.style.overflow = 'hidden'
+
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose()
       }
     }
 
-    const restoreOverflow = document.body.style.overflow
-
-    document.body.style.overflow = 'hidden'
     window.addEventListener('keydown', closeOnEscape)
 
     return () => {
@@ -50,9 +57,17 @@ export const BottomSheet = ({ open, title, description, children, onClose }: Bot
   }
 
   return (
-    <div className={s.root}>
-      <div className={s.backdrop} aria-hidden="true" onClick={onClose} />
-      <section className={s.sheet} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <dialog
+      ref={dialogRef}
+      className={s.root}
+      aria-labelledby={titleId}
+      onClick={(event) => {
+        if (event.target === dialogRef.current) {
+          onClose()
+        }
+      }}
+    >
+      <section className={s.sheet}>
         <div className={s.handle} aria-hidden="true" />
         <header className={s.header}>
           <div className={s.heading}>
@@ -76,6 +91,6 @@ export const BottomSheet = ({ open, title, description, children, onClose }: Bot
         </header>
         {children}
       </section>
-    </div>
+    </dialog>
   )
 }
