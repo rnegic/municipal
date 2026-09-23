@@ -122,8 +122,11 @@ func (s *Service) SetIncidentStatus(ctx context.Context, u model.AppUser, incide
 	if err := s.CanAccessIncident(ctx, u, incidentID); err != nil {
 		return IncidentRow{}, err
 	}
-	from, ok := domain.DispatcherTransition(to)
-	if !ok {
+	from, err := s.repo.FindIncidentStatus(ctx, incidentID)
+	if err != nil {
+		return IncidentRow{}, err
+	}
+	if !domain.CanDispatcherMove(from, to) {
 		return IncidentRow{}, ErrInvalidStatus
 	}
 	text := ukStatusText[to] + " " + s.deepLink(incidentID)

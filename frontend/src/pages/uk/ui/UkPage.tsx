@@ -1,5 +1,5 @@
 import { Counter, Typography } from '@maxhub/max-ui'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import {
   IncidentPhotos,
@@ -28,12 +28,25 @@ interface QueueColumn {
   title: string
   action?: string
   actionTone: 'primary' | 'secondary'
+  prevAction?: string
 }
 
 const QUEUE_COLUMNS: readonly QueueColumn[] = [
   { status: 'accepted', title: 'Новые', action: 'Взять в работу', actionTone: 'primary' },
-  { status: 'in_progress', title: 'В работе', action: 'Передать на проверку', actionTone: 'secondary' },
-  { status: 'verifying', title: 'На проверке у жителей', action: 'Закрыть обращение', actionTone: 'secondary' },
+  {
+    status: 'in_progress',
+    title: 'В работе',
+    action: 'Передать на проверку',
+    actionTone: 'secondary',
+    prevAction: 'В новые',
+  },
+  {
+    status: 'verifying',
+    title: 'На проверке у жителей',
+    action: 'Закрыть обращение',
+    actionTone: 'secondary',
+    prevAction: 'В работу',
+  },
 ]
 
 const getSlaLabel = (dueAt: string | null): string => {
@@ -65,6 +78,19 @@ const getNextStatus = (status: IncidentStatus): IncidentStatus | null => {
   return null
 }
 
+const getPrevStatus = (status: IncidentStatus): IncidentStatus | null => {
+  if (status === 'in_progress') {
+    return 'accepted'
+  }
+  if (status === 'verifying') {
+    return 'in_progress'
+  }
+  if (status === 'done') {
+    return 'verifying'
+  }
+  return null
+}
+
 const isOverdue = (dueAt: string | null): boolean => dueAt !== null && new Date(dueAt).getTime() <= Date.now()
 
 const getCountTone = (count: number): string => {
@@ -87,12 +113,33 @@ const getColumnTone = (status: IncidentStatus): string => {
   return s.columnTitleNew
 }
 
-const QueueCard = ({ incident, column }: { incident: UkQueueItem; column: QueueColumn }) => {
-  const statusMutation = useSetIncidentStatusMutation()
+const QueueCard = ({
+  incident,
+  column,
+  isPending,
+  onMove,
+}: {
+  incident: UkQueueItem
+  column: QueueColumn
+  isPending: boolean
+  onMove: (incidentId: string, status: IncidentStatus) => void
+}) => {
   const nextStatus = getNextStatus(incident.status)
+  const prevStatus = getPrevStatus(incident.status)
 
   return (
-    <Card className={s.card} padding="compact">
+    <Card
+      className={s.card}
+      padding="compact"
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = 'move'
+        event.dataTransfer.setData(
+          'text/plain',
+          JSON.stringify({ id: incident.id, status: incident.status }),
+        )
+      }}
+    >
       <div className={s.cardHead}>
         <Typography.Text variant="body-strong">{incident.title}</Typography.Text>
         <span className={incident.severity === 'critical' ? s.critical : s.warning}>
@@ -142,42 +189,99 @@ const QueueCard = ({ incident, column }: { incident: UkQueueItem; column: QueueC
           </div>
         </div>
       </div>
-      {column.action && nextStatus ? (
-        <Button
-          size="small"
-          tone={column.actionTone}
-          stretched
-          disabled={statusMutation.isPending}
-          onClick={() => statusMutation.mutate({ incidentId: incident.id, status: nextStatus })}
-        >
-          {column.action}
-        </Button>
+      {column.prevAction || (column.action && nextStatus) ? (
+        <div className={s.actions}>
+          {column.prevAction && prevStatus ? (
+            <Button
+              size="small"
+              tone="secondary"
+              stretched
+              disabled={isPending}
+              onClick={() => onMove(incident.id, prevStatus)}
+            >
+              {column.prevAction}
+            </Button>
+          ) : null}
+          {column.action && nextStatus ? (
+            <Button
+              size="small"
+              tone={column.actionTone}
+              stretched
+              disabled={isPending}
+              onClick={() => onMove(incident.id, nextStatus)}
+            >
+              {column.action}
+            </Button>
+          ) : null}
+        </div>
       ) : null}
     </Card>
   )
 }
 
-const QueueColumnView = ({ column, items }: { column: QueueColumn; items: readonly UkQueueItem[] }) => (
-  <section className={s.column} aria-labelledby={`uk-column-${column.status}`}>
-    <div className={s.columnHeader}>
-      <div className={cn(s.columnTitle, getColumnTone(column.status))} id={`uk-column-${column.status}`}>
-        <Typography.Title className={s.columnTitleText} variant="small-strong">
-          {column.title}
-        </Typography.Title>
+const QueueColumnView = ({
+  column,
+  items,
+  isPending,
+  onMove,
+}: {
+  column: QueueColumn
+  items: readonly UkQueueItem[]
+  isPending: boolean
+  onMove: (incidentId: string, status: IncidentStatus) => void
+}) => {
+  const [isOver, setIsOver] = useState(false)
+
+  return (
+    <section
+      className={cn(s.column, isOver && s.columnOver)}
+      aria-labelledby={`uk-column-${column.status}`}
+      onDragOver={(event) => {
+        event.preventDefault()
+        if (!isOver) {
+          setIsOver(true)
+        }
+      }}
+      onDragLeave={() => setIsOver(false)}
+      onDrop={(event) => {
+        event.preventDefault()
+        setIsOver(false)
+        const raw = event.dataTransfer.getData('text/plain')
+        if (!raw) {
+          return
+        }
+        const dragged = JSON.parse(raw) as { id: string; status: IncidentStatus }
+        if (dragged.status !== column.status) {
+          onMove(dragged.id, column.status)
+        }
+      }}
+    >
+      <div className={s.columnHeader}>
+        <div className={cn(s.columnTitle, getColumnTone(column.status))} id={`uk-column-${column.status}`}>
+          <Typography.Title className={s.columnTitleText} variant="small-strong">
+            {column.title}
+          </Typography.Title>
+        </div>
+        <Counter className={getCountTone(items.length)} value={items.length} variant="mute" />
       </div>
-      <Counter className={getCountTone(items.length)} value={items.length} variant="mute" />
-    </div>
-    {items.length === 0 ? (
-      <EmptyState title="Пусто" description="Здесь пока нет обращений" />
-    ) : (
-      <div className={s.cards}>
-        {items.map((incident) => (
-          <QueueCard key={incident.id} incident={incident} column={column} />
-        ))}
-      </div>
-    )}
-  </section>
-)
+      {items.length === 0 ? (
+        <EmptyState title="Пусто" description="Здесь пока нет обращений" />
+      ) : (
+        <div className={s.cards}>
+          {items.map((incident) => (
+            <QueueCard
+              key={incident.id}
+              incident={incident}
+              column={column}
+              isPending={isPending}
+              onMove={onMove}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
 
 const UkHero = ({ children }: { children: ReactNode }) => (
   <div className={s.hero}>
@@ -187,6 +291,11 @@ const UkHero = ({ children }: { children: ReactNode }) => (
 
 export const UkPage = () => {
   const queueQuery = useUkQueueQuery()
+  const statusMutation = useSetIncidentStatusMutation()
+
+  const moveIncident = (incidentId: string, status: IncidentStatus): void => {
+    statusMutation.mutate({ incidentId, status })
+  }
 
   const sessionHeader = (
     <UkSessionBadge
@@ -201,7 +310,7 @@ export const UkPage = () => {
 
   if (queueQuery.isPending) {
     return (
-      <PageLayout fill width="wide" hero={<UkHero>{sessionHeader}</UkHero>}>
+      <PageLayout width="wide" hero={<UkHero>{sessionHeader}</UkHero>}>
         <LoadingState />
       </PageLayout>
     )
@@ -209,7 +318,7 @@ export const UkPage = () => {
 
   if (queueQuery.isError) {
     return (
-      <PageLayout fill width="wide" hero={<UkHero>{sessionHeader}</UkHero>}>
+      <PageLayout width="wide" hero={<UkHero>{sessionHeader}</UkHero>}>
         <ApiErrorState error={queueQuery.error} onRetry={() => queueQuery.refetch()} />
       </PageLayout>
     )
@@ -224,7 +333,6 @@ export const UkPage = () => {
 
   return (
     <PageLayout
-      fill
       width="wide"
       hero={
         <UkHero>
@@ -254,6 +362,8 @@ export const UkPage = () => {
             key={column.status}
             column={column}
             items={items.filter((item) => item.status === column.status)}
+            isPending={statusMutation.isPending}
+            onMove={moveIncident}
           />
         ))}
       </div>

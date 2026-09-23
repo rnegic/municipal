@@ -67,6 +67,25 @@ func DispatcherTransition(to IncidentStatus) (from IncidentStatus, ok bool) {
 	return from, ok
 }
 
+var openStatuses = map[IncidentStatus]bool{
+	IncidentAccepted:   true,
+	IncidentInProgress: true,
+	IncidentVerifying:  true,
+}
+
+func CanDispatcherMove(from, to IncidentStatus) bool {
+	if from == to {
+		return false
+	}
+	if openStatuses[from] && openStatuses[to] {
+		return true
+	}
+	if from == IncidentVerifying && to == IncidentDone {
+		return true
+	}
+	return from == IncidentDone && to == IncidentVerifying
+}
+
 func sameRiser(a, b *string) bool {
 	if a == nil || b == nil {
 		return a == b

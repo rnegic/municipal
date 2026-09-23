@@ -75,6 +75,7 @@
   align-items: center;
   min-width: 0;
   padding: var(--app-space-1) var(--app-space-3);
+  border: 1px solid color-mix(in srgb, currentcolor 26%, transparent);
   border-radius: var(--app-radius-round);
   background: var(--app-color-surface-card);
   box-shadow: var(--app-shadow-card);
@@ -86,17 +87,31 @@
 
 .columnTitleNew {
   color: var(--app-color-text-accent);
-  background: var(--app-color-progress-surface);
+  background: light-dark(
+    color-mix(in srgb, var(--app-color-progress) 16%, transparent),
+    var(--app-color-progress-surface)
+  );
 }
 
 .columnTitleProgress {
   color: var(--app-color-warning-dark);
-  background: var(--app-color-warning-surface);
+  background: light-dark(
+    color-mix(in srgb, var(--app-color-warning) 22%, transparent),
+    var(--app-color-warning-surface)
+  );
 }
 
 .columnTitleVerify {
   color: var(--app-color-success);
-  background: var(--app-color-success-surface);
+  background: light-dark(
+    color-mix(in srgb, var(--app-color-success) 16%, transparent),
+    var(--app-color-success-surface)
+  );
+}
+
+.columnOver {
+  outline: 2px solid var(--app-color-progress);
+  outline-offset: -2px;
 }
 
 .cards {
@@ -107,7 +122,17 @@
 
 .card {
   gap: var(--app-space-4);
-  border: 1px solid var(--app-color-border-card);
+  border: 1px solid var(--app-color-border);
+  cursor: grab;
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+.actions {
+  display: flex;
+  gap: var(--app-space-2);
 }
 
 .cardsSla {
