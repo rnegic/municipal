@@ -1,6 +1,7 @@
 import type { ZodType } from 'zod'
 
 import { env } from '@/shared/config/env'
+import { getValidAccessToken } from '@/shared/lib/auth'
 import { getInitData } from '@/shared/lib/max'
 
 export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
@@ -34,7 +35,19 @@ export class ApiError extends Error {
   }
 }
 
-const INIT_DATA_HEADER = 'Authorization'
+const AUTH_HEADER = 'Authorization'
+
+const resolveAuthHeader = (): string | null => {
+  const accessToken = getValidAccessToken()
+
+  if (accessToken) {
+    return `Bearer ${accessToken}`
+  }
+
+  const initData = getInitData()
+
+  return initData ? `tma ${initData}` : null
+}
 
 const buildUrl = (path: string, query?: Record<string, QueryValue>): string => {
   const url = new URL(`${env.apiBaseUrl}${path}`, window.location.origin)
@@ -56,16 +69,13 @@ const parsePayload = async (response: Response): Promise<ApiErrorPayload | null>
   }
 }
 
-/**
- * Единственный HTTP-клиент приложения
- */
 export const apiRequest = async <TResponse, TBody = never>(
   path: string,
   options: ApiRequestOptions<TBody> = {},
   schema?: ZodType<TResponse>,
 ): Promise<TResponse> => {
   const { method = 'GET', body, query, headers, signal, withAuth = true } = options
-  const initData = withAuth ? getInitData() : ''
+  const authorization = withAuth ? resolveAuthHeader() : null
 
   const response = await fetch(buildUrl(path, query), {
     method,
@@ -73,7 +83,7 @@ export const apiRequest = async <TResponse, TBody = never>(
     headers: {
       Accept: 'application/json',
       ...(body === undefined || body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(initData ? { [INIT_DATA_HEADER]: `tma ${initData}` } : {}),
+      ...(authorization ? { [AUTH_HEADER]: authorization } : {}),
       ...headers,
     },
     body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
