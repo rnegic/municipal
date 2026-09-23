@@ -1,0 +1,14 @@
+{
+  "name": "pp-rubert-tiny2",
+  "task": "paraphrase",
+  "base_model": "cointegrated/rubert-tiny2",
+  "format": "text",
+  "dataset_version": "ds-35788f03a2",
+  "seed": 13,
+  "epochs": 2,
+  "batch_size": 32,
+  "lr": 5e-5,
+  "max_length": 128,
+  "nmt_min_p_good": 0.5,
+  "threads": 6
+}

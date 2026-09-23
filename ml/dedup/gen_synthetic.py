@@ -4,8 +4,11 @@ import json
 import random
 from datetime import datetime, timedelta, timezone
 from itertools import combinations
+from pathlib import Path
 
 from dedup.vocab import ENTRANCE_OBJECTS, OBJECTS, PLUMBING, WATER_KEYWORD_OBJECTS
+from dedup.vocab_extra import EXTRA
+from dedup.data import normalize
 
 GENERATION_METHOD = "template_v3"
 SALIENT = {"diff_entrance": "entrance", "diff_riser": "riser", "diff_apartment": "apartment"}
@@ -265,12 +268,34 @@ def scene_pairs(scene, reports):
     return out
 
 
+def handwritten_strings():
+    out = set()
+    for path in sorted(Path("data/raw").glob("handwritten_*.json")):
+        for h in json.load(open(path, encoding="utf-8"))["houses"]:
+            for r in h["reports"]:
+                out.add(normalize(r[5]))
+                out.add(normalize(r[6]))
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scenes", type=int, default=1500)
     ap.add_argument("--seed", type=int, default=13)
     ap.add_argument("--out", default="data/raw/synthetic_template_v3.jsonl.gz")
+    ap.add_argument("--extra-vocab", action="store_true")
     args = ap.parse_args()
+    global GENERATION_METHOD
+    if args.extra_vocab:
+        GENERATION_METHOD = "template_v4_extra_vocab"
+        held_out = handwritten_strings()
+        dropped = 0
+        for (obj, prob), d in EXTRA.items():
+            for k in ("titles", "descs"):
+                keep = [x for x in d[k] if normalize(x.replace("{loc}", "")) not in held_out]
+                dropped += len(d[k]) - len(keep)
+                OBJECTS[obj]["problems"][prob][k] = OBJECTS[obj]["problems"][prob][k] + keep
+        print(f"extra vocab: dropped {dropped} strings identical to handwritten val/test")
     rng = random.Random(args.seed)
     n = 0
     with gzip.open(args.out, "wt", encoding="utf-8") as f:

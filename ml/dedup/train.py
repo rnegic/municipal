@@ -29,6 +29,28 @@ def sample_train(pairs, easy_neg_ratio, rng):
     return pos + hard + rng.sample(easy, k)
 
 
+def paraphrase_pairs(cfg, rng):
+    import csv
+    from huggingface_hub import hf_hub_download
+
+    def pp(split):
+        rows = [json.loads(line) for line in open(hf_hub_download("merionum/ru_paraphraser", f"{split}.jsonl", repo_type="dataset"), encoding="utf-8")]
+        return [(r["text_1"], r["text_2"], 1 if r["class"] == "1" else 0) for r in rows if r["class"] in ("1", "-1")]
+
+    nmt = []
+    for split in ("val", "test"):
+        rows = list(csv.DictReader(open(hf_hub_download("cointegrated/ru-paraphrase-NMT-Leipzig", f"{split}.csv", repo_type="dataset"), encoding="utf-8")))
+        pos = [(r["original"], r["ru"], 1) for r in rows if float(r["p_good"]) > cfg["nmt_min_p_good"]]
+        texts = [r["ru"] for r in rows]
+        neg = [(a, rng.choice(texts), 0) for a, _, _ in pos]
+        nmt += pos + neg
+    return pp("train") + nmt, pp("test")
+
+
+def to_pair(a, b, label):
+    return {"a": {"title": a, "description": ""}, "b": {"title": b, "description": ""}, "label": label, "source": "paraphrase"}
+
+
 def git_commit():
     try:
         return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
@@ -49,15 +71,23 @@ def main():
     (run / "model").mkdir(parents=True, exist_ok=True)
     (run / "config").mkdir(exist_ok=True)
 
-    train = sample_train(read_jsonl(ds / "train.jsonl.gz"), cfg["easy_neg_ratio"], rng)
-    val = read_jsonl(ds / "val_syn.jsonl.gz")
-    val = rng.sample(val, min(len(val), cfg["val_sample"]))
-    fmt = FORMATS[cfg["format"]]
+    if cfg.get("task") == "paraphrase":
+        tr, va = paraphrase_pairs(cfg, rng)
+        train = [to_pair(*t) for t in tr]
+        val = [to_pair(*t) for t in va]
+        fmt = lambda r: r["title"]
+    else:
+        train = sample_train(read_jsonl(ds / "train.jsonl.gz"), cfg["easy_neg_ratio"], rng)
+        val = read_jsonl(ds / "val_syn.jsonl.gz")
+        val = rng.sample(val, min(len(val), cfg["val_sample"]))
+        val += read_jsonl(ds / "val_hw.jsonl.gz")
+        fmt = FORMATS[cfg["format"]]
     print(f"train {len(train)} {Counter((p['label'], p['source']) for p in train)}")
 
     torch.set_num_threads(cfg.get("threads", 6))
-    tok = AutoTokenizer.from_pretrained(cfg["base_model"])
-    model = AutoModelForSequenceClassification.from_pretrained(cfg["base_model"], num_labels=1)
+    init = cfg.get("init_from") or cfg["base_model"]
+    tok = AutoTokenizer.from_pretrained(init)
+    model = AutoModelForSequenceClassification.from_pretrained(init, num_labels=1)
     opt = torch.optim.AdamW(model.parameters(), lr=cfg["lr"], weight_decay=0.01)
     steps = cfg["epochs"] * (len(train) // cfg["batch_size"])
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: min(1.0, (s + 1) / (0.06 * steps)) * max(0.0, (steps - s) / steps))
@@ -92,9 +122,15 @@ def main():
         model.save_pretrained(run / "model")
         tok.save_pretrained(run / "model")
         ce = CrossEncoder(run / "model", cfg["max_length"], cfg["format"])
-        s = ce.scores(val)
-        m = summary([p["label"] for p in val], s, 0.5)
-        log.append({"epoch": epoch, "val_syn_sample": m, "elapsed_s": round(time.time() - t0)})
+        if cfg.get("task") == "paraphrase":
+            ce.fmt = fmt
+        entry = {"epoch": epoch, "elapsed_s": round(time.time() - t0)}
+        groups = {}
+        for p in val:
+            groups.setdefault("hw" if p["source"] == "synthetic_handwritten" else "syn" if cfg.get("task") != "paraphrase" else "paraphrase", []).append(p)
+        for g, vs in sorted(groups.items()):
+            entry[f"val_{g}"] = summary([p["label"] for p in vs], ce.scores(vs), 0.5)
+        log.append(entry)
         print(json.dumps(log[-1], ensure_ascii=False), flush=True)
 
     (run / "config" / "train_config.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2))
