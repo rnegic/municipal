@@ -38,6 +38,7 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--app-space-4);
+  margin-left: 7px;
 }
 
 .headerBody {
@@ -79,6 +80,25 @@
   box-shadow: var(--app-shadow-card);
 }
 
+.columnTitleText {
+  color: inherit;
+}
+
+.columnTitleNew {
+  color: var(--app-color-text-accent);
+  background: var(--app-color-progress-surface);
+}
+
+.columnTitleProgress {
+  color: var(--app-color-warning-dark);
+  background: var(--app-color-warning-surface);
+}
+
+.columnTitleVerify {
+  color: var(--app-color-success);
+  background: var(--app-color-success-surface);
+}
+
 .cards {
   display: flex;
   flex-direction: column;
@@ -87,6 +107,26 @@
 
 .card {
   gap: var(--app-space-4);
+  border: 1px solid var(--app-color-border-card);
+}
+
+.cardsSla {
+  color: var(--app-color-danger);
+}
+
+.countLow {
+  color: var(--app-color-success);
+  background-color: var(--app-color-success-surface);
+}
+
+.countMedium {
+  color: var(--app-color-warning-dark);
+  background-color: var(--app-color-warning-surface);
+}
+
+.countHigh {
+  color: var(--app-color-danger);
+  background-color: var(--app-color-danger-surface);
 }
 
 .cardHead {
@@ -118,10 +158,41 @@
 .details {
   display: flex;
   flex-direction: column;
-  gap: var(--app-space-1);
+  gap: var(--app-space-3);
+  padding-top: var(--app-space-3);
+  border-top: 1px solid var(--app-color-border);
 }
 
-.sla {
+.addressRow {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-2);
+  min-width: 0;
+}
+
+.addressIcon {
+  flex: none;
+  color: var(--app-color-icon-muted);
+}
+
+.address {
+  min-width: 0;
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--app-space-3) var(--app-space-4);
+}
+
+.metaItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+  min-width: 0;
+}
+
+.slaOverdue {
   color: var(--app-color-danger);
 }
 

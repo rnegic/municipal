@@ -12,6 +12,7 @@ export interface PageLayoutProps {
   children: ReactNode
   className?: string
   width?: PageLayoutWidth
+  fill?: boolean
 }
 
 export const PageLayout = ({
@@ -21,17 +22,27 @@ export const PageLayout = ({
   children,
   className,
   width = 'normal',
+  fill = false,
 }: PageLayoutProps) => (
-  <div className={cn(s.root, className)}>
+  <div className={cn(s.root, fill && s.rootFill, className)}>
     {hero}
-    <div className={cn(s.content, hero ? s.contentWithHero : undefined, width === 'wide' && s.widthWide)}>
+    <div
+      className={cn(
+        s.content,
+        hero ? s.contentWithHero : undefined,
+        width === 'wide' && s.widthWide,
+        fill && s.contentFill,
+      )}
+    >
       {header ? <div className={s.header}>{header}</div> : null}
       <div className={s.body}>{children}</div>
-      {floatingAction ? <div className={s.floatingActionSpacer} aria-hidden="true" /> : null}
+      {floatingAction && !fill ? <div className={s.floatingActionSpacer} aria-hidden="true" /> : null}
     </div>
     {floatingAction ? (
-      <div className={s.floatingAction}>
-        <div className={s.floatingActionInner}>{floatingAction}</div>
+      <div className={cn(s.floatingAction, fill && s.floatingActionDocked)}>
+        <div className={cn(s.floatingActionInner, fill && width === 'wide' && s.widthWide)}>
+          {floatingAction}
+        </div>
       </div>
     ) : null}
   </div>

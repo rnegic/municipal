@@ -83,6 +83,7 @@ type UkQueueRow struct {
 	AffectedCount  int
 	ConfirmedCount int
 	ReporterName   string
+	PhotoIDs       []int64
 }
 
 func (s *Store) UkQueue(ctx context.Context, ukID, offset, limit int64) ([]UkQueueRow, int64, error) {

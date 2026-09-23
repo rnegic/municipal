@@ -133,7 +133,22 @@ func (s *Service) CanAccessIncident(ctx context.Context, u model.AppUser, incide
 }
 
 func (s *Service) UkQueue(ctx context.Context, u model.AppUser, offset, limit int64) ([]repository.UkQueueRow, int64, error) {
-	return s.repo.UkQueue(ctx, *u.UkID, offset, limit)
+	rows, total, err := s.repo.UkQueue(ctx, *u.UkID, offset, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	ids := make([]int64, len(rows))
+	for i, r := range rows {
+		ids[i] = r.ID
+	}
+	photos, err := s.repo.PhotoIDsByIncident(ctx, ids)
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range rows {
+		rows[i].PhotoIDs = photos[rows[i].ID]
+	}
+	return rows, total, nil
 }
 
 type EventInput struct {

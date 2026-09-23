@@ -59,6 +59,7 @@ export const ukQueueItemSchema = z.object({
   affectedCount: z.number().int().nonnegative(),
   confirmedCount: z.number().int().nonnegative(),
   reporterName: z.string(),
+  photos: z.array(incidentPhotoSchema),
 })
 
 export const paginatedUkQueueSchema = z.object({

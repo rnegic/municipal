@@ -56,3 +56,20 @@
 .widthWide {
   max-width: var(--app-layout-width-wide);
 }
+
+.rootFill {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.contentFill {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.floatingActionDocked {
+  position: static;
+  inset: auto;
+  pointer-events: auto;
+  padding-block: var(--app-space-4) calc(var(--app-space-4) + env(safe-area-inset-bottom));
+}

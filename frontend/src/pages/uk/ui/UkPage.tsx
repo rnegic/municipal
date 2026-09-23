@@ -2,6 +2,7 @@ import { Counter, Typography } from '@maxhub/max-ui'
 import type { ReactNode } from 'react'
 
 import {
+  IncidentPhotos,
   incidentTexts,
   type IncidentStatus,
   type UkQueueItem,
@@ -11,6 +12,8 @@ import {
 import { EventCreateFab } from '@/features/event-create'
 import { ThemeToggle } from '@/features/theme-switch'
 import { UkSessionBadge, UkSignOutButton } from '@/features/uk-auth'
+import { IconLocation } from '@/shared/assets/icons'
+import { cn } from '@/shared/lib/cn'
 import { formatDateTime } from '@/shared/lib/date'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
@@ -35,7 +38,7 @@ const QUEUE_COLUMNS: readonly QueueColumn[] = [
 
 const getSlaLabel = (dueAt: string | null): string => {
   if (!dueAt) {
-    return 'SLA не задан'
+    return 'Не задан'
   }
 
   const minutes = Math.ceil((new Date(dueAt).getTime() - Date.now()) / 60_000)
@@ -62,6 +65,28 @@ const getNextStatus = (status: IncidentStatus): IncidentStatus | null => {
   return null
 }
 
+const isOverdue = (dueAt: string | null): boolean => dueAt !== null && new Date(dueAt).getTime() <= Date.now()
+
+const getCountTone = (count: number): string => {
+  if (count > 7) {
+    return s.countHigh
+  }
+  if (count > 3) {
+    return s.countMedium
+  }
+  return s.countLow
+}
+
+const getColumnTone = (status: IncidentStatus): string => {
+  if (status === 'in_progress') {
+    return s.columnTitleProgress
+  }
+  if (status === 'verifying') {
+    return s.columnTitleVerify
+  }
+  return s.columnTitleNew
+}
+
 const QueueCard = ({ incident, column }: { incident: UkQueueItem; column: QueueColumn }) => {
   const statusMutation = useSetIncidentStatusMutation()
   const nextStatus = getNextStatus(incident.status)
@@ -77,19 +102,45 @@ const QueueCard = ({ incident, column }: { incident: UkQueueItem; column: QueueC
       <Typography.Text variant="description" color="secondary">
         {incident.description}
       </Typography.Text>
+      <IncidentPhotos photos={incident.photos} />
       <div className={s.details}>
-        <Typography.Text variant="note" color="tertiary">
-          {incident.houseAddress}
-        </Typography.Text>
-        <Typography.Text variant="note" color="tertiary">
-          {incident.reporterName} · {incident.affectedCount} жителей
-        </Typography.Text>
-        <Typography.Text className={s.sla} variant="note-strong">
-          {getSlaLabel(incident.dueAt)}
-        </Typography.Text>
-        <Typography.Text variant="note" color="tertiary">
-          Создано {formatDateTime(incident.createdAt)}
-        </Typography.Text>
+        <div className={s.addressRow}>
+          <IconLocation size={16} className={s.addressIcon} />
+          <Typography.Text className={s.address} variant="note" color="tertiary">
+            {incident.houseAddress}
+          </Typography.Text>
+        </div>
+        <div className={s.meta}>
+          <div className={s.metaItem}>
+            <Typography.Text variant="note" color="tertiary">
+              Заявитель
+            </Typography.Text>
+            <Typography.Text variant="note-strong">{incident.reporterName}</Typography.Text>
+          </div>
+          <div className={s.metaItem}>
+            <Typography.Text variant="note" color="tertiary">
+              Жителей
+            </Typography.Text>
+            <Typography.Text variant="note-strong">{incident.affectedCount}</Typography.Text>
+          </div>
+          <div className={s.metaItem}>
+            <Typography.Text variant="note" color="tertiary">
+              Срок
+            </Typography.Text>
+            <Typography.Text
+              className={isOverdue(incident.dueAt) ? s.slaOverdue : undefined}
+              variant="note-strong"
+            >
+              {getSlaLabel(incident.dueAt)}
+            </Typography.Text>
+          </div>
+          <div className={s.metaItem}>
+            <Typography.Text variant="note" color="tertiary">
+              Создано
+            </Typography.Text>
+            <Typography.Text variant="note-strong">{formatDateTime(incident.createdAt)}</Typography.Text>
+          </div>
+        </div>
       </div>
       {column.action && nextStatus ? (
         <Button
@@ -109,10 +160,12 @@ const QueueCard = ({ incident, column }: { incident: UkQueueItem; column: QueueC
 const QueueColumnView = ({ column, items }: { column: QueueColumn; items: readonly UkQueueItem[] }) => (
   <section className={s.column} aria-labelledby={`uk-column-${column.status}`}>
     <div className={s.columnHeader}>
-      <div className={s.columnTitle} id={`uk-column-${column.status}`}>
-        <Typography.Title variant="small-strong">{column.title}</Typography.Title>
+      <div className={cn(s.columnTitle, getColumnTone(column.status))} id={`uk-column-${column.status}`}>
+        <Typography.Title className={s.columnTitleText} variant="small-strong">
+          {column.title}
+        </Typography.Title>
       </div>
-      <Counter value={items.length} variant="mute" />
+      <Counter className={getCountTone(items.length)} value={items.length} variant="mute" />
     </div>
     {items.length === 0 ? (
       <EmptyState title="Пусто" description="Здесь пока нет обращений" />
@@ -148,7 +201,7 @@ export const UkPage = () => {
 
   if (queueQuery.isPending) {
     return (
-      <PageLayout width="wide" hero={<UkHero>{sessionHeader}</UkHero>}>
+      <PageLayout fill width="wide" hero={<UkHero>{sessionHeader}</UkHero>}>
         <LoadingState />
       </PageLayout>
     )
@@ -156,7 +209,7 @@ export const UkPage = () => {
 
   if (queueQuery.isError) {
     return (
-      <PageLayout width="wide" hero={<UkHero>{sessionHeader}</UkHero>}>
+      <PageLayout fill width="wide" hero={<UkHero>{sessionHeader}</UkHero>}>
         <ApiErrorState error={queueQuery.error} onRetry={() => queueQuery.refetch()} />
       </PageLayout>
     )
@@ -171,6 +224,7 @@ export const UkPage = () => {
 
   return (
     <PageLayout
+      fill
       width="wide"
       hero={
         <UkHero>

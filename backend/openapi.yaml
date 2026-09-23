@@ -618,7 +618,7 @@ components:
     UkQueueItem:
       type: object
       required: [id, houseId, houseAddress, title, description, severity, status, createdAt, dueAt,
-                 affectedCount, confirmedCount, reporterName]
+                 affectedCount, confirmedCount, reporterName, photos]
       properties:
         id: { type: string }
         houseId: { type: string }
@@ -632,6 +632,9 @@ components:
         affectedCount: { type: integer, minimum: 0 }
         confirmedCount: { type: integer, minimum: 0 }
         reporterName: { type: string }
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/Photo" }
 
     PaginatedUkQueue:
       type: object

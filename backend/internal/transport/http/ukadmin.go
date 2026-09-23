@@ -71,7 +71,7 @@ func (s *server) ListUkQueue(ctx context.Context, req oapi.ListUkQueueRequestObj
 			Id: formatIncidentID(r.ID), HouseId: formatHouseID(r.HouseID), HouseAddress: r.HouseAddress,
 			Title: r.Title, Description: r.Description, Severity: oapi.Severity(r.Severity), Status: oapi.IncidentStatus(r.Status),
 			CreatedAt: r.CreatedAt, DueAt: r.DueAt, AffectedCount: r.AffectedCount, ConfirmedCount: r.ConfirmedCount,
-			ReporterName: r.ReporterName,
+			ReporterName: r.ReporterName, Photos: toPhotos(r.PhotoIDs),
 		}
 	}
 	return oapi.ListUkQueue200JSONResponse{Items: items, Total: int(total), Offset: int(offset), Limit: int(limit)}, nil
