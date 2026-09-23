@@ -35,7 +35,6 @@ func (s *Store) OpenIncidents(ctx context.Context, houseID int64) ([]domain.Open
 	return out, nil
 }
 
-// CreateIncident inserts the incident (due_at = created_at + sla) and subscribes the reporter in one transaction.
 func (s *Store) CreateIncident(ctx context.Context, houseID, reporterID int64, title, description string, severity domain.Severity, entrance, riser *string, sla time.Duration) (int64, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -58,7 +57,6 @@ func (s *Store) CreateIncident(ctx context.Context, houseID, reporterID int64, t
 	return inc.ID, tx.Commit()
 }
 
-// Subscribe is idempotent; returns ErrNotFound for a missing incident.
 func (s *Store) Subscribe(ctx context.Context, incidentID, userID int64) error {
 	_, err := IncidentSubscription.INSERT(IncidentSubscription.IncidentID, IncidentSubscription.UserID).
 		VALUES(incidentID, userID).
@@ -70,7 +68,6 @@ func (s *Store) Subscribe(ctx context.Context, incidentID, userID int64) error {
 	return err
 }
 
-// IncidentRow = incident + computed columns; aliases must match field names.
 type IncidentRow struct {
 	model.Incident
 	Subscribers   int
@@ -92,7 +89,6 @@ func incidentSelect(userID int64) SelectStatement {
 	).FROM(Incident)
 }
 
-// GetIncident returns ErrNotFound for a missing incident.
 func (s *Store) GetIncident(ctx context.Context, id, userID int64) (IncidentRow, error) {
 	var row IncidentRow
 	err := incidentSelect(userID).WHERE(Incident.ID.EQ(Int64(id))).QueryContext(ctx, s.db, &row)
@@ -102,8 +98,6 @@ func (s *Store) GetIncident(ctx context.Context, id, userID int64) (IncidentRow,
 	return row, err
 }
 
-// ListActiveIncidents returns accepted/in_progress/verifying incidents of the house,
-// critical severity first, then newest first.
 func (s *Store) ListActiveIncidents(ctx context.Context, houseID, userID int64) ([]IncidentRow, error) {
 	var rows []IncidentRow
 	err := incidentSelect(userID).
@@ -113,8 +107,6 @@ func (s *Store) ListActiveIncidents(ctx context.Context, houseID, userID int64) 
 	return rows, err
 }
 
-// ListUserIncidents returns the house incidents the user reported or subscribed to ("мои заявки":
-// own reports, "у меня тоже" and dedup joins), newest first, with the total count for pagination.
 func (s *Store) ListUserIncidents(ctx context.Context, houseID, userID int64, offset, limit int64) ([]IncidentRow, int64, error) {
 	mine := Incident.HouseID.EQ(Int64(houseID)).AND(
 		Incident.ReporterID.EQ(Int64(userID)).OR(EXISTS(
@@ -143,9 +135,11 @@ func (s *Store) SubscriberMaxIDs(ctx context.Context, incidentID int64) ([]int64
 	if err != nil && !errors.Is(err, qrm.ErrNoRows) {
 		return nil, err
 	}
-	out := make([]int64, len(users))
-	for i, u := range users {
-		out[i] = u.MaxUserID
+	out := make([]int64, 0, len(users))
+	for _, u := range users {
+		if u.MaxUserID != nil {
+			out = append(out, *u.MaxUserID)
+		}
 	}
 	return out, nil
 }

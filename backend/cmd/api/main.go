@@ -26,6 +26,14 @@ func main() {
 	botToken := os.Getenv("MAX_BOT_TOKEN")
 	svc := service.New(repo, maxclient.NewClient(botToken), dadata.NewClient(os.Getenv("DADATA_TOKEN")),
 		ukclient.New(os.Getenv("UK_BASE_URL"), os.Getenv("UK_API_TOKEN")), os.Getenv("MAX_BOT_NAME"))
+	if key := os.Getenv("UK_JWT_PRIVATE_KEY"); key != "" {
+		if err := svc.UseTokenKey(key); err != nil {
+			slog.Error("uk jwt key", "err", err)
+			os.Exit(1)
+		}
+	} else {
+		slog.Warn("UK_JWT_PRIVATE_KEY not set: ephemeral key, dispatcher sessions reset on restart")
+	}
 	go svc.RunOutboxWorker(ctx)
 	go svc.RunUkSyncWorker(ctx)
 

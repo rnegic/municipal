@@ -14,8 +14,6 @@ import (
 
 const ukRegisterBatch = 50
 
-// syncUnregistered registers incidents the UK system doesn't know yet (external_id IS NULL).
-// Called right after CreateIncident (best effort) and by RunUkSyncWorker (retry).
 func (s *Service) syncUnregistered(ctx context.Context) error {
 	rows, err := s.repo.UnregisteredIncidents(ctx, ukRegisterBatch)
 	if err != nil {
@@ -49,9 +47,6 @@ var ukStatusText = map[domain.IncidentStatus]string{
 	domain.IncidentDone:       "Проблема закрыта управляющей компанией.",
 }
 
-// RunUkSyncWorker: registers pending incidents in the UK system and pulls status changes.
-// ponytail: single in-process worker, since kept in memory (24h replay on restart is
-// idempotent because ApplyUkStatus only changes differing statuses).
 func (s *Service) RunUkSyncWorker(ctx context.Context) {
 	tick := ukSyncDefaultTick
 	if d, err := time.ParseDuration(os.Getenv("UK_SYNC_INTERVAL")); err == nil && d > 0 {
@@ -75,7 +70,6 @@ func (s *Service) RunUkSyncWorker(ctx context.Context) {
 	}
 }
 
-// syncStatuses pulls incidents updated since the last successful pull and applies them.
 func (s *Service) syncStatuses(ctx context.Context) error {
 	ups, err := s.uk.IncidentUpdates(ctx, s.ukSince)
 	if err != nil {
@@ -88,7 +82,7 @@ func (s *Service) syncStatuses(ctx context.Context) error {
 		}
 		text, ok := ukStatusText[u.Status]
 		if !ok {
-			continue // accepted и неизвестные статусы жителям не анонсируем
+			continue
 		}
 		if _, err := s.repo.ApplyUkStatus(ctx, u.ID, u.Status, "uk_status_"+string(u.Status), repository.OutboxPayload{Text: text}); err != nil {
 			return fmt.Errorf("apply status %s for %s: %w", u.Status, u.ID, err)

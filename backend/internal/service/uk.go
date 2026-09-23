@@ -11,9 +11,6 @@ import (
 	"ukapp/gen/db/ukapp/public/model"
 )
 
-// UkProvider — порт к системе управляющей компании (contracts/uk.yaml). Единственная
-// реализация в MVP — ukclient (HTTP к mock/uk); в production сюда встаёт адаптер
-// настоящей УК-системы, service об этом не узнаёт.
 type UkProvider interface {
 	FindHouse(ctx context.Context, fiasID string) (UkHouse, error)
 	RegisterIncident(ctx context.Context, in UkIncident) (id string, status domain.IncidentStatus, err error)
@@ -38,10 +35,15 @@ type UkIncidentUpdate struct {
 	UpdatedAt       time.Time
 }
 
-// CanAccessHouse: true only for the resident of that house — the dispatcher cabinet moved to
-// the external УК system (docs/uk-integration.md), so there's no other role to check here.
-func (s *Service) CanAccessHouse(_ context.Context, u model.AppUser, houseID int64) (bool, error) {
-	return u.HouseID != nil && *u.HouseID == houseID, nil
+func (s *Service) CanAccessHouse(ctx context.Context, u model.AppUser, houseID int64) (bool, error) {
+	if u.Role != domain.RoleUkDispatcher {
+		return u.HouseID != nil && *u.HouseID == houseID, nil
+	}
+	h, err := s.repo.FindHouse(ctx, houseID)
+	if errors.Is(err, ErrNotFound) {
+		return false, nil
+	}
+	return err == nil && u.UkID != nil && *u.UkID == h.UkID, err
 }
 
 func (s *Service) HouseStats(ctx context.Context, houseID int64) (repository.HouseStats, error) {
@@ -53,10 +55,6 @@ const (
 	MaxPhotosPerUserHour = 20
 )
 
-// AddPhoto stores already-validated (transport sniffs type and caps size) image bytes.
-// Only the reporter or a subscriber may attach (ErrForbidden); caps: MaxPhotosPerIncident
-// (ErrInvalidStatus) and MaxPhotosPerUserHour (ErrRateLimited).
-// ponytail: count-based limits in Postgres, no token bucket; enough for a webview form.
 func (s *Service) AddPhoto(ctx context.Context, incidentID, userID int64, contentType string, data []byte) (int64, error) {
 	inc, err := s.repo.GetIncident(ctx, incidentID, userID)
 	if err != nil {
@@ -78,7 +76,6 @@ func (s *Service) AddPhoto(ctx context.Context, incidentID, userID int64, conten
 	return s.repo.InsertPhoto(ctx, incidentID, userID, contentType, data)
 }
 
-// PhotoIDs returns photo ids grouped by incident (for list views that aren't IncidentRow).
 func (s *Service) PhotoIDs(ctx context.Context, incidentIDs []int64) (map[int64][]int64, error) {
 	return s.repo.PhotoIDsByIncident(ctx, incidentIDs)
 }

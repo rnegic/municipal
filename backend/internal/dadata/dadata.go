@@ -1,4 +1,3 @@
-// Package dadata — HTTP-клиент DaData suggestions API.
 package dadata
 
 import (
@@ -31,7 +30,6 @@ type Suggestion struct {
 	HouseFiasID string
 }
 
-// Suggest returns only suggestions resolved down to a building (house_fias_id present).
 func (c *Client) Suggest(ctx context.Context, q string, count int) ([]Suggestion, error) {
 	if count < 1 {
 		count = defaultSuggestCount

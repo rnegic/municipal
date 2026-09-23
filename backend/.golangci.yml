@@ -14,6 +14,7 @@
 #   maxclient,
 #   dadata     — HTTP-клиенты внешних API. Не знают про repository/service/transport.
 #   ukclient   — адаптер порта service.UkProvider (gen/uk из contracts/uk.yaml).
+#   ukauth     — крипто сессии сотрудника УК: ES256-токены (jwt) и bcrypt-пароли.
 #   service    — бизнес-оркестрация: применяет domain-правила поверх repository и
 #                maxclient/dadata. Не знает про oapi/JSON — только сюда нельзя gen/api.
 #   transport/
@@ -108,6 +109,13 @@ linters:
               desc: "адаптер УК не знает про HTTP-контракт мини-аппа"
             - pkg: "ukapp/gen/api"
               desc: "адаптер УК не отдаёт wire-типы мини-аппа"
+        ukauth-deps:
+          files: ["**/internal/ukauth/**"]
+          allow:
+            - "$gostd"
+            - "ukapp/internal/domain"
+            - "github.com/golang-jwt/jwt/v5"
+            - "golang.org/x/crypto/bcrypt"
         service-deps:
           files: ["**/internal/service/**"]
           allow:
@@ -116,6 +124,7 @@ linters:
             - "ukapp/internal/repository"
             - "ukapp/internal/maxclient"
             - "ukapp/internal/dadata"
+            - "ukapp/internal/ukauth"
             - "ukapp/gen/db"
           deny:
             - pkg: "ukapp/internal/transport"

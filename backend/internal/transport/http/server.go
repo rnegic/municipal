@@ -1,5 +1,3 @@
-// Package http — реализация oapi.StrictServerInterface на gin: разбор запроса, вызов service,
-// маппинг результата в JSON-контракт из openapi.yaml. Бизнес-решений здесь нет.
 package http
 
 import (
@@ -14,9 +12,6 @@ import (
 	"ukapp/internal/service"
 )
 
-// Middlewares are applied in reverse order.
-// server implements oapi.StrictServerInterface. Handlers live in per-feature files
-// (users.go, incidents.go, events.go, uk.go).
 type server struct {
 	svc *service.Service
 }
@@ -36,22 +31,17 @@ func NewServer(svc *service.Service, botToken string) http.Handler {
 		},
 	})
 	router := gin.New()
-	// StrictServerInterface handlers only see *gin.Context through the context.Context
-	// interface (Value/Deadline/Done/Err); without this it doesn't fall back to the
-	// request's own context, so context.WithValue(c.Request.Context(), ...) in
-	// authMiddleware would be invisible to userFromCtx.
+
 	router.ContextWithFallback = true
 	oapi.RegisterHandlers(router, h)
 	return withCORS(router)
 }
 
-// withCORS: фронт живёт в вебвью MAX на другом origin — без этих заголовков вебвью
-// заблокирует запрос (см. docs/frontend-api-contract.md §8).
 func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return

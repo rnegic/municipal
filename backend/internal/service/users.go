@@ -18,8 +18,6 @@ func (s *Service) UpsertUser(ctx context.Context, iu domain.InitUser) (model.App
 	return s.repo.UpsertUser(ctx, iu)
 }
 
-// BindHouse normalizes a free-text address via DaData, asks the UK system who serves the
-// building, and binds the house to the user. Unknown to the UK → ErrHouseNotServed.
 func (s *Service) BindHouse(ctx context.Context, userID int64, rawAddress string) (houseID int64, address string, err error) {
 	sugs, err := s.dd.Suggest(ctx, rawAddress, DefaultSuggestCount)
 	if err != nil {

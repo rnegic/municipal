@@ -1,5 +1,3 @@
-// Package ukclient — HTTP-адаптер порта service.UkProvider к системе УК по contracts/uk.yaml.
-// Единственное место, где живут wire-типы gen/uk и маппинг статусов УК ↔ domain.
 package ukclient
 
 import (
@@ -26,13 +24,11 @@ func New(baseURL, token string) *Client {
 			return nil
 		}))
 	if err != nil {
-		panic(err) // только при невалидном baseURL — ошибка конфигурации при старте
+		panic(err)
 	}
 	return &Client{api: c}
 }
 
-// toDomainStatus — единственная точка маппинга статусов УК в наши. У настоящей УК
-// свой набор — правится здесь.
 func toDomainStatus(s ukapi.IncidentStatus) domain.IncidentStatus { return domain.IncidentStatus(s) }
 
 func (c *Client) FindHouse(ctx context.Context, fiasID string) (service.UkHouse, error) {

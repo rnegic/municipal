@@ -27,7 +27,7 @@ func toPhoto(id int64) oapi.Photo {
 }
 
 func toPhotos(ids []int64) []oapi.Photo {
-	photos := make([]oapi.Photo, len(ids)) // non-nil: "photos": [] rather than null
+	photos := make([]oapi.Photo, len(ids))
 	for i, id := range ids {
 		photos[i] = toPhoto(id)
 	}
@@ -57,7 +57,12 @@ func (s *server) GetIncident(ctx context.Context, req oapi.GetIncidentRequestObj
 	if !ok {
 		return oapi.GetIncident404JSONResponse(apiErr("not_found", "авария не найдена")), nil
 	}
-	row, err := s.svc.GetIncident(ctx, id, userFromCtx(ctx).ID)
+	u := userFromCtx(ctx)
+	err := s.svc.CanAccessIncident(ctx, u, id)
+	var row service.IncidentRow
+	if err == nil {
+		row, err = s.svc.GetIncident(ctx, id, u.ID)
+	}
 	if errors.Is(err, service.ErrNotFound) {
 		return oapi.GetIncident404JSONResponse(apiErr("not_found", "авария не найдена")), nil
 	}
@@ -105,7 +110,7 @@ func (s *server) SetIncidentStatus(ctx context.Context, req oapi.SetIncidentStat
 	if !ok {
 		return oapi.SetIncidentStatus404JSONResponse(apiErr("not_found", "авария не найдена")), nil
 	}
-	row, err := s.svc.SetIncidentStatus(ctx, id, userFromCtx(ctx).ID, domain.IncidentStatus(req.Body.Status))
+	row, err := s.svc.SetIncidentStatus(ctx, userFromCtx(ctx), id, domain.IncidentStatus(req.Body.Status))
 	if errors.Is(err, service.ErrNotFound) {
 		return oapi.SetIncidentStatus404JSONResponse(apiErr("not_found", "авария не найдена")), nil
 	}
@@ -164,7 +169,6 @@ func (s *server) ListHouseRequests(ctx context.Context, req oapi.ListHouseReques
 
 const maxPhotoBytes = 10 << 20
 
-// UploadIncidentPhoto reads the `photo` part (≤10 МБ, jpeg/png by content sniffing, not by header).
 func (s *server) UploadIncidentPhoto(ctx context.Context, req oapi.UploadIncidentPhotoRequestObject) (oapi.UploadIncidentPhotoResponseObject, error) {
 	id, ok := parseID("inc_", req.Id)
 	if !ok {

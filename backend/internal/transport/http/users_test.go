@@ -36,7 +36,6 @@ func TestMe_CreatesOnFirstCall(t *testing.T) {
 		t.Fatalf("bad me %+v", me)
 	}
 
-	// second call: same row, not a duplicate
 	srv.ServeHTTP(httptest.NewRecorder(), authedReq(t, "GET", "/api/me", "", 500, "Anna"))
 	var n int
 	if err := s.DB().QueryRowContext(t.Context(), `SELECT count(*) FROM app_user`).Scan(&n); err != nil {
@@ -76,13 +75,11 @@ func TestBindHouse(t *testing.T) {
 		t.Fatalf("house not bound in profile: %+v", me)
 	}
 
-	// second resident, same normalized address → same house row
 	h2 := bindUser(t, srv, 502, "abc-123")
 	if h2 != h1 {
 		t.Fatalf("same address must map to same house: %v vs %v", h1, h2)
 	}
 
-	// empty address → 400 JSON
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "POST", "/api/houses/bind", `{"address":""}`, 501, "Ivan"))
 	if w.Code != 400 {

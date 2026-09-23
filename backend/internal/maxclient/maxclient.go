@@ -1,4 +1,3 @@
-// Package maxclient — HTTP-клиент MAX Bot API (текстовые пуш-уведомления).
 package maxclient
 
 import (
@@ -22,7 +21,6 @@ func NewClient(token string) *Client {
 	return &Client{Token: token, BaseURL: "https://platform-api2.max.ru", HTTP: &http.Client{Timeout: 10 * time.Second}}
 }
 
-// SendMessage: POST /messages?user_id=. Format per https://dev.max.ru/docs-api/methods/POST/messages
 func (c *Client) SendMessage(ctx context.Context, userID int64, text string) error {
 	raw, _ := json.Marshal(map[string]any{"text": text})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/messages?user_id="+strconv.FormatInt(userID, 10), bytes.NewReader(raw))

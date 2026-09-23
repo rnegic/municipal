@@ -28,7 +28,7 @@ func TestFindDuplicate(t *testing.T) {
 		{"different title", 10, "Что-то ещё", ptr("1"), 0},
 		{"different house", 13, "Нет воды", ptr("1"), 0},
 		{"different riser", 10, "Нет воды", ptr("3"), 0},
-		{"done ignored", 10, "Нет воды", ptr("1"), 1}, // ID 3 done, ID 1 wins
+		{"done ignored", 10, "Нет воды", ptr("1"), 1},
 		{"too old", 12, "Нет воды", ptr("1"), 0},
 	}
 	for _, c := range cases {

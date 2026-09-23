@@ -13,7 +13,6 @@ import (
 
 const testBotToken = "test-bot-token"
 
-// signInitData builds a valid initData string the way MAX does (see docs/webapps/validation).
 func signInitData(t *testing.T, pairs map[string]string) string {
 	t.Helper()
 	keys := make([]string, 0, len(pairs))

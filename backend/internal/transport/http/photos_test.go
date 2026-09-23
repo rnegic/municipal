@@ -58,7 +58,6 @@ func TestHouseStats(t *testing.T) {
 	}
 }
 
-// tiny valid 1x1 PNG
 var pngBytes = []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82")
 
 func uploadPhoto(t *testing.T, srv http.Handler, incID string, field string, data []byte) *httptest.ResponseRecorder {
@@ -102,7 +101,6 @@ func TestIncidentPhotos(t *testing.T) {
 		t.Fatalf("upload: %d %s", w.Code, w.Body)
 	}
 
-	// public download, no Authorization header
 	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, httptest.NewRequest("GET", ph.Url, nil))
 	if w.Code != 200 || w.Header().Get("Content-Type") != "image/png" || !bytes.Equal(w.Body.Bytes(), pngBytes) {
@@ -119,7 +117,6 @@ func TestIncidentPhotos(t *testing.T) {
 		t.Fatalf("incident photos: %d %+v", c, got)
 	}
 
-	// neighbour who hasn't joined → 403; after join → allowed
 	bindUser(t, srv, 2, "f-10")
 	if w := uploadPhotoAs(t, srv, 2, inc.Id, "photo", pngBytes); w.Code != 403 {
 		t.Fatalf("stranger: want 403 got %d", w.Code)
@@ -129,7 +126,7 @@ func TestIncidentPhotos(t *testing.T) {
 	if w := uploadPhotoAs(t, srv, 2, inc.Id, "photo", pngBytes); w.Code != 201 {
 		t.Fatalf("subscriber: want 201 got %d", w.Code)
 	}
-	// per-incident cap: 5
+
 	for i := 0; i < 3; i++ {
 		if w := uploadPhoto(t, srv, inc.Id, "photo", pngBytes); w.Code != 201 {
 			t.Fatalf("photo %d: %d %s", i+3, w.Code, w.Body)
@@ -138,7 +135,7 @@ func TestIncidentPhotos(t *testing.T) {
 	if w := uploadPhoto(t, srv, inc.Id, "photo", pngBytes); w.Code != 422 {
 		t.Fatalf("6th photo: want 422 got %d", w.Code)
 	}
-	// per-user rate limit: 20/hour across incidents
+
 	inc2, _ := createIncident(t, srv, 1, `{"title":"B","description":"x","severity":"warning"}`)
 	if _, err := s.DB().ExecContext(context.Background(),
 		`INSERT INTO incident_photo (incident_id, user_id, content_type, data) SELECT $1, user_id, 'image/png', ''::bytea FROM incident_photo, generate_series(1,4) WHERE incident_id=$2 AND user_id=(SELECT id FROM app_user WHERE max_user_id=1)`,

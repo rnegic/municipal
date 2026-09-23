@@ -8,10 +8,10 @@ import (
 
 	"ukapp/internal/domain"
 	"ukapp/internal/repository"
+
+	"ukapp/gen/db/ukapp/public/model"
 )
 
-// IncidentRow is the service-level view of an incident (transport maps it to the wire format;
-// it never sees repository.IncidentRow or gen/db types directly).
 type IncidentRow struct {
 	ID            int64
 	HouseID       int64
@@ -29,7 +29,6 @@ type IncidentRow struct {
 	PhotoIDs      []int64
 }
 
-// toIncidentRows maps repository rows and attaches photo ids in one extra query.
 func (s *Service) toIncidentRows(ctx context.Context, rs []repository.IncidentRow) ([]IncidentRow, error) {
 	ids := make([]int64, len(rs))
 	for i, r := range rs {
@@ -63,9 +62,6 @@ func (s *Service) GetIncident(ctx context.Context, id, userID int64) (IncidentRo
 	return rows[0], nil
 }
 
-// CreateIncident joins an open duplicate (same house+title+riser, opened within
-// domain.DedupWindow) instead of creating a new one; created=false signals the caller to
-// respond 200 (joined existing) instead of 201 (new).
 func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64, title, description, severityStr string, entrance, riser *string) (row IncidentRow, created bool, err error) {
 	sev := domain.Severity(severityStr)
 	if !sev.Valid() || title == "" || description == "" {
@@ -101,7 +97,6 @@ func (s *Service) ListActiveIncidents(ctx context.Context, houseID, userID int64
 	return s.toIncidentRows(ctx, rows)
 }
 
-// ListRequests returns the incidents the user reported or joined in the house, paginated.
 func (s *Service) ListRequests(ctx context.Context, houseID, userID, offset, limit int64) ([]IncidentRow, int64, error) {
 	rows, total, err := s.repo.ListUserIncidents(ctx, houseID, userID, offset, limit)
 	if err != nil {
@@ -111,7 +106,6 @@ func (s *Service) ListRequests(ctx context.Context, houseID, userID, offset, lim
 	return out, total, err
 }
 
-// JoinIncident ("у меня тоже") is idempotent: joined is always true on success.
 func (s *Service) JoinIncident(ctx context.Context, incidentID, userID int64) (affectedCount int, joined bool, err error) {
 	if err := s.repo.Subscribe(ctx, incidentID, userID); err != nil {
 		return 0, false, err
@@ -120,15 +114,14 @@ func (s *Service) JoinIncident(ctx context.Context, incidentID, userID int64) (a
 	return n, true, err
 }
 
-// deepLink opens the mini-app directly on the incident's card.
 func (s *Service) deepLink(incidentID int64) string {
 	return fmt.Sprintf("https://max.ru/%s?startapp=inc_%d", s.botName, incidentID)
 }
 
-// SetIncidentStatus applies a dispatcher-driven status change (accepted→in_progress,
-// in_progress→verifying, verifying→done) and notifies subscribers by push. ErrInvalidStatus if
-// `to` isn't a valid dispatcher target or the incident isn't currently in the matching `from`.
-func (s *Service) SetIncidentStatus(ctx context.Context, incidentID, userID int64, to domain.IncidentStatus) (IncidentRow, error) {
+func (s *Service) SetIncidentStatus(ctx context.Context, u model.AppUser, incidentID int64, to domain.IncidentStatus) (IncidentRow, error) {
+	if err := s.CanAccessIncident(ctx, u, incidentID); err != nil {
+		return IncidentRow{}, err
+	}
 	from, ok := domain.DispatcherTransition(to)
 	if !ok {
 		return IncidentRow{}, ErrInvalidStatus
@@ -141,5 +134,5 @@ func (s *Service) SetIncidentStatus(ctx context.Context, incidentID, userID int6
 	if !moved {
 		return IncidentRow{}, ErrInvalidStatus
 	}
-	return s.GetIncident(ctx, incidentID, userID)
+	return s.GetIncident(ctx, incidentID, u.ID)
 }

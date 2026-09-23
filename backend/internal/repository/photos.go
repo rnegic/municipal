@@ -12,7 +12,6 @@ import (
 	. "ukapp/gen/db/ukapp/public/table"
 )
 
-// InsertPhoto stores the photo bytes; returns ErrNotFound for a missing incident.
 func (s *Store) InsertPhoto(ctx context.Context, incidentID, userID int64, contentType string, data []byte) (int64, error) {
 	var p model.IncidentPhoto
 	err := IncidentPhoto.INSERT(IncidentPhoto.IncidentID, IncidentPhoto.UserID, IncidentPhoto.ContentType, IncidentPhoto.Data).
@@ -25,8 +24,6 @@ func (s *Store) InsertPhoto(ctx context.Context, incidentID, userID int64, conte
 	return p.ID, err
 }
 
-// PhotoCounts: photos already attached to the incident and uploaded by the user within the window
-// (inputs for the per-incident cap and the per-user rate limit).
 func (s *Store) PhotoCounts(ctx context.Context, incidentID, userID int64, window time.Duration) (byIncident, byUserRecent int, err error) {
 	err = s.db.QueryRowContext(ctx, `
 		SELECT count(*) FILTER (WHERE incident_id = $1),
@@ -36,7 +33,6 @@ func (s *Store) PhotoCounts(ctx context.Context, incidentID, userID int64, windo
 	return byIncident, byUserRecent, err
 }
 
-// GetPhoto returns the photo with its bytes; ErrNotFound if missing.
 func (s *Store) GetPhoto(ctx context.Context, id int64) (model.IncidentPhoto, error) {
 	var p model.IncidentPhoto
 	err := SELECT(IncidentPhoto.ContentType, IncidentPhoto.Data).FROM(IncidentPhoto).
@@ -47,7 +43,6 @@ func (s *Store) GetPhoto(ctx context.Context, id int64) (model.IncidentPhoto, er
 	return p, err
 }
 
-// PhotoIDsByIncident returns photo ids (oldest first) grouped by incident, for the given incidents.
 func (s *Store) PhotoIDsByIncident(ctx context.Context, incidentIDs []int64) (map[int64][]int64, error) {
 	out := map[int64][]int64{}
 	if len(incidentIDs) == 0 {

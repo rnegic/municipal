@@ -25,32 +25,22 @@ export const BottomSheet = ({ open, title, description, children, onClose }: Bot
   const platform = usePlatform()
 
   useEffect(() => {
-    if (!open) {
+    const dialog = dialogRef.current
+
+    if (!open || !dialog) {
       return undefined
     }
 
-    const dialog = dialogRef.current
     const restoreOverflow = document.body.style.overflow
 
-    if (dialog && !dialog.open) {
-      dialog.showModal()
-    }
-
     document.body.style.overflow = 'hidden'
-
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', closeOnEscape)
+    dialog.showModal()
 
     return () => {
       document.body.style.overflow = restoreOverflow
-      window.removeEventListener('keydown', closeOnEscape)
+      dialog.close()
     }
-  }, [onClose, open])
+  }, [open])
 
   if (!open) {
     return null
@@ -61,6 +51,10 @@ export const BottomSheet = ({ open, title, description, children, onClose }: Bot
       ref={dialogRef}
       className={s.root}
       aria-labelledby={titleId}
+      onCancel={(event) => {
+        event.preventDefault()
+        onClose()
+      }}
       onClick={(event) => {
         if (event.target === dialogRef.current) {
           onClose()

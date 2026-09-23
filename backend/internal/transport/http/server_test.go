@@ -24,13 +24,6 @@ import (
 	"ukapp/internal/service"
 )
 
-// These are integration tests exercising the whole stack (transport → service → repository)
-// against a real Postgres, per CLAUDE.md testing policy. Raw SQL setup below (forcing an
-// incident into "verifying") has no HTTP endpoint on this API: that transition is performed
-// by the external УК system, not by any endpoint of ours, so the test goes straight through
-// repository.Store.DB() — that's why depguard exempts _test.go files from the
-// transport→repository boundary.
-
 func testStore(t *testing.T) *repository.Store {
 	t.Helper()
 	dsn := os.Getenv("DATABASE_URL")
@@ -50,8 +43,6 @@ func testStore(t *testing.T) *repository.Store {
 	return s
 }
 
-// fakeDadata echoes the query back as both the normalized address and the house_fias_id, so
-// tests can use a plain string (e.g. "f-10") as a stand-in house identity, same as before.
 func fakeDadata(t *testing.T) *dadata.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +58,6 @@ func fakeDadata(t *testing.T) *dadata.Client {
 	return c
 }
 
-// fakeUk — in-memory UkProvider: любой ФИАС, кроме "unknown", обслуживается организацией uk-1.
 type fakeUk struct {
 	mu         sync.Mutex
 	registered []service.UkIncident
@@ -112,8 +102,6 @@ func stringsReader(s string) io.Reader { return strings.NewReader(s) }
 
 const testBotToken = "test-bot-token"
 
-// signInitData builds a valid initData string the way MAX does (see docs/webapps/validation).
-// auth_date is always "now" — ValidateInitData rejects anything older than 24h.
 func signInitData(t *testing.T, pairs map[string]string) string {
 	t.Helper()
 	if _, ok := pairs["auth_date"]; !ok {
@@ -160,7 +148,6 @@ func authedReq(t *testing.T, method, path, body string, maxUserID int64, name st
 	return r
 }
 
-// bindUser binds a house identified by addr (used as both DaData value and house_fias_id).
 func bindUser(t *testing.T, srv http.Handler, maxID int64, addr string) string {
 	t.Helper()
 	w := httptest.NewRecorder()
@@ -182,8 +169,6 @@ func incidentStatus(t *testing.T, s *repository.Store, id int64) string {
 	return st
 }
 
-// setVerifying forces status=verifying directly — reachable via the UK cabinet (P2, not yet
-// implemented), so tests that exercise confirmIncident set it up this way.
 func setVerifying(t *testing.T, s *repository.Store, id int64) {
 	t.Helper()
 	if _, err := s.DB().ExecContext(context.Background(), `UPDATE incident SET status='verifying' WHERE id=$1`, id); err != nil {

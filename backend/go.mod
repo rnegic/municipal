@@ -9,9 +9,12 @@ tool (
 
 require (
 	github.com/getkin/kin-openapi v0.142.0
+	github.com/gin-gonic/gin v1.12.0
 	github.com/go-jet/jet/v2 v2.16.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/oapi-codegen/runtime v1.7.0
+	golang.org/x/crypto v0.54.0
 )
 
 require (
@@ -24,7 +27,6 @@ require (
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
-	github.com/gin-gonic/gin v1.12.0 // indirect
 	github.com/go-openapi/jsonpointer v0.23.1 // indirect
 	github.com/go-openapi/swag/jsonname v0.26.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
@@ -60,7 +62,6 @@ require (
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/arch v0.22.0 // indirect
-	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
