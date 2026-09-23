@@ -1,12 +1,10 @@
-import { Link } from 'react-router-dom'
-
-import { IconButton, Typography } from '@maxhub/max-ui'
+import { Typography } from '@maxhub/max-ui'
 
 import { formatHouseAddress, type House } from '@/entities/house'
+import { ChangeAddressButton } from '@/features/address-bind'
+import { SignOutButton } from '@/features/sign-out'
 import { ThemeToggle } from '@/features/theme-switch'
-import { IconLocation, IconPencil } from '@/shared/assets/icons'
-import { ROUTES } from '@/shared/config/routes'
-import { commonTexts } from '@/shared/config/texts'
+import { IconLocation } from '@/shared/assets/icons'
 import { cn } from '@/shared/lib/cn'
 import { Card } from '@/shared/ui/card'
 import { StatusDot, type StatusTone } from '@/shared/ui/status-dot'
@@ -34,11 +32,8 @@ export const AppHeader = ({ house, status, className }: AppHeaderProps) => (
       </div>
       <div className={s.actions}>
         <ThemeToggle />
-        <IconButton size="small" variant="secondary" asChild>
-          <Link to={ROUTES.onboarding} aria-label={commonTexts.actions.changeAddress}>
-            <IconPencil />
-          </Link>
-        </IconButton>
+        <ChangeAddressButton />
+        <SignOutButton />
       </div>
     </div>
     <div className={s.statusRow}>

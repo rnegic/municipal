@@ -48,7 +48,7 @@ export const IncidentFocus = ({ incident, tone = 'default', className }: Inciden
           {incident.description}
         </Typography.Text>
         <IncidentPhotos photos={incident.photos} />
-        <IncidentShareButton incident={incident} />
+        <IncidentShareButton incident={incident} className={s.shareButton} />
         {incident.status === 'verifying' ? (
           <div className={s.footer}>
             <IncidentConfirmButton

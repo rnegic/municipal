@@ -1,10 +1,11 @@
 import { useState } from 'react'
 
 import { Typography } from '@maxhub/max-ui'
-import { useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
-import { getBoundHouse } from '@/entities/house'
+import { useCurrentHouseQuery } from '@/entities/user'
 import { AddressBindSheet } from '@/features/address-bind'
+import { UkAuthEntryLink, UkAuthSheet } from '@/features/uk-auth'
 import { IconChevronLeft } from '@/shared/assets/icons'
 import { OnboardingIllustration } from '@/shared/assets/illustrations'
 import { ROUTES } from '@/shared/config/routes'
@@ -14,15 +15,29 @@ import { PageLayout } from '@/shared/ui/page-layout'
 import { onboardingTexts } from '../config/texts'
 import s from './OnboardingPage.module.scss'
 
+interface OnboardingLocationState {
+  ukAuth?: boolean
+}
+
 export const OnboardingPage = () => {
   const navigate = useNavigate()
-  const hasBoundHouse = getBoundHouse() !== null
-  const [isSheetOpen, setIsSheetOpen] = useState(!hasBoundHouse)
+  const location = useLocation()
+  const houseQuery = useCurrentHouseQuery()
+  const hasAddress = houseQuery.data !== null
+  const [isManualOpen, setIsManualOpen] = useState(false)
+  const [isAutoDismissed, setIsAutoDismissed] = useState(false)
+  const [isUkAuthOpen, setIsUkAuthOpen] = useState(
+    Boolean((location.state as OnboardingLocationState | null)?.ukAuth),
+  )
+
+  const isAddressSheetOpen =
+    !isUkAuthOpen && (isManualOpen || (houseQuery.isSuccess && !hasAddress && !isAutoDismissed))
 
   const handleClose = () => {
-    setIsSheetOpen(false)
+    setIsManualOpen(false)
+    setIsAutoDismissed(true)
 
-    if (hasBoundHouse) {
+    if (hasAddress) {
       navigate(ROUTES.feed)
     }
   }
@@ -31,15 +46,15 @@ export const OnboardingPage = () => {
     <PageLayout
       className={s.root}
       header={
-        hasBoundHouse && (
+        hasAddress && (
           <Button
             className={s.back}
-            size="medium"
+            asChild
+            size="small"
             tone="ghost"
-            iconBefore={<IconChevronLeft size={18} />}
-            onClick={() => navigate(-1)}
+            iconBefore={<IconChevronLeft size={16} />}
           >
-            {commonTexts.actions.back}
+            <Link to={ROUTES.feed}>{commonTexts.actions.goHome}</Link>
           </Button>
         )
       }
@@ -55,21 +70,35 @@ export const OnboardingPage = () => {
           </Typography.Text>
         </div>
         <div className={s.actions}>
-          <Button stretched onClick={() => setIsSheetOpen(true)}>
+          <Button stretched onClick={() => setIsManualOpen(true)}>
             {onboardingTexts.action}
           </Button>
           <Typography.Text variant="note" color="tertiary">
             {onboardingTexts.consent}
           </Typography.Text>
         </div>
-        <Typography.Text className={s.slogan} variant="description" color="secondary">
-          {onboardingTexts.slogan}
-        </Typography.Text>
+        <div className={s.slogan}>
+          <Typography.Text variant="description" color="secondary">
+            {onboardingTexts.slogan}
+          </Typography.Text>
+          <UkAuthEntryLink
+            onClick={() => {
+              setIsManualOpen(false)
+              setIsAutoDismissed(true)
+              setIsUkAuthOpen(true)
+            }}
+          />
+        </div>
       </main>
       <AddressBindSheet
-        open={isSheetOpen}
+        open={isAddressSheetOpen}
         onClose={handleClose}
         onSuccess={() => navigate(ROUTES.feed)}
+      />
+      <UkAuthSheet
+        open={isUkAuthOpen}
+        onClose={() => setIsUkAuthOpen(false)}
+        onSuccess={() => navigate(ROUTES.dispatcher, { replace: true })}
       />
     </PageLayout>
   )

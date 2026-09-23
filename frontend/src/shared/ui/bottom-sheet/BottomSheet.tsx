@@ -20,9 +20,9 @@ export interface BottomSheetProps {
 }
 
 export const BottomSheet = ({ open, title, description, children, onClose }: BottomSheetProps) => {
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const platform = usePlatform()
-  const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -55,8 +55,12 @@ export const BottomSheet = ({ open, title, description, children, onClose }: Bot
         event.preventDefault()
         onClose()
       }}
+      onClick={(event) => {
+        if (event.target === dialogRef.current) {
+          onClose()
+        }
+      }}
     >
-      <div className={s.backdrop} aria-hidden="true" onClick={onClose} />
       <section className={s.sheet}>
         <div className={s.handle} aria-hidden="true" />
         <header className={s.header}>
