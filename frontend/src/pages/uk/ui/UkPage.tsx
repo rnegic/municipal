@@ -367,15 +367,16 @@ export const UkPage = () => {
       floatingAction={houses.length > 0 ? <EventCreateFab houses={houses} /> : undefined}
     >
       <div className={s.boardToolbar}>
-        <label className={s.archiveToggle}>
-          <Typography.Text variant="description" color="secondary">
+        <span className={s.archiveToggle}>
+          <Typography.Text variant="note" color="secondary">
             Архив закрытых ({closedItems.length})
           </Typography.Text>
           <Switch
             checked={showArchive}
+            aria-label="Показать архив закрытых"
             onChange={(event) => setShowArchive(event.target.checked)}
           />
-        </label>
+        </span>
       </div>
       {showArchive ? (
         closedItems.length === 0 ? (

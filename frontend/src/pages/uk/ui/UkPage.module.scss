@@ -62,7 +62,8 @@
 .archiveToggle {
   display: inline-flex;
   align-items: center;
-  gap: var(--app-space-3);
+  gap: var(--app-space-2);
+  zoom: 0.85;
   cursor: pointer;
 }
 
@@ -73,7 +74,7 @@
   min-width: 0;
   padding: var(--app-space-8);
   border-radius: var(--app-radius-card);
-  background: var(--app-color-surface-muted);
+  background: light-dark(var(--app-color-surface-card), var(--app-color-surface-muted));
 }
 
 .columnHeader {
