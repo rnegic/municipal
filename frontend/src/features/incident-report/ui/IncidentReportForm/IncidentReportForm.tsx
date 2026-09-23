@@ -229,7 +229,9 @@ export const IncidentReportForm = ({ onSuccess, onCancel }: IncidentReportFormPr
             </label>
             {photo ? (
               <div className={s.photoMeta}>
-                <Typography.Text variant="body-strong">{photo.name}</Typography.Text>
+                <Typography.Text className={s.fileName} variant="body-strong">
+                  {photo.name}
+                </Typography.Text>
                 <Typography.Text variant="note" color="tertiary">
                   {texts.photoHint}
                 </Typography.Text>
@@ -255,12 +257,12 @@ export const IncidentReportForm = ({ onSuccess, onCancel }: IncidentReportFormPr
               {createdIncident ? texts.retryUpload : texts.upload}
             </Button>
             {!createdIncident ? (
-              <Button type="button" tone="ghost" stretched onClick={() => setStep(1)} disabled={isSubmitting}>
+              <Button type="button" tone="secondary" stretched onClick={() => setStep(1)} disabled={isSubmitting}>
                 {texts.back}
               </Button>
             ) : null}
             {onCancel ? (
-              <Button type="button" tone="ghost" stretched onClick={onCancel} disabled={isSubmitting}>
+              <Button type="button" tone="secondary" stretched onClick={onCancel} disabled={isSubmitting}>
                 {texts.cancel}
               </Button>
             ) : null}

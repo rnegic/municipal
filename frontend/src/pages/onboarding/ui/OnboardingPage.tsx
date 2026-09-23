@@ -1,9 +1,9 @@
 import { useState } from 'react'
 
 import { Typography } from '@maxhub/max-ui'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
-import { getBoundHouse } from '@/entities/house'
+import { useCurrentHouseQuery } from '@/entities/user'
 import { AddressBindSheet } from '@/features/address-bind'
 import { IconChevronLeft } from '@/shared/assets/icons'
 import { OnboardingIllustration } from '@/shared/assets/illustrations'
@@ -16,13 +16,18 @@ import s from './OnboardingPage.module.scss'
 
 export const OnboardingPage = () => {
   const navigate = useNavigate()
-  const hasBoundHouse = getBoundHouse() !== null
-  const [isSheetOpen, setIsSheetOpen] = useState(!hasBoundHouse)
+  const houseQuery = useCurrentHouseQuery()
+  const hasAddress = houseQuery.data !== null
+  const [isManualOpen, setIsManualOpen] = useState(false)
+  const [isAutoDismissed, setIsAutoDismissed] = useState(false)
+
+  const isSheetOpen = isManualOpen || (houseQuery.isSuccess && !hasAddress && !isAutoDismissed)
 
   const handleClose = () => {
-    setIsSheetOpen(false)
+    setIsManualOpen(false)
+    setIsAutoDismissed(true)
 
-    if (hasBoundHouse) {
+    if (hasAddress) {
       navigate(ROUTES.feed)
     }
   }
@@ -31,15 +36,15 @@ export const OnboardingPage = () => {
     <PageLayout
       className={s.root}
       header={
-        hasBoundHouse && (
+        hasAddress && (
           <Button
             className={s.back}
+            asChild
             size="medium"
             tone="ghost"
             iconBefore={<IconChevronLeft size={18} />}
-            onClick={() => navigate(-1)}
           >
-            {commonTexts.actions.back}
+            <Link to={ROUTES.feed}>{commonTexts.actions.goHome}</Link>
           </Button>
         )
       }
@@ -55,7 +60,7 @@ export const OnboardingPage = () => {
           </Typography.Text>
         </div>
         <div className={s.actions}>
-          <Button stretched onClick={() => setIsSheetOpen(true)}>
+          <Button stretched onClick={() => setIsManualOpen(true)}>
             {onboardingTexts.action}
           </Button>
           <Typography.Text variant="note" color="tertiary">

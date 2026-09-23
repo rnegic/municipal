@@ -89,6 +89,14 @@
   text-align: left;
 }
 
+.fileName {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .actions {
   gap: var(--app-space-3);
 }
