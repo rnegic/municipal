@@ -1,10 +1,11 @@
 import { useState } from 'react'
 
 import { Typography } from '@maxhub/max-ui'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { useCurrentHouseQuery } from '@/entities/user'
 import { AddressBindSheet } from '@/features/address-bind'
+import { UkAuthEntryLink, UkAuthSheet } from '@/features/uk-auth'
 import { IconChevronLeft } from '@/shared/assets/icons'
 import { OnboardingIllustration } from '@/shared/assets/illustrations'
 import { ROUTES } from '@/shared/config/routes'
@@ -14,14 +15,23 @@ import { PageLayout } from '@/shared/ui/page-layout'
 import { onboardingTexts } from '../config/texts'
 import s from './OnboardingPage.module.scss'
 
+interface OnboardingLocationState {
+  ukAuth?: boolean
+}
+
 export const OnboardingPage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const houseQuery = useCurrentHouseQuery()
   const hasAddress = houseQuery.data !== null
   const [isManualOpen, setIsManualOpen] = useState(false)
   const [isAutoDismissed, setIsAutoDismissed] = useState(false)
+  const [isUkAuthOpen, setIsUkAuthOpen] = useState(
+    Boolean((location.state as OnboardingLocationState | null)?.ukAuth),
+  )
 
-  const isSheetOpen = isManualOpen || (houseQuery.isSuccess && !hasAddress && !isAutoDismissed)
+  const isAddressSheetOpen =
+    !isUkAuthOpen && (isManualOpen || (houseQuery.isSuccess && !hasAddress && !isAutoDismissed))
 
   const handleClose = () => {
     setIsManualOpen(false)
@@ -67,14 +77,28 @@ export const OnboardingPage = () => {
             {onboardingTexts.consent}
           </Typography.Text>
         </div>
-        <Typography.Text className={s.slogan} variant="description" color="secondary">
-          {onboardingTexts.slogan}
-        </Typography.Text>
+        <div className={s.slogan}>
+          <Typography.Text variant="description" color="secondary">
+            {onboardingTexts.slogan}
+          </Typography.Text>
+          <UkAuthEntryLink
+            onClick={() => {
+              setIsManualOpen(false)
+              setIsAutoDismissed(true)
+              setIsUkAuthOpen(true)
+            }}
+          />
+        </div>
       </main>
       <AddressBindSheet
-        open={isSheetOpen}
+        open={isAddressSheetOpen}
         onClose={handleClose}
         onSuccess={() => navigate(ROUTES.feed)}
+      />
+      <UkAuthSheet
+        open={isUkAuthOpen}
+        onClose={() => setIsUkAuthOpen(false)}
+        onSuccess={() => navigate(ROUTES.dispatcher, { replace: true })}
       />
     </PageLayout>
   )

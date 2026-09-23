@@ -8,6 +8,7 @@ import {
   useUkQueueQuery,
 } from '@/entities/incident'
 import { EventCreateFab } from '@/features/event-create'
+import { UkSessionBadge } from '@/features/uk-auth'
 import { formatDateTime } from '@/shared/lib/date'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
@@ -128,7 +129,7 @@ export const UkPage = () => {
 
   if (queueQuery.isPending) {
     return (
-      <PageLayout>
+      <PageLayout header={<UkSessionBadge />}>
         <LoadingState />
       </PageLayout>
     )
@@ -136,7 +137,7 @@ export const UkPage = () => {
 
   if (queueQuery.isError) {
     return (
-      <PageLayout>
+      <PageLayout header={<UkSessionBadge />}>
         <ApiErrorState error={queueQuery.error} onRetry={() => queueQuery.refetch()} />
       </PageLayout>
     )
@@ -153,15 +154,18 @@ export const UkPage = () => {
     <PageLayout
       header={
         <div className={s.header}>
-          <div>
-            <Typography.Title variant="large-strong">АРМ диспетчера</Typography.Title>
-            <Typography.Text variant="description" color="secondary">
-              Единая очередь обращений жителей
+          <UkSessionBadge />
+          <div className={s.headerTitle}>
+            <div>
+              <Typography.Title variant="large-strong">АРМ диспетчера</Typography.Title>
+              <Typography.Text variant="description" color="secondary">
+                Очередь обращений по домам вашей УК
+              </Typography.Text>
+            </div>
+            <Typography.Text variant="note" color="tertiary">
+              {queueQuery.data.total} активных обращений
             </Typography.Text>
           </div>
-          <Typography.Text variant="note" color="tertiary">
-            {queueQuery.data.total} активных обращений
-          </Typography.Text>
         </div>
       }
       floatingAction={houses.length > 0 ? <EventCreateFab houses={houses} /> : undefined}

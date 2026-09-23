@@ -1,5 +1,11 @@
 .header {
   display: flex;
+  flex-direction: column;
+  gap: var(--app-space-5);
+}
+
+.headerTitle {
+  display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--app-space-4);
@@ -88,7 +94,7 @@
 }
 
 @media (width <= 760px) {
-  .header {
+  .headerTitle {
     align-items: flex-start;
     flex-direction: column;
   }
