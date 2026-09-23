@@ -1,4 +1,4 @@
-import { Counter, Typography } from '@maxhub/max-ui'
+import { Counter, Switch, Typography } from '@maxhub/max-ui'
 import { useState, type ReactNode } from 'react'
 
 import {
@@ -48,6 +48,13 @@ const QUEUE_COLUMNS: readonly QueueColumn[] = [
     prevAction: 'В работу',
   },
 ]
+
+const ARCHIVE_COLUMN: QueueColumn = {
+  status: 'done',
+  title: 'Закрыто',
+  actionTone: 'secondary',
+  prevAction: 'Вернуть в проверку',
+}
 
 const getSlaLabel = (dueAt: string | null): string => {
   if (!dueAt) {
@@ -292,6 +299,7 @@ const UkHero = ({ children }: { children: ReactNode }) => (
 export const UkPage = () => {
   const queueQuery = useUkQueueQuery()
   const statusMutation = useSetIncidentStatusMutation()
+  const [showArchive, setShowArchive] = useState(false)
 
   const moveIncident = (incidentId: string, status: IncidentStatus): void => {
     statusMutation.mutate({ incidentId, status })
@@ -325,6 +333,8 @@ export const UkPage = () => {
   }
 
   const items = queueQuery.data.items
+  const activeItems = items.filter((item) => item.status !== 'done')
+  const closedItems = items.filter((item) => item.status === 'done')
   const houses = Array.from(
     new Map(
       items.map((item) => [item.houseId, { id: item.houseId, address: item.houseAddress }] as const),
@@ -348,7 +358,7 @@ export const UkPage = () => {
                 </Typography.Text>
               </div>
               <Typography.Text className={s.heroMeta} variant="note" color="tertiary">
-                {queueQuery.data.total} активных обращений
+                {activeItems.length} активных обращений
               </Typography.Text>
             </div>
           </div>
@@ -356,17 +366,46 @@ export const UkPage = () => {
       }
       floatingAction={houses.length > 0 ? <EventCreateFab houses={houses} /> : undefined}
     >
-      <div className={s.board}>
-        {QUEUE_COLUMNS.map((column) => (
-          <QueueColumnView
-            key={column.status}
-            column={column}
-            items={items.filter((item) => item.status === column.status)}
-            isPending={statusMutation.isPending}
-            onMove={moveIncident}
+      <div className={s.boardToolbar}>
+        <label className={s.archiveToggle}>
+          <Typography.Text variant="description" color="secondary">
+            Архив закрытых ({closedItems.length})
+          </Typography.Text>
+          <Switch
+            checked={showArchive}
+            onChange={(event) => setShowArchive(event.target.checked)}
           />
-        ))}
+        </label>
       </div>
+      {showArchive ? (
+        closedItems.length === 0 ? (
+          <EmptyState title="Архив пуст" description="Закрытые обращения появятся здесь" />
+        ) : (
+          <div className={s.archive}>
+            {closedItems.map((incident) => (
+              <QueueCard
+                key={incident.id}
+                incident={incident}
+                column={ARCHIVE_COLUMN}
+                isPending={statusMutation.isPending}
+                onMove={moveIncident}
+              />
+            ))}
+          </div>
+        )
+      ) : (
+        <div className={s.board}>
+          {QUEUE_COLUMNS.map((column) => (
+            <QueueColumnView
+              key={column.status}
+              column={column}
+              items={items.filter((item) => item.status === column.status)}
+              isPending={statusMutation.isPending}
+              onMove={moveIncident}
+            />
+          ))}
+        </div>
+      )}
     </PageLayout>
   )
 }
