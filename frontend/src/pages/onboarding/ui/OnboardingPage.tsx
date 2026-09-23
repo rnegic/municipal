@@ -40,9 +40,9 @@ export const OnboardingPage = () => {
           <Button
             className={s.back}
             asChild
-            size="medium"
+            size="small"
             tone="ghost"
-            iconBefore={<IconChevronLeft size={18} />}
+            iconBefore={<IconChevronLeft size={16} />}
           >
             <Link to={ROUTES.feed}>{commonTexts.actions.goHome}</Link>
           </Button>
