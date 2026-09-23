@@ -2,6 +2,7 @@ import { Typography } from '@maxhub/max-ui'
 
 import { formatHouseAddress, type House } from '@/entities/house'
 import { ChangeAddressButton } from '@/features/address-bind'
+import { SignOutButton } from '@/features/sign-out'
 import { ThemeToggle } from '@/features/theme-switch'
 import { IconLocation } from '@/shared/assets/icons'
 import { cn } from '@/shared/lib/cn'
@@ -32,6 +33,7 @@ export const AppHeader = ({ house, status, className }: AppHeaderProps) => (
       <div className={s.actions}>
         <ThemeToggle />
         <ChangeAddressButton />
+        <SignOutButton />
       </div>
     </div>
     <div className={s.statusRow}>

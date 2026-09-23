@@ -25,3 +25,7 @@ export const saveBoundHouse = (house: House): void => {
     return
   }
 }
+
+export const clearBoundHouse = (): void => {
+  window.localStorage.removeItem(BOUND_HOUSE_STORAGE_KEY)
+}
