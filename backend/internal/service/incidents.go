@@ -8,6 +8,8 @@ import (
 
 	"ukapp/internal/domain"
 	"ukapp/internal/repository"
+
+	"ukapp/gen/db/ukapp/public/model"
 )
 
 type IncidentRow struct {
@@ -116,7 +118,10 @@ func (s *Service) deepLink(incidentID int64) string {
 	return fmt.Sprintf("https://max.ru/%s?startapp=inc_%d", s.botName, incidentID)
 }
 
-func (s *Service) SetIncidentStatus(ctx context.Context, incidentID, userID int64, to domain.IncidentStatus) (IncidentRow, error) {
+func (s *Service) SetIncidentStatus(ctx context.Context, u model.AppUser, incidentID int64, to domain.IncidentStatus) (IncidentRow, error) {
+	if err := s.CanAccessIncident(ctx, u, incidentID); err != nil {
+		return IncidentRow{}, err
+	}
 	from, ok := domain.DispatcherTransition(to)
 	if !ok {
 		return IncidentRow{}, ErrInvalidStatus
@@ -129,5 +134,5 @@ func (s *Service) SetIncidentStatus(ctx context.Context, incidentID, userID int6
 	if !moved {
 		return IncidentRow{}, ErrInvalidStatus
 	}
-	return s.GetIncident(ctx, incidentID, userID)
+	return s.GetIncident(ctx, incidentID, u.ID)
 }

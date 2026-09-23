@@ -135,9 +135,11 @@ func (s *Store) SubscriberMaxIDs(ctx context.Context, incidentID int64) ([]int64
 	if err != nil && !errors.Is(err, qrm.ErrNoRows) {
 		return nil, err
 	}
-	out := make([]int64, len(users))
-	for i, u := range users {
-		out[i] = u.MaxUserID
+	out := make([]int64, 0, len(users))
+	for _, u := range users {
+		if u.MaxUserID != nil {
+			out = append(out, *u.MaxUserID)
+		}
 	}
 	return out, nil
 }

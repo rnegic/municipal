@@ -1,8 +1,17 @@
 -- Демо-дом и мок-заявки для дефолтного адреса (см. docs/uk-integration.md «Демо-дом»).
 -- house_fias_id взят из DaData suggest для "Казань, ул. Баумана, д. 7/10" — держите его в
 -- синхроне с тем же id в mock/uk/internal/store/seed.sql.
-INSERT INTO uk (external_id, name) VALUES ('uk-1', 'УК Наш Дом')
-  ON CONFLICT (external_id) DO NOTHING;
+INSERT INTO uk (external_id, name, inn, ogrn, license_number, license_valid_until)
+  VALUES ('uk-1', 'УК Наш Дом', '1655000003', '1021602000000', '16-000123', '2030-12-31')
+  ON CONFLICT (external_id) DO UPDATE SET
+    inn = EXCLUDED.inn, ogrn = EXCLUDED.ogrn,
+    license_number = EXCLUDED.license_number, license_valid_until = EXCLUDED.license_valid_until;
+
+INSERT INTO app_user (full_name, role, uk_id, position, password_hash, ads_authority)
+  SELECT 'Ильдар Хайруллин', 'uk_dispatcher', uk.id, 'Диспетчер АДС',
+         '$2a$10$UDcFWb4lzy5Y89wpfzu.uOcQ0RI.vS0bLSrechwEM2GRocAVpFUka', true
+  FROM uk WHERE uk.external_id = 'uk-1'
+    AND NOT EXISTS (SELECT 1 FROM app_user a WHERE a.uk_id = uk.id AND a.role = 'uk_dispatcher');
 
 INSERT INTO house (address_raw, house_fias_id, uk_id, external_id)
   SELECT 'Казань, ул. Баумана, д. 7/10', 'c6f16fa1-aa2d-4507-bda5-d0ab2cc7a531', uk.id, 'h-1'

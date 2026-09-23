@@ -7,6 +7,7 @@ import (
 	"ukapp/internal/dadata"
 	"ukapp/internal/maxclient"
 	"ukapp/internal/repository"
+	"ukapp/internal/ukauth"
 )
 
 var (
@@ -24,8 +25,13 @@ type Service struct {
 	uk      UkProvider
 	botName string
 	ukSince time.Time
+	tokens  *ukauth.TokenSigner
 }
 
 func New(repo *repository.Store, maxc *maxclient.Client, dd *dadata.Client, uk UkProvider, botName string) *Service {
-	return &Service{repo: repo, maxc: maxc, dd: dd, uk: uk, botName: botName}
+	tokens, err := ukauth.NewTokenSigner("")
+	if err != nil {
+		panic(err)
+	}
+	return &Service{repo: repo, maxc: maxc, dd: dd, uk: uk, botName: botName, tokens: tokens}
 }
