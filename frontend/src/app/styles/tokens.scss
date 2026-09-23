@@ -69,4 +69,7 @@
   /* Тени */
   --app-shadow-card: 0 1px 2px color-mix(in srgb, var(--app-color-surface-overlay) 10%, transparent);
   --app-shadow-floating: 0 6px 20px color-mix(in srgb, var(--app-color-surface-overlay) 30%, transparent);
+
+  /* Раскладка */
+  --app-layout-width-wide: 1200px;
 }

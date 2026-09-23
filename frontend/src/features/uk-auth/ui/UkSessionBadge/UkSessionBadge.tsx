@@ -1,18 +1,17 @@
 import { Typography } from '@maxhub/max-ui'
-import { useNavigate } from 'react-router-dom'
+import type { ReactNode } from 'react'
 
 import { useUkSession } from '@/entities/session'
 import { IconShield } from '@/shared/assets/icons'
-import { ROUTES } from '@/shared/config/routes'
-import { Button } from '@/shared/ui/button'
-import { useUkSignOut } from '../../api'
 import { ukAuthTexts as texts } from '../../config/texts'
 import s from './UkSessionBadge.module.scss'
 
-export const UkSessionBadge = () => {
+export interface UkSessionBadgeProps {
+  actions?: ReactNode
+}
+
+export const UkSessionBadge = ({ actions }: UkSessionBadgeProps) => {
   const session = useUkSession()
-  const signOut = useUkSignOut()
-  const navigate = useNavigate()
 
   if (!session) {
     return null
@@ -37,16 +36,7 @@ export const UkSessionBadge = () => {
           {user.position ? ` · ${user.position}` : ''}
         </Typography.Text>
       </div>
-      <Button
-        type="button"
-        size="small"
-        tone="secondary"
-        onClick={() => {
-          void signOut().then(() => navigate(ROUTES.onboarding, { replace: true }))
-        }}
-      >
-        {texts.session.signOut}
-      </Button>
+      {actions ? <div className={s.actions}>{actions}</div> : null}
     </div>
   )
 }

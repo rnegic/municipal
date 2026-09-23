@@ -1,1 +1,1 @@
-export { UkSessionBadge } from './UkSessionBadge'
+export { UkSessionBadge, type UkSessionBadgeProps } from './UkSessionBadge'

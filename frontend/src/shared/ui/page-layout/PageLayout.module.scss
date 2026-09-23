@@ -52,3 +52,7 @@
   max-width: calc(var(--size-base-platform-width-normal) - var(--app-space-8) * 2);
   pointer-events: auto;
 }
+
+.widthWide {
+  max-width: var(--app-layout-width-wide);
+}

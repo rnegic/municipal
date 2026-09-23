@@ -1,4 +1,4 @@
-import { Typography } from '@maxhub/max-ui'
+import { Counter, Typography } from '@maxhub/max-ui'
 
 import {
   incidentTexts,
@@ -8,7 +8,8 @@ import {
   useUkQueueQuery,
 } from '@/entities/incident'
 import { EventCreateFab } from '@/features/event-create'
-import { UkSessionBadge } from '@/features/uk-auth'
+import { ThemeToggle } from '@/features/theme-switch'
+import { UkSessionBadge, UkSignOutButton } from '@/features/uk-auth'
 import { formatDateTime } from '@/shared/lib/date'
 import { Button } from '@/shared/ui/button'
 import { Card } from '@/shared/ui/card'
@@ -91,7 +92,7 @@ const QueueCard = ({ incident, column }: { incident: UkQueueItem; column: QueueC
       </div>
       {column.action && nextStatus ? (
         <Button
-          size="medium"
+          size="small"
           tone={column.actionTone}
           stretched
           disabled={statusMutation.isPending}
@@ -107,10 +108,10 @@ const QueueCard = ({ incident, column }: { incident: UkQueueItem; column: QueueC
 const QueueColumnView = ({ column, items }: { column: QueueColumn; items: readonly UkQueueItem[] }) => (
   <section className={s.column} aria-labelledby={`uk-column-${column.status}`}>
     <div className={s.columnHeader}>
-      <Typography.Title id={`uk-column-${column.status}`} variant="medium-strong">
-        {column.title}
-      </Typography.Title>
-      <span className={s.count}>{items.length}</span>
+      <div className={s.columnTitle} id={`uk-column-${column.status}`}>
+        <Typography.Title variant="small-strong">{column.title}</Typography.Title>
+      </div>
+      <Counter value={items.length} variant="mute" />
     </div>
     {items.length === 0 ? (
       <EmptyState title="Пусто" description="Здесь пока нет обращений" />
@@ -127,9 +128,20 @@ const QueueColumnView = ({ column, items }: { column: QueueColumn; items: readon
 export const UkPage = () => {
   const queueQuery = useUkQueueQuery()
 
+  const sessionHeader = (
+    <UkSessionBadge
+      actions={
+        <>
+          <ThemeToggle />
+          <UkSignOutButton />
+        </>
+      }
+    />
+  )
+
   if (queueQuery.isPending) {
     return (
-      <PageLayout header={<UkSessionBadge />}>
+      <PageLayout width="wide" header={sessionHeader}>
         <LoadingState />
       </PageLayout>
     )
@@ -137,7 +149,7 @@ export const UkPage = () => {
 
   if (queueQuery.isError) {
     return (
-      <PageLayout header={<UkSessionBadge />}>
+      <PageLayout width="wide" header={sessionHeader}>
         <ApiErrorState error={queueQuery.error} onRetry={() => queueQuery.refetch()} />
       </PageLayout>
     )
@@ -152,11 +164,12 @@ export const UkPage = () => {
 
   return (
     <PageLayout
+      width="wide"
       header={
         <div className={s.header}>
-          <UkSessionBadge />
+          {sessionHeader}
           <div className={s.headerTitle}>
-            <div>
+            <div className={s.headerBody}>
               <Typography.Title variant="large-strong">АРМ диспетчера</Typography.Title>
               <Typography.Text variant="description" color="secondary">
                 Очередь обращений по домам вашей УК

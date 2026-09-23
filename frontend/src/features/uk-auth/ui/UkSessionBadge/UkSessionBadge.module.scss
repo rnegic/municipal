@@ -16,6 +16,13 @@
   min-width: 0;
 }
 
+.actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
 .method {
   display: inline-flex;
   align-items: center;
