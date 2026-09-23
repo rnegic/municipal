@@ -9,7 +9,7 @@ from dedup.data import normalize, struct_text
 from dedup.metrics import at_threshold, recall_at_precision, select_thresholds, simulate_merges
 from mine_pairs import parse_ts
 
-BUNDLE = Path(__file__).resolve().parents[1] / "runs/ft-rubert-tiny2-struct/onnx"
+BUNDLE = Path(__file__).resolve().parents[1] / "runs/ftB-pp-struct-v4/onnx"
 
 
 def test_metrics():

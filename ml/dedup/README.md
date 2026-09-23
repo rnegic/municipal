@@ -23,9 +23,11 @@ CPU-only torch: сервер без GPU, модель учится на CPU пр
 .venv/bin/python gen_synthetic.py
 .venv/bin/python build_dataset.py
 .venv/bin/python train.py --config configs/ft-text.json
-.venv/bin/python train.py --config configs/ft-struct.json
+.venv/bin/python train.py --config configs/pp-pretrain.json
+.venv/bin/python gen_synthetic.py --extra-vocab --out data/raw/synthetic_template_v4.jsonl.gz && .venv/bin/python build_dataset.py --synthetic data/raw/synthetic_template_v4.jsonl.gz
+.venv/bin/python train.py --config configs/ftB-pp-struct-v4.json
 .venv/bin/python evaluate.py --models runs/ft-rubert-tiny2-text runs/ft-rubert-tiny2-struct
-.venv/bin/python export.py --run runs/ft-rubert-tiny2-struct
+.venv/bin/python export.py --run runs/ftB-pp-struct-v4
 ```
 
 | Шаг | Что делает | Результат |
@@ -55,7 +57,7 @@ psql "$DATABASE_URL" -c "\copy (SELECT id, incident_id, reporter_id, house_id, t
 ## Inference
 
 ```bash
-.venv/bin/python serve.py --bundle runs/ft-rubert-tiny2-struct/onnx --port 8090
+.venv/bin/python serve.py --bundle runs/ftB-pp-struct-v4/onnx --port 8090
 curl -s localhost:8090/score -d '{"request_a":{"title":"Нет горячей воды","description":"с утра, стояк 3","riser":"3"},"request_b":{"title":"Горячей нет","description":"кв 27, 2 подъезд","riser":"3"}}'
 ```
 
@@ -67,6 +69,6 @@ curl -s localhost:8090/score -d '{"request_a":{"title":"Нет горячей в
 
 ```python
 from dedup.onnx_infer import OnnxDeduper
-d = OnnxDeduper("runs/ft-rubert-tiny2-struct/onnx")
+d = OnnxDeduper("runs/ftB-pp-struct-v4/onnx")
 d.score(a, b)
 ```
