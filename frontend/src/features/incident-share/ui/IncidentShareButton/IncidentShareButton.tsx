@@ -39,10 +39,10 @@ export const IncidentShareButton = ({ incident, className }: IncidentShareButton
   return (
     <Button
       className={className}
-      size="medium"
+      size="small"
       tone="secondary"
       stretched
-      iconBefore={<IconShare size={18} />}
+      iconBefore={<IconShare size={16} />}
       onClick={handleShare}
     >
       {texts.action}
