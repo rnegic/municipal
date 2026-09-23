@@ -1,4 +1,5 @@
 import { Counter, Typography } from '@maxhub/max-ui'
+import type { ReactNode } from 'react'
 
 import {
   incidentTexts,
@@ -125,6 +126,12 @@ const QueueColumnView = ({ column, items }: { column: QueueColumn; items: readon
   </section>
 )
 
+const UkHero = ({ children }: { children: ReactNode }) => (
+  <div className={s.hero}>
+    <div className={s.heroInner}>{children}</div>
+  </div>
+)
+
 export const UkPage = () => {
   const queueQuery = useUkQueueQuery()
 
@@ -141,7 +148,7 @@ export const UkPage = () => {
 
   if (queueQuery.isPending) {
     return (
-      <PageLayout width="wide" header={sessionHeader}>
+      <PageLayout width="wide" hero={<UkHero>{sessionHeader}</UkHero>}>
         <LoadingState />
       </PageLayout>
     )
@@ -149,7 +156,7 @@ export const UkPage = () => {
 
   if (queueQuery.isError) {
     return (
-      <PageLayout width="wide" header={sessionHeader}>
+      <PageLayout width="wide" hero={<UkHero>{sessionHeader}</UkHero>}>
         <ApiErrorState error={queueQuery.error} onRetry={() => queueQuery.refetch()} />
       </PageLayout>
     )
@@ -165,21 +172,25 @@ export const UkPage = () => {
   return (
     <PageLayout
       width="wide"
-      header={
-        <div className={s.header}>
-          {sessionHeader}
-          <div className={s.headerTitle}>
-            <div className={s.headerBody}>
-              <Typography.Title variant="large-strong">АРМ диспетчера</Typography.Title>
-              <Typography.Text variant="description" color="secondary">
-                Очередь обращений по домам вашей УК
+      hero={
+        <UkHero>
+          <div className={s.header}>
+            {sessionHeader}
+            <div className={s.headerTitle}>
+              <div className={s.headerBody}>
+                <Typography.Title className={s.heroTitle} variant="large-strong">
+                  АРМ диспетчера
+                </Typography.Title>
+                <Typography.Text className={s.heroSubtitle} variant="description" color="secondary">
+                  Очередь обращений по домам вашей УК
+                </Typography.Text>
+              </div>
+              <Typography.Text className={s.heroMeta} variant="note" color="tertiary">
+                {queueQuery.data.total} активных обращений
               </Typography.Text>
             </div>
-            <Typography.Text variant="note" color="tertiary">
-              {queueQuery.data.total} активных обращений
-            </Typography.Text>
           </div>
-        </div>
+        </UkHero>
       }
       floatingAction={houses.length > 0 ? <EventCreateFab houses={houses} /> : undefined}
     >

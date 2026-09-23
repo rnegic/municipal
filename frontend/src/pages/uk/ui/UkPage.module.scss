@@ -1,3 +1,32 @@
+.hero {
+  padding-block: calc(var(--app-space-8) + env(safe-area-inset-top)) var(--app-space-10);
+  border-end-start-radius: var(--app-radius-card);
+  border-end-end-radius: var(--app-radius-card);
+  background-image: linear-gradient(180deg, var(--app-color-uk-hero-top), var(--app-color-uk-hero-bottom));
+}
+
+.heroInner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-6);
+  width: 100%;
+  max-width: var(--app-layout-width-wide);
+  margin-inline: auto;
+  padding-inline: var(--app-space-8);
+}
+
+.heroTitle {
+  color: var(--app-color-text-on-brand);
+}
+
+.heroSubtitle {
+  color: var(--app-color-text-on-brand-secondary);
+}
+
+.heroMeta {
+  color: var(--app-color-text-on-brand-secondary);
+}
+
 .header {
   display: flex;
   flex-direction: column;

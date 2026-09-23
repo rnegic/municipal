@@ -31,7 +31,7 @@ export const PageLayout = ({
     </div>
     {floatingAction ? (
       <div className={s.floatingAction}>
-        <div className={cn(s.floatingActionInner, width === 'wide' && s.widthWide)}>{floatingAction}</div>
+        <div className={s.floatingActionInner}>{floatingAction}</div>
       </div>
     ) : null}
   </div>
