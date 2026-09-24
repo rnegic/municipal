@@ -39,10 +39,15 @@ def paraphrase_pairs(cfg, rng):
         return [(r["text_1"], r["text_2"], 1 if r["class"] == "1" else 0) for r in rows if r["class"] in ("1", "-1")]
 
     nmt = []
-    for split in ("val", "test"):
-        rows = list(csv.DictReader(open(hf_hub_download("cointegrated/ru-paraphrase-NMT-Leipzig", f"{split}.csv", repo_type="dataset"), encoding="utf-8")))
-        pos = [(r["original"], r["ru"], 1) for r in rows if float(r["p_good"]) > cfg["nmt_min_p_good"]]
-        texts = [r["ru"] for r in rows]
+    for split in cfg.get("nmt_splits", ["val", "test"]):
+        csv.field_size_limit(10**9)
+        pos, texts = [], []
+        for r in csv.DictReader(open(hf_hub_download("cointegrated/ru-paraphrase-NMT-Leipzig", f"{split}.csv", repo_type="dataset"), encoding="utf-8")):
+            if float(r["p_good"]) > cfg["nmt_min_p_good"]:
+                pos.append((r["original"], r["ru"], 1))
+                texts.append(r["ru"])
+        if cfg.get("nmt_max") and len(pos) > cfg["nmt_max"]:
+            pos = rng.sample(pos, cfg["nmt_max"])
         neg = [(a, rng.choice(texts), 0) for a, _, _ in pos]
         nmt += pos + neg
     return pp("train") + nmt, pp("test")
