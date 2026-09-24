@@ -31,6 +31,7 @@ export const incidentSchema = z.object({
   houseId: z.string(),
   title: z.string(),
   description: z.string(),
+  category: incidentCategorySchema.nullable(),
   severity: incidentSeveritySchema,
   status: incidentStatusSchema,
   affectedCount: z.number().int().nonnegative(),
@@ -116,16 +117,13 @@ export const analyzeIncidentResponseSchema = z
   .object({
     category: incidentCategorySchema,
     authority: incidentAuthoritySchema,
-    is_uk_responsibility: z.boolean(),
-    photo_required: z.boolean(),
-    reasoning_text: z.string().optional(),
+    isUkResponsibility: z.boolean(),
+    photoRequired: z.boolean(),
+    reasoningText: z.string().optional(),
   })
   .transform((value) => ({
-    category: value.category,
-    authority: value.authority,
-    isUkResponsibility: value.is_uk_responsibility,
-    photoRequired: value.photo_required,
-    reasoningText: value.reasoning_text?.trim().slice(0, INCIDENT_REASONING_MAX_LENGTH) || null,
+    ...value,
+    reasoningText: value.reasoningText?.trim().slice(0, INCIDENT_REASONING_MAX_LENGTH) || null,
   }))
 
 export const createIncidentRequestSchema = z
@@ -140,13 +138,7 @@ export const createIncidentRequestSchema = z
     floorZone: optionalTrimmedText(INCIDENT_FLOOR_ZONE_MAX_LENGTH),
     photoUrls: z.array(z.string().min(1)).max(INCIDENT_PHOTOS_MAX_COUNT).optional(),
   })
-  .transform((value) => ({
-    description: value.description,
-    category: value.category,
-    entrance: value.entrance,
-    floor_zone: value.floorZone,
-    photo_urls: value.photoUrls ?? [],
-  }))
+  .transform((value) => ({ ...value, photoUrls: value.photoUrls ?? [] }))
 
 export type Incident = z.infer<typeof incidentSchema>
 export type IncidentPhoto = z.infer<typeof incidentPhotoSchema>
