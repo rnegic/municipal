@@ -68,7 +68,7 @@ export const IncidentReportForm = ({ onSuccess, onCancel, className }: IncidentR
       {onCancel ? (
         <Button
           type="button"
-          tone="ghost"
+          tone="secondary"
           stretched
           disabled={wizard.isAnalyzing || wizard.isSubmitting}
           onClick={onCancel}

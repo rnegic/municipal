@@ -33,7 +33,7 @@
   /* Границы и дорожки */
   --app-color-border: var(--divider-secondary);
   --app-color-border-card: color-mix(in srgb, var(--app-color-text-primary) 14%, transparent);
-  --app-color-border-input: light-dark(rgb(12 13 14 / 28%), var(--divider-secondary));
+  --app-color-border-input: color-mix(in srgb, var(--app-color-text-primary) 32%, transparent);
   --app-color-border-cta: light-dark(rgb(165 178 214), rgb(220 230 255));
   --app-color-track: var(--controls-inactive);
 
