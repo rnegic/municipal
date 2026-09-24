@@ -4,6 +4,7 @@ import { Icon16CloseIos, Icon24CloseAndroid, IconButton, Typography, usePlatform
 
 import { commonTexts } from '@/shared/config/texts'
 import { cn } from '@/shared/lib/cn'
+import { notifyFilePickerClosed, notifyFilePickerOpened } from '@/shared/lib/file-picker-guard'
 import { Button } from '@/shared/ui/button'
 import s from './PhotoPicker.module.scss'
 
@@ -50,6 +51,7 @@ export const PhotoPicker = ({
   useEffect(
     () => () => {
       itemsRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl))
+      notifyFilePickerClosed()
     },
     [],
   )
@@ -57,6 +59,8 @@ export const PhotoPicker = ({
   const isLimitReached = items.length >= maxFiles
 
   const handleSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    notifyFilePickerClosed()
+
     const selected = Array.from(event.target.files ?? [])
     event.target.value = ''
 
@@ -148,7 +152,10 @@ export const PhotoPicker = ({
           type="button"
           tone="secondary"
           disabled={disabled || isLimitReached}
-          onClick={() => inputRef.current?.click()}
+          onClick={() => {
+            notifyFilePickerOpened()
+            inputRef.current?.click()
+          }}
         >
           {isLimitReached
             ? commonTexts.photoPicker.limitReached

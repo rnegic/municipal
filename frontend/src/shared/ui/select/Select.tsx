@@ -1,4 +1,13 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 
 import { Icon16Chevron, Typography } from '@maxhub/max-ui'
 
@@ -25,6 +34,12 @@ export interface SelectProps<TValue extends string = string> {
   className?: string
 }
 
+interface ListCoords {
+  top: number
+  left: number
+  width: number
+}
+
 const LIST_FLIP_THRESHOLD = 280
 const LIST_MAX_HEIGHT = 320
 const LIST_MIN_HEIGHT = 180
@@ -44,8 +59,8 @@ export const Select = <TValue extends string = string>({
 }: SelectProps<TValue>) => {
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
-  const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom')
   const [maxListHeight, setMaxListHeight] = useState(LIST_MAX_HEIGHT)
+  const [coords, setCoords] = useState<ListCoords>({ top: 0, left: 0, width: 0 })
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -58,23 +73,30 @@ export const Select = <TValue extends string = string>({
   const selectedIndex = options.findIndex((option) => option.value === value)
   const selectedOption = selectedIndex >= 0 ? options[selectedIndex] : undefined
 
-  const openList = () => {
+  const updatePosition = useCallback(() => {
     const trigger = triggerRef.current
 
-    if (trigger) {
-      const rect = trigger.getBoundingClientRect()
-      const spaceBelow = window.innerHeight - rect.bottom - LIST_GAP - LIST_EDGE_MARGIN
-      const spaceAbove = rect.top - LIST_GAP - LIST_EDGE_MARGIN
-      const nextPlacement =
-        spaceBelow < LIST_FLIP_THRESHOLD && spaceAbove > spaceBelow ? 'top' : 'bottom'
-      const availableSpace = nextPlacement === 'bottom' ? spaceBelow : spaceAbove
-
-      setPlacement(nextPlacement)
-      setMaxListHeight(
-        Math.max(LIST_MIN_HEIGHT, Math.min(LIST_MAX_HEIGHT, availableSpace)),
-      )
+    if (!trigger) {
+      return
     }
 
+    const rect = trigger.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom - LIST_GAP - LIST_EDGE_MARGIN
+    const spaceAbove = rect.top - LIST_GAP - LIST_EDGE_MARGIN
+    const openUpwards = spaceBelow < LIST_FLIP_THRESHOLD && spaceAbove > spaceBelow
+    const availableSpace = openUpwards ? spaceAbove : spaceBelow
+    const height = Math.max(LIST_MIN_HEIGHT, Math.min(LIST_MAX_HEIGHT, availableSpace))
+
+    setMaxListHeight(height)
+    setCoords({
+      top: openUpwards ? rect.top - LIST_GAP - height : rect.bottom + LIST_GAP,
+      left: rect.left,
+      width: rect.width,
+    })
+  }, [])
+
+  const openList = () => {
+    updatePosition()
     setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0)
     setOpen(true)
   }
@@ -112,6 +134,22 @@ export const Select = <TValue extends string = string>({
 
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [open])
+
+  useEffect(() => {
+    if (!open) {
+      return undefined
+    }
+
+    const handleReposition = () => updatePosition()
+
+    window.addEventListener('resize', handleReposition)
+    window.addEventListener('scroll', handleReposition, true)
+
+    return () => {
+      window.removeEventListener('resize', handleReposition)
+      window.removeEventListener('scroll', handleReposition, true)
+    }
+  }, [open, updatePosition])
 
   useEffect(() => {
     if (!open) {
@@ -194,6 +232,12 @@ export const Select = <TValue extends string = string>({
   }
 
   const activeOptionId = open && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined
+  const listStyle: CSSProperties = {
+    top: coords.top,
+    left: coords.left,
+    width: coords.width,
+    maxHeight: maxListHeight,
+  }
 
   return (
     <div className={cn(s.root, className)}>
@@ -233,8 +277,8 @@ export const Select = <TValue extends string = string>({
             ref={listRef}
             id={listboxId}
             role="listbox"
-            className={cn(s.list, placement === 'top' && s.listTop)}
-            style={{ maxHeight: maxListHeight }}
+            className={s.list}
+            style={listStyle}
             aria-labelledby={labelId}
             tabIndex={-1}
           >
