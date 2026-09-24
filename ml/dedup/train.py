@@ -1,6 +1,7 @@
 import argparse
 import json
 import random
+import re
 import subprocess
 import time
 from collections import Counter
@@ -45,6 +46,28 @@ def paraphrase_pairs(cfg, rng):
         neg = [(a, rng.choice(texts), 0) for a, _, _ in pos]
         nmt += pos + neg
     return pp("train") + nmt, pp("test")
+
+
+KEEP_FIELDS = {"diff_entrance", "diff_riser"}
+
+
+def augment(r, hn_class, rng):
+    r = dict(r)
+    if hn_class not in KEEP_FIELDS:
+        for k in ("entrance", "riser"):
+            if rng.random() < 0.3:
+                r[k] = None
+    d = r["description"]
+    if rng.random() < 0.3:
+        parts = [x.strip() for x in d.split(",") if x.strip()]
+        rng.shuffle(parts)
+        d = ", ".join(parts)
+    if rng.random() < 0.3:
+        d, r["title"] = d.lower(), r["title"].lower()
+    if rng.random() < 0.2:
+        d = re.sub(r"[^\w\s]", " ", d)
+    r["description"] = d
+    return r
 
 
 def to_pair(a, b, label):
@@ -104,7 +127,10 @@ def main():
             batch = train[i:i + cfg["batch_size"]]
             a, b = [], []
             for p in batch:
-                x, y = fmt(p["a"]), fmt(p["b"])
+                ra, rb = p["a"], p["b"]
+                if rng.random() < cfg.get("aug", 0):
+                    ra, rb = augment(ra, p.get("hn_class"), rng), augment(rb, p.get("hn_class"), rng)
+                x, y = fmt(ra), fmt(rb)
                 if rng.random() < 0.5:
                     x, y = y, x
                 a.append(x)
