@@ -58,8 +58,14 @@ func main() {
 }
 
 func envFloat(name string, def float64) float64 {
-	if f, err := strconv.ParseFloat(os.Getenv(name), 64); err == nil {
-		return f
+	raw := os.Getenv(name)
+	if raw == "" {
+		return def
 	}
-	return def
+	f, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		slog.Warn("invalid env value, using default", "name", name, "value", raw, "default", def)
+		return def
+	}
+	return f
 }
