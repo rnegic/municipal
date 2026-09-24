@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"mime/multipart"
 	"net/http"
 
 	oapi "ukapp/gen/api"
@@ -169,38 +170,62 @@ func (s *server) ListHouseRequests(ctx context.Context, req oapi.ListHouseReques
 
 const maxPhotoBytes = 10 << 20
 
+func readPhoto(body *multipart.Reader) (data []byte, contentType, problem string) {
+	for {
+		part, err := body.NextPart()
+		if errors.Is(err, io.EOF) {
+			return nil, "", "multipart field photo is required"
+		}
+		if err != nil {
+			return nil, "", err.Error()
+		}
+		if part.FormName() != "photo" {
+			continue
+		}
+		if data, err = io.ReadAll(io.LimitReader(part, maxPhotoBytes+1)); err != nil {
+			return nil, "", err.Error()
+		}
+		break
+	}
+	if len(data) == 0 || len(data) > maxPhotoBytes {
+		return nil, "", "photo must be 1 byte .. 10 MB"
+	}
+	if ct := http.DetectContentType(data); ct == "image/jpeg" || ct == "image/png" {
+		return data, ct, ""
+	}
+	if !isHEIF(data) {
+		return nil, "", "photo must be image/jpeg, image/png or image/heic"
+	}
+	jpg, err := heicToJPEG(data)
+	if err != nil {
+		return nil, "", "cannot decode heic"
+	}
+	return jpg, "image/jpeg", ""
+}
+
+func (s *server) UploadStagedPhoto(ctx context.Context, req oapi.UploadStagedPhotoRequestObject) (oapi.UploadStagedPhotoResponseObject, error) {
+	data, ct, problem := readPhoto(req.Body)
+	if problem != "" {
+		return oapi.UploadStagedPhoto400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", problem))}, nil
+	}
+	id, err := s.svc.AddStagedPhoto(ctx, userFromCtx(ctx).ID, ct, data)
+	if errors.Is(err, service.ErrRateLimited) {
+		return oapi.UploadStagedPhoto429JSONResponse(apiErr("rate_limited", "не больше 20 фото в час")), nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return oapi.UploadStagedPhoto201JSONResponse(toPhoto(id)), nil
+}
+
 func (s *server) UploadIncidentPhoto(ctx context.Context, req oapi.UploadIncidentPhotoRequestObject) (oapi.UploadIncidentPhotoResponseObject, error) {
 	id, ok := parseID("inc_", req.Id)
 	if !ok {
 		return oapi.UploadIncidentPhoto404JSONResponse(apiErr("not_found", "авария не найдена")), nil
 	}
-	bad := func(msg string) (oapi.UploadIncidentPhotoResponseObject, error) {
-		return oapi.UploadIncidentPhoto400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", msg))}, nil
-	}
-	var data []byte
-	for {
-		part, err := req.Body.NextPart()
-		if errors.Is(err, io.EOF) {
-			return bad("multipart field photo is required")
-		}
-		if err != nil {
-			return bad(err.Error())
-		}
-		if part.FormName() != "photo" {
-			continue
-		}
-		data, err = io.ReadAll(io.LimitReader(part, maxPhotoBytes+1))
-		if err != nil {
-			return bad(err.Error())
-		}
-		break
-	}
-	if len(data) == 0 || len(data) > maxPhotoBytes {
-		return bad("photo must be 1 byte .. 10 MB")
-	}
-	ct := http.DetectContentType(data)
-	if ct != "image/jpeg" && ct != "image/png" {
-		return bad("photo must be image/jpeg or image/png")
+	data, ct, problem := readPhoto(req.Body)
+	if problem != "" {
+		return oapi.UploadIncidentPhoto400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", problem))}, nil
 	}
 	photoID, err := s.svc.AddPhoto(ctx, id, userFromCtx(ctx).ID, ct, data)
 	switch {

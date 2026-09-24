@@ -12,7 +12,7 @@ import (
 	. "ukapp/gen/db/ukapp/public/table"
 )
 
-func (s *Store) InsertPhoto(ctx context.Context, incidentID, userID int64, contentType string, data []byte) (int64, error) {
+func (s *Store) InsertPhoto(ctx context.Context, incidentID *int64, userID int64, contentType string, data []byte) (int64, error) {
 	var p model.IncidentPhoto
 	err := IncidentPhoto.INSERT(IncidentPhoto.IncidentID, IncidentPhoto.UserID, IncidentPhoto.ContentType, IncidentPhoto.Data).
 		VALUES(incidentID, userID, contentType, data).
@@ -60,7 +60,18 @@ func (s *Store) PhotoIDsByIncident(ctx context.Context, incidentIDs []int64) (ma
 		return nil, err
 	}
 	for _, r := range rows {
-		out[r.IncidentID] = append(out[r.IncidentID], r.ID)
+		if r.IncidentID != nil {
+			out[*r.IncidentID] = append(out[*r.IncidentID], r.ID)
+		}
 	}
 	return out, nil
+}
+
+func (s *Store) DeleteStalePhotos(ctx context.Context, olderThan time.Duration) (int64, error) {
+	res, err := s.db.ExecContext(ctx,
+		`DELETE FROM incident_photo WHERE incident_id IS NULL AND created_at < now() - make_interval(secs => $1)`, olderThan.Seconds())
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }

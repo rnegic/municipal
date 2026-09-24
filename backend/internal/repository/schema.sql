@@ -129,6 +129,8 @@ CREATE TABLE IF NOT EXISTS incident_photo (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS incident_photo_incident ON incident_photo(incident_id);
+ALTER TABLE incident_photo ALTER COLUMN incident_id DROP NOT NULL;
+CREATE INDEX IF NOT EXISTS incident_photo_staged ON incident_photo(created_at) WHERE incident_id IS NULL;
 
 CREATE TABLE IF NOT EXISTS outbox_message (
   id                 BIGSERIAL PRIMARY KEY,

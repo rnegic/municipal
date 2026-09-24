@@ -43,6 +43,7 @@ func main() {
 	svc.WithClassifier(cls, envFloat("LAYA_CATEGORY_THRESHOLD", 0.7))
 	go svc.RunOutboxWorker(ctx)
 	go svc.RunUkSyncWorker(ctx)
+	go svc.RunPhotoCleanup(ctx)
 
 	port := os.Getenv("PORT")
 	if port == "" {

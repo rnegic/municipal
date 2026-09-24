@@ -288,6 +288,33 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
 
+  /api/incidents/photos:
+    post:
+      operationId: uploadStagedPhoto
+      tags: [incidents]
+      summary: Фото до создания заявки (jpeg/png/heic/heif, до 10 МБ); HEIC конвертируется в JPEG
+      description: |
+        Фото ни к чему не привязано, пока его url не придёт в photoUrls при создании заявки.
+        Непривязанные фото удаляются через 24 ч. Не больше 20 загрузок в час (429 rate_limited).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo: { type: string, format: binary }
+      responses:
+        "201":
+          description: Фото сохранено
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Photo" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
   /api/incidents/{id}:
     get:
       operationId: getIncident
@@ -360,7 +387,7 @@ paths:
     post:
       operationId: uploadIncidentPhoto
       tags: [incidents]
-      summary: Фото к обращению (jpeg/png, до 10 МБ); отдаётся по Photo.url без авторизации
+      summary: Фото к обращению (jpeg/png/heic, до 10 МБ; HEIC конвертируется в JPEG); отдаётся по Photo.url без авторизации
       description: |
         Только автор или подписчик («у меня тоже») аварии — иначе 403. Не больше 5 фото на аварию
         (422 business_rule_failed) и не больше 20 загрузок в час от одного пользователя (429 rate_limited).
