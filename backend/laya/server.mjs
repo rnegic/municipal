@@ -2,6 +2,8 @@ import http from "node:http";
 import { Laya } from "@receptron/laya";
 import { questions, toState, loadOptions } from "./questions.mjs";
 
+const MAX_BODY_BYTES = 64 * 1024;
+
 let laya = null;
 
 const send = (res, code, body) => {
@@ -14,7 +16,10 @@ const server = http.createServer(async (req, res) => {
   if (req.method !== "POST" || req.url !== "/classify") return send(res, 404, { error: "not found" });
   if (!laya) return send(res, 503, { error: "model loading" });
   let raw = "";
-  for await (const chunk of req) raw += chunk;
+  for await (const chunk of req) {
+    raw += chunk;
+    if (raw.length > MAX_BODY_BYTES) return send(res, 413, { error: "body too large" });
+  }
   try {
     const { text } = JSON.parse(raw);
     if (typeof text !== "string" || !text.trim()) return send(res, 400, { error: "text required" });
