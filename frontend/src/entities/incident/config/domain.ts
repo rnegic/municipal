@@ -1,0 +1,28 @@
+export const INCIDENT_CATEGORY_VALUES = [
+  'WATER_HEAT',
+  'ELECTRICITY',
+  'ELEVATOR',
+  'CLEANING_YARD',
+  'BUILDING_STRUCTURE',
+  'CITY_TERRITORY',
+] as const
+
+export const INCIDENT_AUTHORITY_VALUES = ['UK', 'FKR', 'RSO', 'MUNICIPALITY', 'OWNER'] as const
+
+export const UK_AUTHORITY = 'UK'
+
+export const PHOTO_REQUIRED_CATEGORY_VALUES = [
+  'CLEANING_YARD',
+  'BUILDING_STRUCTURE',
+  'CITY_TERRITORY',
+] as const
+
+export const INCIDENT_DESCRIPTION_MIN_LENGTH = 10
+export const INCIDENT_DESCRIPTION_MAX_LENGTH = 2000
+export const INCIDENT_ENTRANCE_MAX_LENGTH = 40
+export const INCIDENT_FLOOR_ZONE_MAX_LENGTH = 120
+export const INCIDENT_REASONING_MAX_LENGTH = 600
+
+export const INCIDENT_PHOTOS_MAX_COUNT = 5
+export const INCIDENT_PHOTO_MAX_BYTES = 10 * 1024 * 1024
+export const INCIDENT_PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif'] as const

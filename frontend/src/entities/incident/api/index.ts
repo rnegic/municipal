@@ -11,10 +11,14 @@ export {
   useUkQueueQuery,
 } from './queries'
 export {
+  analyzeIncident,
   confirmIncident,
   createIncident,
   joinIncident,
   uploadIncidentPhoto,
+  uploadIncidentPhotoFile,
+  uploadIncidentPhotos,
+  useAnalyzeIncidentMutation,
   useConfirmIncidentMutation,
   useCreateIncidentMutation,
   useJoinIncidentMutation,

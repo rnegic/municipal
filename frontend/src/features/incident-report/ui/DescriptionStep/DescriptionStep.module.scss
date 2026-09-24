@@ -1,0 +1,42 @@
+.form,
+.field,
+.analyzing,
+.analyzingHeading {
+  display: flex;
+  flex-direction: column;
+}
+
+.form {
+  gap: var(--app-space-6);
+}
+
+.field {
+  gap: var(--app-space-2);
+}
+
+.textareaRoot {
+  width: 100%;
+}
+
+.textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+}
+
+.error {
+  color: var(--app-color-danger);
+}
+
+.analyzing {
+  gap: var(--app-space-4);
+}
+
+.analyzingHeading {
+  gap: var(--app-space-2);
+}

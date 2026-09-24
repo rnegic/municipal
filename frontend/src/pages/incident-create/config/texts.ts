@@ -1,1 +1,4 @@
-export const incidentCreateTexts = { title: 'Сообщить о проблеме', description: 'Заявка попадёт диспетчеру вашей УК' } as const
+export const incidentCreateTexts = {
+  title: 'Сообщить о проблеме',
+  description: 'Определим категорию и ответственное ведомство по описанию',
+} as const

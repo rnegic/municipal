@@ -7,11 +7,14 @@ import {
 
 import { apiRequest } from '@/shared/api/client'
 import {
+  analyzeIncidentRequestSchema,
+  analyzeIncidentResponseSchema,
   confirmResponseSchema,
   createIncidentRequestSchema,
   incidentSchema,
   incidentPhotoSchema,
   joinResponseSchema,
+  type AnalyzeIncidentInput,
   type CreateIncidentInput,
   type Incident,
   type IncidentListResponse,
@@ -23,11 +26,20 @@ interface IncidentMutationContext {
   previous: Array<[QueryKey, unknown]>
 }
 
+const ANALYZE_TIMEOUT_MS = 20_000
+
 export const joinIncident = (incidentId: string) =>
   apiRequest(`/incidents/${incidentId}/join`, { method: 'POST' }, joinResponseSchema)
 
 export const confirmIncident = (incidentId: string) =>
   apiRequest(`/incidents/${incidentId}/confirm`, { method: 'POST' }, confirmResponseSchema)
+
+export const analyzeIncident = (input: AnalyzeIncidentInput, signal?: AbortSignal) =>
+  apiRequest(
+    '/incidents/analyze',
+    { method: 'POST', body: analyzeIncidentRequestSchema.parse(input), signal },
+    analyzeIncidentResponseSchema,
+  )
 
 export const createIncident = (input: CreateIncidentInput) =>
   apiRequest(
@@ -45,6 +57,19 @@ export const uploadIncidentPhoto = (incidentId: string, file: File) => {
     { method: 'POST', body },
     incidentPhotoSchema,
   )
+}
+
+export const uploadIncidentPhotoFile = (file: File) => {
+  const body = new FormData()
+  body.append('photo', file)
+
+  return apiRequest('/incidents/photos', { method: 'POST', body }, incidentPhotoSchema)
+}
+
+export const uploadIncidentPhotos = async (files: File[]): Promise<string[]> => {
+  const uploaded = await Promise.all(files.map(uploadIncidentPhotoFile))
+
+  return uploaded.map((photo) => photo.url)
 }
 
 export const setIncidentStatus = (incidentId: string, status: Incident['status']) =>
@@ -133,6 +158,13 @@ export const useConfirmIncidentMutation = () => {
     onSettled: () => queryClient.invalidateQueries({ queryKey: incidentKeys.all }),
   })
 }
+
+export const useAnalyzeIncidentMutation = () =>
+  useMutation({
+    mutationFn: (input: AnalyzeIncidentInput) =>
+      analyzeIncident(input, AbortSignal.timeout(ANALYZE_TIMEOUT_MS)),
+    retry: false,
+  })
 
 export const useCreateIncidentMutation = () => {
   const queryClient = useQueryClient()

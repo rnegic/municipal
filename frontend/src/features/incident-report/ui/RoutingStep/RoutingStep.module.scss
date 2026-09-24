@@ -1,0 +1,35 @@
+.form,
+.details,
+.field,
+.actions {
+  display: flex;
+  flex-direction: column;
+}
+
+.form {
+  gap: var(--app-space-6);
+}
+
+.details {
+  gap: var(--app-space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  padding: 0;
+  color: var(--app-color-text-accent);
+}
+
+.field {
+  gap: var(--app-space-2);
+}
+
+.actions {
+  gap: var(--app-space-3);
+}
+
+.error {
+  color: var(--app-color-danger);
+}

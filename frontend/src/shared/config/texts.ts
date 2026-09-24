@@ -30,11 +30,27 @@ export const commonTexts = {
   underConstruction: {
     title: 'Экран в разработке'
   },
+  select: {
+    placeholder: 'Выберите значение',
+  },
+  photoPicker: {
+    add: 'Добавить фото',
+    addMore: 'Добавить ещё фото',
+    remove: 'Удалить фото',
+    limitReached: 'Достигнут лимит фото',
+    hint: (maxFiles: number, maxMegabytes: number) =>
+      `JPEG, PNG или HEIC · до ${maxFiles} фото · не больше ${maxMegabytes} МБ каждое`,
+    typeError: 'Поддерживаются только изображения JPEG, PNG и HEIC',
+    sizeError: (maxMegabytes: number) => `Размер фото не должен превышать ${maxMegabytes} МБ`,
+    countError: (maxFiles: number) => `Можно приложить не больше ${maxFiles} фото`,
+  },
   notFound: {
     title: 'Экран не найден',
     description: 'Похоже, ссылка устарела или в адресе опечатка.',
   },
   a11y: {
     loadingApp: 'Загрузка приложения',
+    photoList: 'Приложенные фото',
+    photoPreview: (index: number) => `Фото ${index}`,
   },
 } as const
