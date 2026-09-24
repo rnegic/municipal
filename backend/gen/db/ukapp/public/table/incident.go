@@ -96,7 +96,7 @@ func newIncidentTableImpl(schemaName, tableName, alias string) incidentTable {
 		RoutingConfidenceColumn = postgres.FloatColumn("routing_confidence")
 		allColumns              = postgres.ColumnList{IDColumn, HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn, CategoryColumn, AuthorityColumn, RoutingSourceColumn, CategoryPredictedColumn, RoutingConfidenceColumn}
 		mutableColumns          = postgres.ColumnList{HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn, CategoryColumn, AuthorityColumn, RoutingSourceColumn, CategoryPredictedColumn, RoutingConfidenceColumn}
-		defaultColumns          = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn, RoutingSourceColumn}
+		defaultColumns          = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn}
 	)
 
 	return incidentTable{

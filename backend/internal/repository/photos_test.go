@@ -32,3 +32,18 @@ func TestDeleteStalePhotos(t *testing.T) {
 		t.Fatalf("stale photo must be gone: %v", err)
 	}
 }
+
+func TestLegacyIncidentHasNoRoutingSource(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	houseID, userID, _ := seedIncident(t, s)
+	var src *string
+	err := s.db.QueryRowContext(ctx, `INSERT INTO incident (house_id, title, severity, reporter_id, description)
+		VALUES ($1, 'Нет воды', 'critical', $2, 'до роутинга') RETURNING routing_source`, houseID, userID).Scan(&src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if src != nil {
+		t.Fatalf("legacy incident must not claim a routing source, got %q", *src)
+	}
+}

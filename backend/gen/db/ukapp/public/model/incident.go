@@ -27,7 +27,7 @@ type Incident struct {
 	ResolvedAt        *time.Time
 	Category          *string
 	Authority         *string
-	RoutingSource     string
+	RoutingSource     *string
 	CategoryPredicted *string
 	RoutingConfidence *float32
 }
