@@ -93,6 +93,16 @@ jobs:
           cache-from: type=gha,scope=mockuk
           cache-to: type=gha,mode=max,scope=mockuk
 
+      - name: Build and push laya image
+        if: steps.changes.outputs.backend
+        uses: docker/build-push-action@v6
+        with:
+          context: backend/laya
+          push: true
+          tags: ${{ env.REGISTRY }}-laya:latest
+          cache-from: type=gha,scope=laya
+          cache-to: type=gha,mode=max,scope=laya
+
       - name: Deploy backend
         if: steps.changes.outputs.backend
         run: |
