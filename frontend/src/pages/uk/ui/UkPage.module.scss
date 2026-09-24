@@ -74,7 +74,7 @@
   min-width: 0;
   padding: var(--app-space-8);
   border-radius: var(--app-radius-card);
-  background: light-dark(var(--app-color-surface-card), var(--app-color-surface-muted));
+  background: var(--app-color-surface-card);
 }
 
 .columnHeader {
@@ -101,26 +101,17 @@
 
 .columnTitleNew {
   color: var(--app-color-text-accent);
-  background: light-dark(
-    color-mix(in srgb, var(--app-color-progress) 16%, transparent),
-    var(--app-color-progress-surface)
-  );
+  background: color-mix(in srgb, var(--app-color-progress) 16%, transparent);
 }
 
 .columnTitleProgress {
   color: var(--app-color-warning-dark);
-  background: light-dark(
-    color-mix(in srgb, var(--app-color-warning) 22%, transparent),
-    var(--app-color-warning-surface)
-  );
+  background: color-mix(in srgb, var(--app-color-warning) 22%, transparent);
 }
 
 .columnTitleVerify {
   color: var(--app-color-success);
-  background: light-dark(
-    color-mix(in srgb, var(--app-color-success) 16%, transparent),
-    var(--app-color-success-surface)
-  );
+  background: color-mix(in srgb, var(--app-color-success) 16%, transparent);
 }
 
 .columnOver {
