@@ -70,3 +70,18 @@ if __name__ == "__main__":
         if name.startswith("test_"):
             fn()
             print("ok", name)
+
+
+def test_extract_location():
+    from dedup.data import extract_location
+    cases = [
+        ("кв 3, свет пропал", None, None, None, "3"),
+        ("У нас на втором стояке холодно", "1", "1", "2", None),
+        ("в третьем подъезде лифт", None, "3", None, None),
+        ("3 п нет гор, стояк №4", None, "3", "4", None),
+        ("Я в 54-й, у 58-й прорвало батарею", None, None, None, "54"),
+        ("5 подъезд, стояк 10, горячей нет", None, "5", "10", None),
+    ]
+    for desc, entrance, e, r, apt in cases:
+        got = extract_location({"title": "x", "description": desc, "entrance": entrance, "riser": None})
+        assert (got["entrance"], got["riser"], got["apartment"]) == (e, r, apt), desc

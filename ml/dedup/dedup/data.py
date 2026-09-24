@@ -28,7 +28,42 @@ def struct_text(r):
     return f"подъезд: {r.get('entrance') or '?'}; стояк: {r.get('riser') or '?'}; срочность: {r.get('severity') or '?'}; {r['title']}. {r['description']}"
 
 
-FORMATS = {"text": plain_text, "struct": struct_text}
+def struct2_text(r):
+    loc = " ".join(f"{k} {r[f]}" for k, f in (("подъезд", "entrance"), ("стояк", "riser")) if r.get(f))
+    return f"{loc + '; ' if loc else ''}{r['title']}. {r['description']}"
+
+
+ORDINALS = {"перв": 1, "втор": 2, "трет": 3, "четв": 4, "пят": 5, "шест": 6, "седьм": 7, "восьм": 8, "девят": 9, "десят": 10, "двушк": 2, "трёшк": 3, "четвёрк": 4}
+NUM = r"(\d{1,3}|" + "|".join(ORDINALS) + r")[а-яё]*"
+
+
+def _num(tok):
+    return tok if tok.isdigit() else next((str(v) for k, v in ORDINALS.items() if tok.startswith(k)), None)
+
+
+def _find(text, words):
+    t = text.lower()
+    m = re.search(rf"(?:{words})[\s№:.-]*{NUM}", t) or re.search(rf"{NUM}[\s-]*(?:{words})", t)
+    return _num(m.group(1)) if m else None
+
+
+def extract_location(r):
+    text = f"{r['title']} {r['description']}"
+    apts = re.findall(r"(?:кв\.?|квартир[аеыу]?)\s*№?\s*(\d{1,4})|\b(\d{1,4})-?(?:я|й|ю)\s+(?:кв|квартир)|я (?:из|в) (\d{1,4})", text.lower())
+    return {
+        "entrance": r.get("entrance") or _find(text, r"подъезд\w*|под\.|п\b|п\."),
+        "riser": r.get("riser") or _find(text, r"стояк\w*"),
+        "apartment": next((x for m in apts for x in m if x), None),
+    }
+
+
+def struct3_text(r):
+    loc = extract_location(r)
+    head = " ".join(f"{k} {loc[f]}" for k, f in (("подъезд", "entrance"), ("стояк", "riser"), ("кв", "apartment")) if loc[f])
+    return f"{head + '; ' if head else ''}{r['title']}. {r['description']}"
+
+
+FORMATS = {"text": plain_text, "struct": struct_text, "struct2": struct2_text, "struct3": struct3_text}
 
 
 def normalize(s):
