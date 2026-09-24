@@ -1,0 +1,15 @@
+{
+  "name": "ftC-frida-lr50",
+  "base_model": "sergeyzh/rubert-mini-frida",
+  "format": "struct",
+  "dataset_version": "ds-88ec3f6a22",
+  "seed": 13,
+  "epochs": 3,
+  "batch_size": 32,
+  "lr": 5e-05,
+  "max_length": 128,
+  "easy_neg_ratio": 2.0,
+  "val_sample": 4000,
+  "threads": 6,
+  "init_from": "runs/pp2-mini-frida/model"
+}
