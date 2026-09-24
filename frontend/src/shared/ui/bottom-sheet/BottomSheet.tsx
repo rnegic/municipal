@@ -21,6 +21,7 @@ export interface BottomSheetProps {
 
 export const BottomSheet = ({ open, title, description, children, onClose }: BottomSheetProps) => {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const isBackdropPressRef = useRef(false)
   const titleId = useId()
   const platform = usePlatform()
 
@@ -55,8 +56,15 @@ export const BottomSheet = ({ open, title, description, children, onClose }: Bot
         event.preventDefault()
         onClose()
       }}
+      onPointerDown={(event) => {
+        isBackdropPressRef.current = event.target === dialogRef.current
+      }}
       onClick={(event) => {
-        if (event.target === dialogRef.current) {
+        const isBackdropClick = isBackdropPressRef.current && event.target === dialogRef.current
+
+        isBackdropPressRef.current = false
+
+        if (isBackdropClick) {
           onClose()
         }
       }}

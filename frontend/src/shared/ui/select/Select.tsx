@@ -26,6 +26,10 @@ export interface SelectProps<TValue extends string = string> {
 }
 
 const LIST_FLIP_THRESHOLD = 280
+const LIST_MAX_HEIGHT = 320
+const LIST_MIN_HEIGHT = 180
+const LIST_GAP = 8
+const LIST_EDGE_MARGIN = 12
 
 export const Select = <TValue extends string = string>({
   label,
@@ -41,6 +45,7 @@ export const Select = <TValue extends string = string>({
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom')
+  const [maxListHeight, setMaxListHeight] = useState(LIST_MAX_HEIGHT)
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -55,10 +60,19 @@ export const Select = <TValue extends string = string>({
 
   const openList = () => {
     const trigger = triggerRef.current
+
     if (trigger) {
       const rect = trigger.getBoundingClientRect()
-      const spaceBelow = window.innerHeight - rect.bottom
-      setPlacement(spaceBelow < LIST_FLIP_THRESHOLD && rect.top > spaceBelow ? 'top' : 'bottom')
+      const spaceBelow = window.innerHeight - rect.bottom - LIST_GAP - LIST_EDGE_MARGIN
+      const spaceAbove = rect.top - LIST_GAP - LIST_EDGE_MARGIN
+      const nextPlacement =
+        spaceBelow < LIST_FLIP_THRESHOLD && spaceAbove > spaceBelow ? 'top' : 'bottom'
+      const availableSpace = nextPlacement === 'bottom' ? spaceBelow : spaceAbove
+
+      setPlacement(nextPlacement)
+      setMaxListHeight(
+        Math.max(LIST_MIN_HEIGHT, Math.min(LIST_MAX_HEIGHT, availableSpace)),
+      )
     }
 
     setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0)
@@ -104,9 +118,21 @@ export const Select = <TValue extends string = string>({
       return
     }
 
-    listRef.current
-      ?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`)
-      ?.scrollIntoView({ block: 'nearest' })
+    const list = listRef.current
+    const active = list?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`)
+
+    if (!list || !active) {
+      return
+    }
+
+    const listRect = list.getBoundingClientRect()
+    const activeRect = active.getBoundingClientRect()
+
+    if (activeRect.top < listRect.top) {
+      list.scrollTop -= listRect.top - activeRect.top
+    } else if (activeRect.bottom > listRect.bottom) {
+      list.scrollTop += activeRect.bottom - listRect.bottom
+    }
   }, [open, activeIndex])
 
   const handleTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -208,6 +234,7 @@ export const Select = <TValue extends string = string>({
             id={listboxId}
             role="listbox"
             className={cn(s.list, placement === 'top' && s.listTop)}
+            style={{ maxHeight: maxListHeight }}
             aria-labelledby={labelId}
             tabIndex={-1}
           >
