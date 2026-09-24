@@ -15,6 +15,7 @@
 }
 
 .item {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--app-space-2);
@@ -30,7 +31,10 @@
 }
 
 .remove {
-  width: 100%;
+  position: absolute;
+  top: var(--app-space-2);
+  right: var(--app-space-2);
+  background-color: var(--button-secondary);
 }
 
 .picker {

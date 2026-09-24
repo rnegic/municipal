@@ -9,6 +9,7 @@ import {
 } from '@maxhub/max-ui'
 
 import { commonTexts } from '@/shared/config/texts'
+import { isFilePickerGuardActive } from '@/shared/lib/file-picker-guard'
 import s from './BottomSheet.module.scss'
 
 export interface BottomSheetProps {
@@ -21,6 +22,7 @@ export interface BottomSheetProps {
 
 export const BottomSheet = ({ open, title, description, children, onClose }: BottomSheetProps) => {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const isBackdropPressRef = useRef(false)
   const titleId = useId()
   const platform = usePlatform()
 
@@ -53,10 +55,20 @@ export const BottomSheet = ({ open, title, description, children, onClose }: Bot
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault()
-        onClose()
+
+        if (!isFilePickerGuardActive()) {
+          onClose()
+        }
+      }}
+      onPointerDown={(event) => {
+        isBackdropPressRef.current = event.target === dialogRef.current
       }}
       onClick={(event) => {
-        if (event.target === dialogRef.current) {
+        const isBackdropClick = isBackdropPressRef.current && event.target === dialogRef.current
+
+        isBackdropPressRef.current = false
+
+        if (isBackdropClick && !isFilePickerGuardActive()) {
           onClose()
         }
       }}

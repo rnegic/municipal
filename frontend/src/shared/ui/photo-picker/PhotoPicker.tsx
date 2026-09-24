@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 
-import { Typography } from '@maxhub/max-ui'
+import { Icon16CloseIos, Icon24CloseAndroid, IconButton, Typography, usePlatform } from '@maxhub/max-ui'
 
 import { commonTexts } from '@/shared/config/texts'
 import { cn } from '@/shared/lib/cn'
+import { notifyFilePickerClosed, notifyFilePickerOpened } from '@/shared/lib/file-picker-guard'
 import { Button } from '@/shared/ui/button'
 import s from './PhotoPicker.module.scss'
 
@@ -41,6 +42,7 @@ export const PhotoPicker = ({
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const itemsRef = useRef<PhotoPickerItem[]>(items)
+  const platform = usePlatform()
 
   useEffect(() => {
     itemsRef.current = items
@@ -49,6 +51,7 @@ export const PhotoPicker = ({
   useEffect(
     () => () => {
       itemsRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl))
+      notifyFilePickerClosed()
     },
     [],
   )
@@ -56,6 +59,8 @@ export const PhotoPicker = ({
   const isLimitReached = items.length >= maxFiles
 
   const handleSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    notifyFilePickerClosed()
+
     const selected = Array.from(event.target.files ?? [])
     event.target.value = ''
 
@@ -116,16 +121,16 @@ export const PhotoPicker = ({
                 src={item.previewUrl}
                 alt={commonTexts.a11y.photoPreview(index + 1)}
               />
-              <Button
+              <IconButton
                 className={s.remove}
-                type="button"
-                tone="secondary"
                 size="small"
+                variant="secondary"
+                aria-label={commonTexts.photoPicker.remove}
                 disabled={disabled}
                 onClick={() => handleRemove(index)}
               >
-                {commonTexts.photoPicker.remove}
-              </Button>
+                {platform === 'ios' ? <Icon16CloseIos /> : <Icon24CloseAndroid />}
+              </IconButton>
             </li>
           ))}
         </ul>
@@ -140,13 +145,17 @@ export const PhotoPicker = ({
           tabIndex={-1}
           aria-hidden="true"
           accept={acceptedMimeTypes.join(',')}
+          onClick={(event) => event.stopPropagation()}
           onChange={handleSelect}
         />
         <Button
           type="button"
           tone="secondary"
           disabled={disabled || isLimitReached}
-          onClick={() => inputRef.current?.click()}
+          onClick={() => {
+            notifyFilePickerOpened()
+            inputRef.current?.click()
+          }}
         >
           {isLimitReached
             ? commonTexts.photoPicker.limitReached
