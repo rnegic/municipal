@@ -81,12 +81,13 @@ def main():
     ap.add_argument("--synthetic", default="data/raw/synthetic_template_v3.jsonl.gz")
     ap.add_argument("--handwritten-test", default="data/raw/handwritten_eval_v3.json")
     ap.add_argument("--handwritten-val", nargs="*", default=["data/raw/handwritten_val_v1.json", "data/raw/handwritten_eval_v1.json", "data/raw/handwritten_eval_v2.json"])
+    ap.add_argument("--handwritten-train", nargs="*", default=sorted(str(p) for p in Path("data/raw").glob("handwritten_train_*.json")))
     ap.add_argument("--real", nargs="*", default=sorted(str(p) for p in Path("data/labels").glob("*.jsonl")))
     ap.add_argument("--out", default="data/versions")
     ap.add_argument("--salt", default="split-v1")
     args = ap.parse_args()
 
-    inputs = [args.synthetic, args.handwritten_test] + list(args.handwritten_val) + list(args.real)
+    inputs = [args.synthetic, args.handwritten_test] + list(args.handwritten_val) + list(args.handwritten_train) + list(args.real)
     version = "ds-" + hashlib.sha256("".join(sha(p) for p in inputs).encode() + args.salt.encode()).hexdigest()[:10]
 
     splits = defaultdict(list)
@@ -94,6 +95,7 @@ def main():
         splits[{"train": "train", "val": "val_syn", "test": "test_syn"}[bucket(p["group_id"], args.salt)]].append(p)
     splits["test_hw"] = handwritten_pairs(args.handwritten_test)
     splits["val_hw"] = [p for path in args.handwritten_val for p in handwritten_pairs(path)]
+    splits["train"] += [p for path in args.handwritten_train for p in handwritten_pairs(path)]
     real_by_id = {}
     for p in (p for path in args.real for p in read_jsonl(path)):
         if p["pair_id"] not in real_by_id or p["source"] == "manual":
