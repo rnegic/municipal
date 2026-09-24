@@ -55,3 +55,21 @@ func TestAnalyzeThresholdAndAuthorityTable(t *testing.T) {
 		t.Fatalf("short: %v", err)
 	}
 }
+
+func TestCreateIncidentFallsBackToManualWhenModelHangs(t *testing.T) {
+	old := classifyTimeout
+	classifyTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { classifyTimeout = old })
+	s := testStore(t)
+	svc := New(s, nil, nil, &fakeUk{}, "testbot").WithClassifier(blockingClassifier{}, 0.7)
+	houseID, userID := seedHouse(t, s)
+	start := time.Now()
+	row, created, err := svc.CreateIncident(context.Background(), houseID, userID, NewIncident{Description: "лифт стоит третий день", Category: domain.CategoryElevator})
+	if err != nil || !created || time.Since(start) > 2*time.Second {
+		t.Fatalf("created=%v err=%v after %s", created, err, time.Since(start))
+	}
+	var src string
+	if err := s.DB().QueryRowContext(context.Background(), `SELECT routing_source FROM incident WHERE id=$1`, row.ID).Scan(&src); err != nil || src != "manual" {
+		t.Fatalf("routing_source=%q err=%v", src, err)
+	}
+}

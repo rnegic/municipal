@@ -56,6 +56,14 @@ func TestStagedPhotos(t *testing.T) {
 		t.Fatalf("decoded jpeg: %v", err)
 	}
 
+	junk := make([]byte, 10<<20)
+	copy(junk, "\x00\x00\x00\x18ftypheic")
+	for i := 16; i < len(junk); i++ {
+		junk[i] = byte(i * 7919)
+	}
+	if code, _ := uploadStaged(t, srv, 1, junk); code != 400 {
+		t.Fatalf("10 MB garbage heic: %d", code)
+	}
 	if code, _ := uploadStaged(t, srv, 1, heic[:40]); code != 400 {
 		t.Fatalf("truncated heic: %d", code)
 	}
