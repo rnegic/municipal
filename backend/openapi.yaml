@@ -265,6 +265,29 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
+  /api/incidents/analyze:
+    post:
+      operationId: analyzeIncident
+      tags: [incidents]
+      summary: Категория по описанию (классификатор Laya) и ответственный по таблице категорий
+      description: |
+        503 model_unavailable — модель недоступна, не ответила за 10 с или не уверена.
+        Любой не-2xx фронт превращает в ручной выбор.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AnalyzeIncidentRequest" }
+      responses:
+        "200":
+          description: Уверенная классификация
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnalyzeIncidentResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+
   /api/incidents/{id}:
     get:
       operationId: getIncident
@@ -472,6 +495,30 @@ components:
     Severity:
       type: string
       enum: [critical, warning]
+
+    IncidentCategory:
+      type: string
+      enum: [WATER_HEAT, ELECTRICITY, ELEVATOR, CLEANING_YARD, BUILDING_STRUCTURE, CITY_TERRITORY]
+
+    IncidentAuthority:
+      type: string
+      enum: [UK, FKR, RSO, MUNICIPALITY, OWNER]
+
+    AnalyzeIncidentRequest:
+      type: object
+      required: [description]
+      properties:
+        description: { type: string, minLength: 10, maxLength: 2000 }
+
+    AnalyzeIncidentResponse:
+      type: object
+      required: [category, authority, isUkResponsibility, photoRequired]
+      properties:
+        category: { $ref: "#/components/schemas/IncidentCategory" }
+        authority: { $ref: "#/components/schemas/IncidentAuthority" }
+        isUkResponsibility: { type: boolean }
+        photoRequired: { type: boolean }
+        reasoningText: { type: string }
 
     IncidentStatus:
       type: string

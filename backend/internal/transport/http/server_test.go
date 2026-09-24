@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -92,9 +93,24 @@ func (f *fakeUk) SetStatus(_ context.Context, id string, st domain.IncidentStatu
 	return nil
 }
 
+type fakeClassifier struct {
+	p   domain.Prediction
+	err error
+}
+
+func (f *fakeClassifier) Classify(context.Context, string) (domain.Prediction, error) {
+	return f.p, f.err
+}
+
 func newTestServer(t *testing.T, repo *repository.Store) http.Handler {
 	t.Helper()
-	return NewServer(service.New(repo, nil, fakeDadata(t), &fakeUk{}, "testbot"), testBotToken)
+	return newTestServerWith(t, repo, &fakeClassifier{err: errors.New("model off")})
+}
+
+func newTestServerWith(t *testing.T, repo *repository.Store, cls service.Classifier) http.Handler {
+	t.Helper()
+	svc := service.New(repo, nil, fakeDadata(t), &fakeUk{}, "testbot").WithClassifier(cls, 0.7)
+	return NewServer(svc, testBotToken)
 }
 
 func itoa(n int64) string              { return strconv.FormatInt(n, 10) }
