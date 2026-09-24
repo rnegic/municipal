@@ -2,6 +2,7 @@ import argparse
 import json
 import random
 import re
+import shutil
 import subprocess
 import time
 from collections import Counter
@@ -150,7 +151,7 @@ def main():
             y = torch.tensor([float(p["label"]) for p in batch], device=DEVICE)
             with torch.autocast("cuda", dtype=torch.float16, enabled=amp):
                 logits = model(**x).logits.squeeze(-1)
-            loss = torch.nn.functional.binary_cross_entropy_with_logits(logits.float(), y)
+            loss = torch.nn.functional.binary_cross_entropy_with_logits(logits.float(), y, pos_weight=torch.tensor(cfg.get("pos_weight", 1.0), device=DEVICE))
             scaler.scale(loss).backward()
             scaler.unscale_(opt)
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -162,9 +163,10 @@ def main():
             if step % 200 == 0:
                 print(f"epoch {epoch} step {step}/{steps} loss {loss.item():.4f} {time.time() - t0:.0f}s", flush=True)
         model.eval()
-        model.save_pretrained(run / "model")
-        tok.save_pretrained(run / "model")
-        ce = CrossEncoder(run / "model", cfg["max_length"], cfg["format"])
+        out = run / (f"model_e{epoch}" if cfg.get("save_best") else "model")
+        model.save_pretrained(out)
+        tok.save_pretrained(out)
+        ce = CrossEncoder(out, cfg["max_length"], cfg["format"])
         if cfg.get("task") == "paraphrase":
             ce.fmt = fmt
         entry = {"epoch": epoch, "elapsed_s": round(time.time() - t0)}
@@ -175,6 +177,13 @@ def main():
             entry[f"val_{g}"] = summary([p["label"] for p in vs], ce.scores(vs), 0.5)
         log.append(entry)
         print(json.dumps(log[-1], ensure_ascii=False), flush=True)
+
+    if cfg.get("save_best"):
+        best = max(log, key=lambda e: e["val_hw"]["pr_auc"])["epoch"]
+        shutil.copytree(run / f"model_e{best}", run / "model", dirs_exist_ok=True)
+        for e in log:
+            shutil.rmtree(run / f"model_e{e['epoch']}")
+        print("best epoch", best, flush=True)
 
     (run / "config" / "train_config.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2))
     (run / "dataset_version.txt").write_text(ds.name + "\n")
