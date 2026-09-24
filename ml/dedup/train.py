@@ -12,7 +12,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from dedup.data import FORMATS, read_jsonl
 from dedup.metrics import summary
-from dedup.scorers import CrossEncoder
+from dedup.scorers import DEVICE, CrossEncoder
 
 
 def set_seed(seed):
@@ -87,9 +87,11 @@ def main():
     torch.set_num_threads(cfg.get("threads", 6))
     init = cfg.get("init_from") or cfg["base_model"]
     tok = AutoTokenizer.from_pretrained(init)
-    model = AutoModelForSequenceClassification.from_pretrained(init, num_labels=1)
+    model = AutoModelForSequenceClassification.from_pretrained(init, num_labels=1).to(DEVICE)
     opt = torch.optim.AdamW(model.parameters(), lr=cfg["lr"], weight_decay=0.01)
     steps = cfg["epochs"] * (len(train) // cfg["batch_size"])
+    amp = bool(cfg.get("amp")) and DEVICE == "cuda"
+    scaler = torch.cuda.amp.GradScaler(enabled=amp)
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: min(1.0, (s + 1) / (0.06 * steps)) * max(0.0, (steps - s) / steps))
 
     log = []
@@ -107,12 +109,16 @@ def main():
                     x, y = y, x
                 a.append(x)
                 b.append(y)
-            x = tok(a, b, truncation=True, max_length=cfg["max_length"], padding=True, return_tensors="pt")
-            y = torch.tensor([float(p["label"]) for p in batch])
-            loss = torch.nn.functional.binary_cross_entropy_with_logits(model(**x).logits.squeeze(-1), y)
-            loss.backward()
+            x = tok(a, b, truncation=True, max_length=cfg["max_length"], padding=True, return_tensors="pt").to(DEVICE)
+            y = torch.tensor([float(p["label"]) for p in batch], device=DEVICE)
+            with torch.autocast("cuda", dtype=torch.float16, enabled=amp):
+                logits = model(**x).logits.squeeze(-1)
+            loss = torch.nn.functional.binary_cross_entropy_with_logits(logits.float(), y)
+            scaler.scale(loss).backward()
+            scaler.unscale_(opt)
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            opt.step()
+            scaler.step(opt)
+            scaler.update()
             sched.step()
             opt.zero_grad()
             step += 1

@@ -8,6 +8,7 @@ from dedup.data import FORMATS, normalize
 
 PROD_WINDOW = timedelta(hours=2)
 BATCH = 64
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def _within_window(p):
@@ -25,21 +26,21 @@ def normalized_exact_scores(pairs):
 class Embedder:
     def __init__(self, name, pooling):
         self.tok = AutoTokenizer.from_pretrained(name)
-        self.model = AutoModel.from_pretrained(name).eval()
+        self.model = AutoModel.from_pretrained(name).to(DEVICE).eval()
         self.pooling = pooling
 
     @torch.no_grad()
     def encode(self, texts):
         out = []
         for i in range(0, len(texts), BATCH):
-            x = self.tok(texts[i:i + BATCH], truncation=True, max_length=128, padding=True, return_tensors="pt")
+            x = self.tok(texts[i:i + BATCH], truncation=True, max_length=128, padding=True, return_tensors="pt").to(DEVICE)
             h = self.model(**x).last_hidden_state
             if self.pooling == "cls":
                 v = h[:, 0]
             else:
                 m = x["attention_mask"].unsqueeze(-1).float()
                 v = (h * m).sum(1) / m.sum(1)
-            out.append(torch.nn.functional.normalize(v, dim=-1).numpy())
+            out.append(torch.nn.functional.normalize(v, dim=-1).cpu().numpy())
         return np.concatenate(out)
 
     def scores(self, pairs, fmt="text"):
@@ -53,7 +54,7 @@ class Embedder:
 class CrossEncoder:
     def __init__(self, path, max_length=128, fmt="text"):
         self.tok = AutoTokenizer.from_pretrained(path)
-        self.model = AutoModelForSequenceClassification.from_pretrained(path).eval()
+        self.model = AutoModelForSequenceClassification.from_pretrained(path).to(DEVICE).eval()
         self.max_length = max_length
         self.fmt = FORMATS[fmt]
 
@@ -61,9 +62,9 @@ class CrossEncoder:
     def logits(self, a, b):
         out = []
         for i in range(0, len(a), BATCH):
-            x = self.tok(a[i:i + BATCH], b[i:i + BATCH], truncation=True, max_length=self.max_length, padding=True, return_tensors="pt")
+            x = self.tok(a[i:i + BATCH], b[i:i + BATCH], truncation=True, max_length=self.max_length, padding=True, return_tensors="pt").to(DEVICE)
             lg = self.model(**x).logits
-            out.append(lg[:, -1].numpy() if lg.shape[-1] > 1 else lg[:, 0].numpy())
+            out.append(lg[:, -1].cpu().numpy() if lg.shape[-1] > 1 else lg[:, 0].cpu().numpy())
         return np.concatenate(out)
 
     def directional(self, pairs):
