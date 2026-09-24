@@ -24,8 +24,8 @@ def set_seed(seed):
 
 def sample_train(pairs, easy_neg_ratio, rng):
     pos = [p for p in pairs if p["label"] == 1]
-    hard = [p for p in pairs if p["label"] == 0 and p["source"] == "hard_negative"]
-    easy = [p for p in pairs if p["label"] == 0 and p["source"] != "hard_negative"]
+    hard = [p for p in pairs if p["label"] == 0 and p["source"] != "synthetic"]
+    easy = [p for p in pairs if p["label"] == 0 and p["source"] == "synthetic"]
     k = min(len(easy), int(easy_neg_ratio * len(pos)))
     return pos + hard + rng.sample(easy, k)
 
@@ -100,7 +100,13 @@ def main():
         val = [to_pair(*t) for t in va]
         fmt = lambda r: r["title"]
     else:
-        train = sample_train(read_jsonl(ds / "train.jsonl.gz"), cfg["easy_neg_ratio"], rng)
+        pairs = read_jsonl(ds / "train.jsonl.gz")
+        if cfg.get("syn_frac"):
+            groups = sorted({p["group_id"] for p in pairs if p["source"] != "synthetic_handwritten"})
+            keep = set(rng.sample(groups, int(len(groups) * cfg["syn_frac"])))
+            pairs = [p for p in pairs if p["source"] == "synthetic_handwritten" or p["group_id"] in keep]
+        train = sample_train(pairs, cfg["easy_neg_ratio"], rng)
+        train += [p for p in train if p["source"] == "synthetic_handwritten"] * (cfg.get("hw_repeat", 1) - 1)
         val = read_jsonl(ds / "val_syn.jsonl.gz")
         val = rng.sample(val, min(len(val), cfg["val_sample"]))
         val += read_jsonl(ds / "val_hw.jsonl.gz")
