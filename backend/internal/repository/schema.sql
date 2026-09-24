@@ -73,6 +73,15 @@ CREATE INDEX IF NOT EXISTS incident_house_open ON incident(house_id, title, crea
 CREATE INDEX IF NOT EXISTS incident_house_status ON incident(house_id, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS incident_reporter ON incident(house_id, reporter_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS incident_unregistered ON incident(id) WHERE external_id IS NULL;
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS category TEXT
+  CHECK (category IN ('WATER_HEAT','ELECTRICITY','ELEVATOR','CLEANING_YARD','BUILDING_STRUCTURE','CITY_TERRITORY'));
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS authority TEXT
+  CHECK (authority IN ('UK','FKR','RSO','MUNICIPALITY','OWNER'));
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS routing_source TEXT
+  CHECK (routing_source IN ('auto','manual'));
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS category_predicted TEXT;
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS routing_confidence REAL;
+CREATE INDEX IF NOT EXISTS incident_house_category ON incident(house_id, category, status, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS incident_subscription (
   incident_id BIGINT NOT NULL REFERENCES incident(id),
@@ -129,6 +138,8 @@ CREATE TABLE IF NOT EXISTS incident_photo (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS incident_photo_incident ON incident_photo(incident_id);
+ALTER TABLE incident_photo ALTER COLUMN incident_id DROP NOT NULL;
+CREATE INDEX IF NOT EXISTS incident_photo_staged ON incident_photo(created_at) WHERE incident_id IS NULL;
 
 CREATE TABLE IF NOT EXISTS outbox_message (
   id                 BIGSERIAL PRIMARY KEY,

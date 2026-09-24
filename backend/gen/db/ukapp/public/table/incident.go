@@ -17,19 +17,24 @@ type incidentTable struct {
 	postgres.Table
 
 	// Columns
-	ID          postgres.ColumnInteger
-	HouseID     postgres.ColumnInteger
-	Title       postgres.ColumnString
-	Severity    postgres.ColumnString
-	ReporterID  postgres.ColumnInteger
-	Description postgres.ColumnString
-	Entrance    postgres.ColumnString
-	Riser       postgres.ColumnString
-	Status      postgres.ColumnString
-	ExternalID  postgres.ColumnString
-	CreatedAt   postgres.ColumnTimestampz
-	DueAt       postgres.ColumnTimestampz
-	ResolvedAt  postgres.ColumnTimestampz
+	ID                postgres.ColumnInteger
+	HouseID           postgres.ColumnInteger
+	Title             postgres.ColumnString
+	Severity          postgres.ColumnString
+	ReporterID        postgres.ColumnInteger
+	Description       postgres.ColumnString
+	Entrance          postgres.ColumnString
+	Riser             postgres.ColumnString
+	Status            postgres.ColumnString
+	ExternalID        postgres.ColumnString
+	CreatedAt         postgres.ColumnTimestampz
+	DueAt             postgres.ColumnTimestampz
+	ResolvedAt        postgres.ColumnTimestampz
+	Category          postgres.ColumnString
+	Authority         postgres.ColumnString
+	RoutingSource     postgres.ColumnString
+	CategoryPredicted postgres.ColumnString
+	RoutingConfidence postgres.ColumnFloat
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -71,41 +76,51 @@ func newIncidentTable(schemaName, tableName, alias string) *IncidentTable {
 
 func newIncidentTableImpl(schemaName, tableName, alias string) incidentTable {
 	var (
-		IDColumn          = postgres.IntegerColumn("id")
-		HouseIDColumn     = postgres.IntegerColumn("house_id")
-		TitleColumn       = postgres.StringColumn("title")
-		SeverityColumn    = postgres.StringColumn("severity")
-		ReporterIDColumn  = postgres.IntegerColumn("reporter_id")
-		DescriptionColumn = postgres.StringColumn("description")
-		EntranceColumn    = postgres.StringColumn("entrance")
-		RiserColumn       = postgres.StringColumn("riser")
-		StatusColumn      = postgres.StringColumn("status")
-		ExternalIDColumn  = postgres.StringColumn("external_id")
-		CreatedAtColumn   = postgres.TimestampzColumn("created_at")
-		DueAtColumn       = postgres.TimestampzColumn("due_at")
-		ResolvedAtColumn  = postgres.TimestampzColumn("resolved_at")
-		allColumns        = postgres.ColumnList{IDColumn, HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn}
-		mutableColumns    = postgres.ColumnList{HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn}
-		defaultColumns    = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn}
+		IDColumn                = postgres.IntegerColumn("id")
+		HouseIDColumn           = postgres.IntegerColumn("house_id")
+		TitleColumn             = postgres.StringColumn("title")
+		SeverityColumn          = postgres.StringColumn("severity")
+		ReporterIDColumn        = postgres.IntegerColumn("reporter_id")
+		DescriptionColumn       = postgres.StringColumn("description")
+		EntranceColumn          = postgres.StringColumn("entrance")
+		RiserColumn             = postgres.StringColumn("riser")
+		StatusColumn            = postgres.StringColumn("status")
+		ExternalIDColumn        = postgres.StringColumn("external_id")
+		CreatedAtColumn         = postgres.TimestampzColumn("created_at")
+		DueAtColumn             = postgres.TimestampzColumn("due_at")
+		ResolvedAtColumn        = postgres.TimestampzColumn("resolved_at")
+		CategoryColumn          = postgres.StringColumn("category")
+		AuthorityColumn         = postgres.StringColumn("authority")
+		RoutingSourceColumn     = postgres.StringColumn("routing_source")
+		CategoryPredictedColumn = postgres.StringColumn("category_predicted")
+		RoutingConfidenceColumn = postgres.FloatColumn("routing_confidence")
+		allColumns              = postgres.ColumnList{IDColumn, HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn, CategoryColumn, AuthorityColumn, RoutingSourceColumn, CategoryPredictedColumn, RoutingConfidenceColumn}
+		mutableColumns          = postgres.ColumnList{HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn, CategoryColumn, AuthorityColumn, RoutingSourceColumn, CategoryPredictedColumn, RoutingConfidenceColumn}
+		defaultColumns          = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn}
 	)
 
 	return incidentTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:          IDColumn,
-		HouseID:     HouseIDColumn,
-		Title:       TitleColumn,
-		Severity:    SeverityColumn,
-		ReporterID:  ReporterIDColumn,
-		Description: DescriptionColumn,
-		Entrance:    EntranceColumn,
-		Riser:       RiserColumn,
-		Status:      StatusColumn,
-		ExternalID:  ExternalIDColumn,
-		CreatedAt:   CreatedAtColumn,
-		DueAt:       DueAtColumn,
-		ResolvedAt:  ResolvedAtColumn,
+		ID:                IDColumn,
+		HouseID:           HouseIDColumn,
+		Title:             TitleColumn,
+		Severity:          SeverityColumn,
+		ReporterID:        ReporterIDColumn,
+		Description:       DescriptionColumn,
+		Entrance:          EntranceColumn,
+		Riser:             RiserColumn,
+		Status:            StatusColumn,
+		ExternalID:        ExternalIDColumn,
+		CreatedAt:         CreatedAtColumn,
+		DueAt:             DueAtColumn,
+		ResolvedAt:        ResolvedAtColumn,
+		Category:          CategoryColumn,
+		Authority:         AuthorityColumn,
+		RoutingSource:     RoutingSourceColumn,
+		CategoryPredicted: CategoryPredictedColumn,
+		RoutingConfidence: RoutingConfidenceColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

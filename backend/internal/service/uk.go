@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"ukapp/internal/domain"
@@ -73,7 +74,40 @@ func (s *Service) AddPhoto(ctx context.Context, incidentID, userID int64, conten
 	if byIncident >= MaxPhotosPerIncident {
 		return 0, ErrInvalidStatus
 	}
-	return s.repo.InsertPhoto(ctx, incidentID, userID, contentType, data)
+	return s.repo.InsertPhoto(ctx, &incidentID, userID, contentType, data)
+}
+
+func (s *Service) PhotoRateLimited(ctx context.Context, userID int64) (bool, error) {
+	_, byUser, err := s.repo.PhotoCounts(ctx, 0, userID, time.Hour)
+	return byUser >= MaxPhotosPerUserHour, err
+}
+
+func (s *Service) AddStagedPhoto(ctx context.Context, userID int64, contentType string, data []byte) (int64, error) {
+	_, byUser, err := s.repo.PhotoCounts(ctx, 0, userID, time.Hour)
+	if err != nil {
+		return 0, err
+	}
+	if byUser >= MaxPhotosPerUserHour {
+		return 0, ErrRateLimited
+	}
+	return s.repo.InsertPhoto(ctx, nil, userID, contentType, data)
+}
+
+func (s *Service) RunPhotoCleanup(ctx context.Context) {
+	t := time.NewTicker(time.Hour)
+	defer t.Stop()
+	for {
+		if n, err := s.repo.DeleteStalePhotos(ctx, 24*time.Hour); err != nil {
+			slog.Warn("stale photo cleanup failed", "err", err)
+		} else if n > 0 {
+			slog.Info("stale photos deleted", "count", n)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+	}
 }
 
 func (s *Service) PhotoIDs(ctx context.Context, incidentIDs []int64) (map[int64][]int64, error) {

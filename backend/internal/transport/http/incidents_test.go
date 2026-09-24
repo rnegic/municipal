@@ -40,11 +40,11 @@ func TestIncidents_DedupAndJoin(t *testing.T) {
 	bindUser(t, srv, 2, "f-10")
 	bindUser(t, srv, 3, "f-12")
 
-	inc1, code := createIncident(t, srv, 1, `{"title":"Нет воды","description":"нет воды","severity":"critical"}`)
+	inc1, code := createIncident(t, srv, 1, `{"description":"нет воды с самого утра","category":"WATER_HEAT","photoUrls":[]}`)
 	if code != 201 {
 		t.Fatalf("create: %d", code)
 	}
-	inc2, code := createIncident(t, srv, 2, `{"title":"Нет воды","description":"течёт кипяток","severity":"critical"}`)
+	inc2, code := createIncident(t, srv, 2, `{"description":"из крана течёт кипяток","category":"WATER_HEAT","photoUrls":[]}`)
 	if code != 200 || inc2.Id != inc1.Id {
 		t.Fatalf("same house+title must merge: code=%d id2=%s", code, inc2.Id)
 	}
@@ -56,11 +56,11 @@ func TestIncidents_DedupAndJoin(t *testing.T) {
 	if w0.Code != 200 || len(mine.Items) != 1 || mine.Items[0].Id != inc1.Id {
 		t.Fatalf("joiner's requests: %d %s", w0.Code, w0.Body)
 	}
-	inc3, code := createIncident(t, srv, 2, `{"title":"Лифт не едет","description":"лифт","severity":"warning"}`)
+	inc3, code := createIncident(t, srv, 2, `{"description":"лифт стоит третий день","category":"ELEVATOR","photoUrls":[]}`)
 	if code != 201 || inc3.Id == inc1.Id {
 		t.Fatal("different title must not merge")
 	}
-	inc4, code := createIncident(t, srv, 3, `{"title":"Нет воды","description":"нет воды","severity":"critical"}`)
+	inc4, code := createIncident(t, srv, 3, `{"description":"нет воды с самого утра","category":"WATER_HEAT","photoUrls":[]}`)
 	if code != 201 || inc4.Id == inc1.Id {
 		t.Fatal("different house must not merge")
 	}
@@ -119,15 +119,15 @@ func TestIncidents_RequiresHouseAndValidInput(t *testing.T) {
 	srv := newTestServer(t, s)
 
 	w := httptest.NewRecorder()
-	srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents", `{"title":"x","description":"x","severity":"critical"}`, 9, "U"))
+	srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents", `{"description":"нет воды с самого утра","category":"WATER_HEAT","photoUrls":[]}`, 9, "U"))
 	if w.Code != 404 {
 		t.Fatalf("no house: want 404 got %d", w.Code)
 	}
 	bindUser(t, srv, 9, "f-1")
 	w = httptest.NewRecorder()
-	srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents", `{"title":"x","description":"x","severity":"urgent"}`, 9, "U"))
+	srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents", `{"description":"нет воды с самого утра","category":"PLUMBING","photoUrls":[]}`, 9, "U"))
 	if w.Code != 400 {
-		t.Fatalf("bad severity: want 400 got %d", w.Code)
+		t.Fatalf("bad category: want 400 got %d", w.Code)
 	}
 }
 
@@ -135,7 +135,7 @@ func TestGetIncident(t *testing.T) {
 	s := testStore(t)
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
-	inc, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical","entrance":"2","riser":"7"}`)
+	inc, _ := createIncident(t, srv, 1, `{"description":"нет воды с самого утра","category":"WATER_HEAT","entrance":"2","floorZone":"7","photoUrls":[]}`)
 
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "GET", "/api/incidents/"+inc.Id, "", 1, "U"))
@@ -154,7 +154,7 @@ func TestConfirmIncident_RequiresVerifyingAndCloses(t *testing.T) {
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
 	bindUser(t, srv, 2, "f-10")
-	inc, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical"}`)
+	inc, _ := createIncident(t, srv, 1, `{"description":"нет воды с самого утра","category":"WATER_HEAT","photoUrls":[]}`)
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "POST", "/api/incidents/"+inc.Id+"/join", "", 2, "U"))
 	if w.Code != 200 {
@@ -225,7 +225,7 @@ func TestSetIncidentStatus_DispatcherTransitionsAndNotifies(t *testing.T) {
 	s := testStore(t)
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
-	inc, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical"}`)
+	inc, _ := createIncident(t, srv, 1, `{"description":"нет воды с самого утра","category":"WATER_HEAT","photoUrls":[]}`)
 	seedDispatcher(t, s, "uk-1", "1655000003", "2099-12-31", true)
 	token := dispatcherToken(t, srv, "1655000003")
 
@@ -266,9 +266,9 @@ func TestListHouseRequests_Paginated(t *testing.T) {
 	s := testStore(t)
 	srv := newTestServer(t, s)
 	h10 := bindUser(t, srv, 1, "f-10")
-	createIncident(t, srv, 1, `{"title":"A","description":"x","severity":"warning"}`)
-	createIncident(t, srv, 1, `{"title":"B","description":"x","severity":"warning"}`)
-	createIncident(t, srv, 1, `{"title":"C","description":"x","severity":"warning"}`)
+	createIncident(t, srv, 1, `{"description":"нет воды с самого утра","category":"WATER_HEAT","photoUrls":[]}`)
+	createIncident(t, srv, 1, `{"description":"в подъезде не горит свет","category":"ELECTRICITY","photoUrls":[]}`)
+	createIncident(t, srv, 1, `{"description":"лифт стоит третий день","category":"ELEVATOR","photoUrls":[]}`)
 
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "GET", "/api/houses/"+h10+"/requests?offset=0&limit=2", "", 1, "U"))
@@ -289,11 +289,11 @@ func TestListHouseRequests_Paginated(t *testing.T) {
 		Limit  int
 	}
 	_ = json.Unmarshal(w.Body.Bytes(), &page)
-	if page.Total != 3 || len(page.Items) != 2 || page.Items[0].Title != "C" {
+	if page.Total != 3 || len(page.Items) != 2 || page.Items[0].Title != "Лифт" {
 		t.Fatalf("bad page: %+v", page)
 	}
 	for _, it := range page.Items {
-		if !strings.HasPrefix(it.Id, "inc_") || it.DueAt == nil || !it.DueAt.Equal(it.CreatedAt.Add(24*time.Hour)) || it.ConfirmedByMe == nil {
+		if !strings.HasPrefix(it.Id, "inc_") || it.DueAt == nil || !it.DueAt.Equal(it.CreatedAt.Add(4*time.Hour)) || it.ConfirmedByMe == nil {
 			t.Fatalf("bad item: %+v", it)
 		}
 	}

@@ -13,7 +13,7 @@ import (
 
 type IncidentPhoto struct {
 	ID          int64 `sql:"primary_key"`
-	IncidentID  int64
+	IncidentID  *int64
 	UserID      int64
 	ContentType string
 	Data        []byte

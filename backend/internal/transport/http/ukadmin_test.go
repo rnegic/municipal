@@ -162,7 +162,7 @@ func TestRoleGuards(t *testing.T) {
 	s := testStore(t)
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
-	inc, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical"}`)
+	inc, _ := createIncident(t, srv, 1, `{"description":"нет воды с самого утра","category":"WATER_HEAT","photoUrls":[]}`)
 	seedDispatcher(t, s, "uk-1", "1655000003", "2099-12-31", true)
 	token := dispatcherToken(t, srv, "1655000003")
 
@@ -197,8 +197,8 @@ func TestUkQueueAndIsolation(t *testing.T) {
 		`UPDATE house SET uk_id = (SELECT id FROM uk WHERE external_id = 'uk-2') WHERE house_fias_id = 'f-12'`); err != nil {
 		t.Fatal(err)
 	}
-	own, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical"}`)
-	foreign, _ := createIncident(t, srv, 3, `{"title":"Нет света","description":"y","severity":"warning"}`)
+	own, _ := createIncident(t, srv, 1, `{"description":"нет воды с самого утра","category":"WATER_HEAT","photoUrls":[]}`)
+	foreign, _ := createIncident(t, srv, 3, `{"description":"в подъезде не горит свет","category":"ELECTRICITY","photoUrls":[]}`)
 	incID, _ := parseID("inc_", own.Id)
 	setVerifying(t, s, incID)
 	confirm := authedReq(t, "POST", "/api/incidents/"+own.Id+"/confirm", "", 1, "U")

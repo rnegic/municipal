@@ -5,7 +5,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
+	"mime/multipart"
 	"net/http"
+	"strings"
 
 	oapi "ukapp/gen/api"
 	"ukapp/internal/domain"
@@ -15,7 +18,7 @@ import (
 func toIncident(r service.IncidentRow) oapi.Incident {
 	return oapi.Incident{
 		Id: formatIncidentID(r.ID), HouseId: formatHouseID(r.HouseID),
-		Title: r.Title, Description: r.Description, Entrance: r.Entrance, Riser: r.Riser, Severity: oapi.Severity(r.Severity),
+		Title: r.Title, Description: r.Description, Category: (*oapi.IncidentCategory)(r.Category), Entrance: r.Entrance, Riser: r.Riser, Severity: oapi.Severity(r.Severity),
 		Status: oapi.IncidentStatus(r.Status), AffectedCount: r.AffectedCount,
 		CreatedAt: r.CreatedAt, DueAt: r.DueAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
 		Photos: toPhotos(r.PhotoIDs),
@@ -34,16 +37,54 @@ func toPhotos(ids []int64) []oapi.Photo {
 	return photos
 }
 
+func parsePhotoURLs(urls []string) ([]int64, bool) {
+	ids := make([]int64, 0, len(urls))
+	seen := map[int64]bool{}
+	for _, u := range urls {
+		rest, ok := strings.CutPrefix(u, "/api/photos/")
+		if !ok {
+			return nil, false
+		}
+		id, ok := parseID("ph_", rest)
+		if !ok {
+			return nil, false
+		}
+		if !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	return ids, true
+}
+
 func (s *server) CreateIncident(ctx context.Context, req oapi.CreateIncidentRequestObject) (oapi.CreateIncidentResponseObject, error) {
 	u := userFromCtx(ctx)
 	if u.HouseID == nil {
 		return oapi.CreateIncident404JSONResponse(apiErr("not_found", "дом не привязан")), nil
 	}
-	row, created, err := s.svc.CreateIncident(ctx, *u.HouseID, u.ID, req.Body.Title, req.Body.Description, string(req.Body.Severity), req.Body.Entrance, req.Body.Riser)
-	if errors.Is(err, service.ErrInvalidInput) {
-		return oapi.CreateIncident400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", "valid title, description and severity required"))}, nil
+	bad := oapi.CreateIncident400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed",
+		"описание 10–2000 символов, категория из списка, подъезд до 40 и зона до 120 символов, до 5 фото вида /api/photos/ph_N"))}
+	photoIDs, ok := parsePhotoURLs(req.Body.PhotoUrls)
+	if !ok {
+		return bad, nil
 	}
-	if err != nil {
+	row, created, err := s.svc.CreateIncident(ctx, *u.HouseID, u.ID, service.NewIncident{
+		Description: req.Body.Description, Category: domain.Category(req.Body.Category),
+		Entrance: req.Body.Entrance, FloorZone: req.Body.FloorZone, PhotoIDs: photoIDs,
+	})
+	var notUK service.NotUKError
+	switch {
+	case errors.Is(err, service.ErrInvalidInput):
+		return bad, nil
+	case errors.As(err, &notUK):
+		return oapi.CreateIncident422JSONResponse(apiErr("business_rule_failed",
+			"Эту проблему решает не управляющая компания, а "+notUK.Authority.Name()+". Обратитесь туда напрямую или через Госуслуги.")), nil
+	case errors.Is(err, service.ErrPhotoRequired):
+		return oapi.CreateIncident422JSONResponse(apiErr("business_rule_failed", "для этой категории нужно приложить хотя бы одно фото")), nil
+	case errors.Is(err, service.ErrPhotoNotOwned):
+		slog.Warn("photo bind failed", "user", u.ID, "photos", photoIDs)
+		return oapi.CreateIncident422JSONResponse(apiErr("business_rule_failed", "фото не найдено или уже прикреплено к другой заявке")), nil
+	case err != nil:
 		return nil, err
 	}
 	if created {
@@ -169,38 +210,77 @@ func (s *server) ListHouseRequests(ctx context.Context, req oapi.ListHouseReques
 
 const maxPhotoBytes = 10 << 20
 
+func readPhoto(body *multipart.Reader) (data []byte, contentType, problem string) {
+	for {
+		part, err := body.NextPart()
+		if errors.Is(err, io.EOF) {
+			return nil, "", "multipart field photo is required"
+		}
+		if err != nil {
+			return nil, "", err.Error()
+		}
+		if part.FormName() != "photo" {
+			continue
+		}
+		if data, err = io.ReadAll(io.LimitReader(part, maxPhotoBytes+1)); err != nil {
+			return nil, "", err.Error()
+		}
+		break
+	}
+	if len(data) == 0 || len(data) > maxPhotoBytes {
+		return nil, "", "photo must be 1 byte .. 10 MB"
+	}
+	if ct := http.DetectContentType(data); ct == "image/jpeg" || ct == "image/png" {
+		return data, ct, ""
+	}
+	if !isHEIF(data) {
+		return nil, "", "photo must be image/jpeg, image/png or image/heic"
+	}
+	jpg, err := heicToJPEG(data)
+	if errors.Is(err, errHEICTooLarge) {
+		return nil, "", "photo must be at most 50 megapixels"
+	}
+	if err != nil {
+		return nil, "", "cannot decode heic"
+	}
+	return jpg, "image/jpeg", ""
+}
+
+func (s *server) UploadStagedPhoto(ctx context.Context, req oapi.UploadStagedPhotoRequestObject) (oapi.UploadStagedPhotoResponseObject, error) {
+	if limited, err := s.svc.PhotoRateLimited(ctx, userFromCtx(ctx).ID); err != nil || limited {
+		if err != nil {
+			return nil, err
+		}
+		return oapi.UploadStagedPhoto429JSONResponse(apiErr("rate_limited", "не больше 20 фото в час")), nil
+	}
+	data, ct, problem := readPhoto(req.Body)
+	if problem != "" {
+		return oapi.UploadStagedPhoto400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", problem))}, nil
+	}
+	id, err := s.svc.AddStagedPhoto(ctx, userFromCtx(ctx).ID, ct, data)
+	if errors.Is(err, service.ErrRateLimited) {
+		return oapi.UploadStagedPhoto429JSONResponse(apiErr("rate_limited", "не больше 20 фото в час")), nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return oapi.UploadStagedPhoto201JSONResponse(toPhoto(id)), nil
+}
+
 func (s *server) UploadIncidentPhoto(ctx context.Context, req oapi.UploadIncidentPhotoRequestObject) (oapi.UploadIncidentPhotoResponseObject, error) {
 	id, ok := parseID("inc_", req.Id)
 	if !ok {
 		return oapi.UploadIncidentPhoto404JSONResponse(apiErr("not_found", "авария не найдена")), nil
 	}
-	bad := func(msg string) (oapi.UploadIncidentPhotoResponseObject, error) {
-		return oapi.UploadIncidentPhoto400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", msg))}, nil
-	}
-	var data []byte
-	for {
-		part, err := req.Body.NextPart()
-		if errors.Is(err, io.EOF) {
-			return bad("multipart field photo is required")
-		}
+	if limited, err := s.svc.PhotoRateLimited(ctx, userFromCtx(ctx).ID); err != nil || limited {
 		if err != nil {
-			return bad(err.Error())
+			return nil, err
 		}
-		if part.FormName() != "photo" {
-			continue
-		}
-		data, err = io.ReadAll(io.LimitReader(part, maxPhotoBytes+1))
-		if err != nil {
-			return bad(err.Error())
-		}
-		break
+		return oapi.UploadIncidentPhoto429JSONResponse(apiErr("rate_limited", "не больше 20 фото в час")), nil
 	}
-	if len(data) == 0 || len(data) > maxPhotoBytes {
-		return bad("photo must be 1 byte .. 10 MB")
-	}
-	ct := http.DetectContentType(data)
-	if ct != "image/jpeg" && ct != "image/png" {
-		return bad("photo must be image/jpeg or image/png")
+	data, ct, problem := readPhoto(req.Body)
+	if problem != "" {
+		return oapi.UploadIncidentPhoto400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", problem))}, nil
 	}
 	photoID, err := s.svc.AddPhoto(ctx, id, userFromCtx(ctx).ID, ct, data)
 	switch {

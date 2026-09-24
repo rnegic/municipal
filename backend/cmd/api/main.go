@@ -5,8 +5,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 
 	"ukapp/internal/dadata"
+	"ukapp/internal/layaclient"
 	"ukapp/internal/maxclient"
 	"ukapp/internal/repository"
 	"ukapp/internal/service"
@@ -34,8 +36,14 @@ func main() {
 	} else {
 		slog.Warn("UK_JWT_PRIVATE_KEY not set: ephemeral key, dispatcher sessions reset on restart")
 	}
+	var cls service.Classifier
+	if u := os.Getenv("LAYA_URL"); u != "" {
+		cls = layaclient.New(u)
+	}
+	svc.WithClassifier(cls, envFloat("LAYA_CATEGORY_THRESHOLD", 0.7))
 	go svc.RunOutboxWorker(ctx)
 	go svc.RunUkSyncWorker(ctx)
+	go svc.RunPhotoCleanup(ctx)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -47,4 +55,17 @@ func main() {
 		slog.Error("serve", "err", err)
 		os.Exit(1)
 	}
+}
+
+func envFloat(name string, def float64) float64 {
+	raw := os.Getenv(name)
+	if raw == "" {
+		return def
+	}
+	f, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		slog.Warn("invalid env value, using default", "name", name, "value", raw, "default", def)
+		return def
+	}
+	return f
 }

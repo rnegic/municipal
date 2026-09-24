@@ -25,10 +25,23 @@ services:
       UK_API_TOKEN: ${UK_API_TOKEN:-demo-uk-token}
       UK_SYNC_INTERVAL: 5s
       UK_JWT_PRIVATE_KEY: ${UK_JWT_PRIVATE_KEY:-}
+      LAYA_URL: http://laya:8090
+      LAYA_CATEGORY_THRESHOLD: ${LAYA_CATEGORY_THRESHOLD:-0.7}
     ports: ["127.0.0.1:8080:8080"] # наружу — через nginx на хосте
     depends_on:
       db: { condition: service_healthy }
       mock-uk: { condition: service_started }
+    restart: unless-stopped
+
+  laya:
+    image: ghcr.io/rnegic/municipal-laya:latest
+    mem_limit: 2g
+    environment:
+      LAYA_THREADS: ${LAYA_THREADS:-2}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8090/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      start_period: 120s
     restart: unless-stopped
 
   mock-uk-db:

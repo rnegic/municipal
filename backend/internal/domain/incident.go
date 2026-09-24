@@ -33,7 +33,7 @@ func SLA(sev Severity) time.Duration { return sla[sev] }
 const DedupWindow = 2 * time.Hour
 
 const (
-	DedupVersion  = "exact-title-riser-v1"
+	DedupVersion  = "exact-category-floorzone-v1"
 	ReportCreated = "created"
 	ReportJoined  = "joined"
 )
@@ -41,15 +41,15 @@ const (
 type OpenIncident struct {
 	ID        int64
 	HouseID   int64
-	Title     string
+	Category  Category
 	Riser     *string
 	Status    IncidentStatus
 	CreatedAt time.Time
 }
 
-func FindDuplicate(houseID int64, title string, riser *string, now time.Time, open []OpenIncident) int64 {
+func FindDuplicate(houseID int64, category Category, riser *string, now time.Time, open []OpenIncident) int64 {
 	for _, inc := range open {
-		if inc.HouseID != houseID || inc.Title != title || !sameRiser(inc.Riser, riser) {
+		if inc.HouseID != houseID || inc.Category == "" || inc.Category != category || !sameRiser(inc.Riser, riser) {
 			continue
 		}
 		if inc.Status != IncidentAccepted && inc.Status != IncidentInProgress {

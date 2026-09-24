@@ -65,7 +65,7 @@ func seedResidentWithIncident(t *testing.T, s *repository.Store, maxID int64) (i
 	if err != nil {
 		t.Fatal(err)
 	}
-	incidentID, err = s.CreateIncident(ctx, houseID, u.ID, "Нет воды", "x", domain.SeverityCritical, nil, nil, domain.SLA(domain.SeverityCritical))
+	incidentID, err = s.CreateIncident(ctx, repository.NewIncident{HouseID: houseID, ReporterID: u.ID, Title: "Нет воды", Description: "x", Severity: domain.SeverityCritical, Category: domain.CategoryWaterHeat, Routing: repository.Routing{Source: "auto"}, SLA: domain.SLA(domain.SeverityCritical)})
 	if err != nil {
 		t.Fatal(err)
 	}
