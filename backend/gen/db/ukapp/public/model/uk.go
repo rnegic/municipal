@@ -7,9 +7,17 @@
 
 package model
 
+import (
+	"time"
+)
+
 type Uk struct {
-	ID         int64 `sql:"primary_key"`
-	ExternalID string
-	Name       string
-	Rating     int32
+	ID                int64 `sql:"primary_key"`
+	ExternalID        string
+	Name              string
+	Rating            int32
+	Inn               *string
+	Ogrn              *string
+	LicenseNumber     *string
+	LicenseValidUntil *time.Time
 }

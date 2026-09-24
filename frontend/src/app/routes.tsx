@@ -27,8 +27,7 @@ const INCIDENT_START_PARAM_PREFIX = 'inc_'
 
 const useIncidentDeepLink = () => {
   const navigate = useNavigate()
-  // navigate меняется при каждой смене пути (HashRouter), без флага диплинк
-  // перехватывал бы любой уход со страницы инцидента обратно на неё
+
   const handledRef = useRef(false)
 
   useEffect(() => {
@@ -63,7 +62,7 @@ export const AppRoutes = () => {
       <Route
         path={ROUTES.dispatcher}
         element={
-          <RequireRole role="dispatcher">
+          <RequireRole role="uk_dispatcher">
             <UkPage />
           </RequireRole>
         }

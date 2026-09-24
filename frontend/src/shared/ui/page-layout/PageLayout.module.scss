@@ -39,6 +39,7 @@
 
 .floatingAction {
   position: fixed;
+  z-index: var(--app-z-floating);
   inset-inline: 0;
   bottom: calc(var(--app-space-8) + env(safe-area-inset-bottom));
   display: flex;
@@ -51,4 +52,8 @@
   width: 100%;
   max-width: calc(var(--size-base-platform-width-normal) - var(--app-space-8) * 2);
   pointer-events: auto;
+}
+
+.widthWide {
+  max-width: var(--app-layout-width-wide);
 }

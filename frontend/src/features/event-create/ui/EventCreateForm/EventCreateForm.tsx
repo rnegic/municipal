@@ -163,7 +163,7 @@ export const EventCreateForm = ({ houses, onSuccess, onCancel }: EventCreateForm
         {onCancel ? (
           <Button
             type="button"
-            tone="ghost"
+            tone="secondary"
             stretched
             onClick={onCancel}
             disabled={createMutation.isPending}

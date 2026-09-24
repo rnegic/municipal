@@ -17,13 +17,16 @@ type appUserTable struct {
 	postgres.Table
 
 	// Columns
-	ID        postgres.ColumnInteger
-	MaxUserID postgres.ColumnInteger
-	FullName  postgres.ColumnString
-	Role      postgres.ColumnString
-	HouseID   postgres.ColumnInteger
-	UkID      postgres.ColumnInteger
-	CreatedAt postgres.ColumnTimestampz
+	ID           postgres.ColumnInteger
+	MaxUserID    postgres.ColumnInteger
+	FullName     postgres.ColumnString
+	Role         postgres.ColumnString
+	HouseID      postgres.ColumnInteger
+	UkID         postgres.ColumnInteger
+	CreatedAt    postgres.ColumnTimestampz
+	Position     postgres.ColumnString
+	PasswordHash postgres.ColumnString
+	AdsAuthority postgres.ColumnBool
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -65,29 +68,35 @@ func newAppUserTable(schemaName, tableName, alias string) *AppUserTable {
 
 func newAppUserTableImpl(schemaName, tableName, alias string) appUserTable {
 	var (
-		IDColumn        = postgres.IntegerColumn("id")
-		MaxUserIDColumn = postgres.IntegerColumn("max_user_id")
-		FullNameColumn  = postgres.StringColumn("full_name")
-		RoleColumn      = postgres.StringColumn("role")
-		HouseIDColumn   = postgres.IntegerColumn("house_id")
-		UkIDColumn      = postgres.IntegerColumn("uk_id")
-		CreatedAtColumn = postgres.TimestampzColumn("created_at")
-		allColumns      = postgres.ColumnList{IDColumn, MaxUserIDColumn, FullNameColumn, RoleColumn, HouseIDColumn, UkIDColumn, CreatedAtColumn}
-		mutableColumns  = postgres.ColumnList{MaxUserIDColumn, FullNameColumn, RoleColumn, HouseIDColumn, UkIDColumn, CreatedAtColumn}
-		defaultColumns  = postgres.ColumnList{IDColumn, RoleColumn, CreatedAtColumn}
+		IDColumn           = postgres.IntegerColumn("id")
+		MaxUserIDColumn    = postgres.IntegerColumn("max_user_id")
+		FullNameColumn     = postgres.StringColumn("full_name")
+		RoleColumn         = postgres.StringColumn("role")
+		HouseIDColumn      = postgres.IntegerColumn("house_id")
+		UkIDColumn         = postgres.IntegerColumn("uk_id")
+		CreatedAtColumn    = postgres.TimestampzColumn("created_at")
+		PositionColumn     = postgres.StringColumn("position")
+		PasswordHashColumn = postgres.StringColumn("password_hash")
+		AdsAuthorityColumn = postgres.BoolColumn("ads_authority")
+		allColumns         = postgres.ColumnList{IDColumn, MaxUserIDColumn, FullNameColumn, RoleColumn, HouseIDColumn, UkIDColumn, CreatedAtColumn, PositionColumn, PasswordHashColumn, AdsAuthorityColumn}
+		mutableColumns     = postgres.ColumnList{MaxUserIDColumn, FullNameColumn, RoleColumn, HouseIDColumn, UkIDColumn, CreatedAtColumn, PositionColumn, PasswordHashColumn, AdsAuthorityColumn}
+		defaultColumns     = postgres.ColumnList{IDColumn, RoleColumn, CreatedAtColumn, AdsAuthorityColumn}
 	)
 
 	return appUserTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:        IDColumn,
-		MaxUserID: MaxUserIDColumn,
-		FullName:  FullNameColumn,
-		Role:      RoleColumn,
-		HouseID:   HouseIDColumn,
-		UkID:      UkIDColumn,
-		CreatedAt: CreatedAtColumn,
+		ID:           IDColumn,
+		MaxUserID:    MaxUserIDColumn,
+		FullName:     FullNameColumn,
+		Role:         RoleColumn,
+		HouseID:      HouseIDColumn,
+		UkID:         UkIDColumn,
+		CreatedAt:    CreatedAtColumn,
+		Position:     PositionColumn,
+		PasswordHash: PasswordHashColumn,
+		AdsAuthority: AdsAuthorityColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

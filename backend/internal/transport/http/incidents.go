@@ -57,7 +57,12 @@ func (s *server) GetIncident(ctx context.Context, req oapi.GetIncidentRequestObj
 	if !ok {
 		return oapi.GetIncident404JSONResponse(apiErr("not_found", "авария не найдена")), nil
 	}
-	row, err := s.svc.GetIncident(ctx, id, userFromCtx(ctx).ID)
+	u := userFromCtx(ctx)
+	err := s.svc.CanAccessIncident(ctx, u, id)
+	var row service.IncidentRow
+	if err == nil {
+		row, err = s.svc.GetIncident(ctx, id, u.ID)
+	}
 	if errors.Is(err, service.ErrNotFound) {
 		return oapi.GetIncident404JSONResponse(apiErr("not_found", "авария не найдена")), nil
 	}
@@ -105,7 +110,7 @@ func (s *server) SetIncidentStatus(ctx context.Context, req oapi.SetIncidentStat
 	if !ok {
 		return oapi.SetIncidentStatus404JSONResponse(apiErr("not_found", "авария не найдена")), nil
 	}
-	row, err := s.svc.SetIncidentStatus(ctx, id, userFromCtx(ctx).ID, domain.IncidentStatus(req.Body.Status))
+	row, err := s.svc.SetIncidentStatus(ctx, userFromCtx(ctx), id, domain.IncidentStatus(req.Body.Status))
 	if errors.Is(err, service.ErrNotFound) {
 		return oapi.SetIncidentStatus404JSONResponse(apiErr("not_found", "авария не найдена")), nil
 	}

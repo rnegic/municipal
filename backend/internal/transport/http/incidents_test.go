@@ -226,11 +226,11 @@ func TestSetIncidentStatus_DispatcherTransitionsAndNotifies(t *testing.T) {
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
 	inc, _ := createIncident(t, srv, 1, `{"title":"Нет воды","description":"x","severity":"critical"}`)
+	seedDispatcher(t, s, "uk-1", "1655000003", "2099-12-31", true)
+	token := dispatcherToken(t, srv, "1655000003")
 
 	setStatus := func(status string) int {
-		w := httptest.NewRecorder()
-		srv.ServeHTTP(w, authedReq(t, "PATCH", "/api/incidents/"+inc.Id+"/status", `{"status":"`+status+`"}`, 1, "U"))
-		return w.Code
+		return serve(srv, bearerReq("PATCH", "/api/incidents/"+inc.Id+"/status", `{"status":"`+status+`"}`, token)).Code
 	}
 
 	if code := setStatus("verifying"); code != 422 {

@@ -11,11 +11,15 @@ info:
     nullable-поля всегда присутствуют в ответе (ключ есть, значение null),
     ошибки — единая форма {code, message, details?}.
 
-    Авторизация: заголовок `Authorization: tma <initData>`. `auth_date` не старше 24ч.
+    Авторизация: заголовок `Authorization: tma <initData>` (житель, `auth_date` не старше 24ч)
+    или `Authorization: Bearer <jwt>` (сотрудник УК, токен из `POST /api/auth/esia-mock`).
+    Роль берётся из токена: `/api/uk/*` и смена статуса — только `uk_dispatcher`,
+    действия жителя (привязка дома, заявки, «у меня тоже», подтверждение, фото) — только `resident`.
 servers:
   - url: http://localhost:8080
 security:
   - TmaInitData: []
+  - UkBearer: []
 
 paths:
   /health:
@@ -62,6 +66,100 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: unbindHouse
+      tags: [profile]
+      summary: Отвязать дом (выход жителя); повтор — тоже 204
+      responses:
+        "204": { description: Дом отвязан }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /api/auth/esia-mock:
+    post:
+      operationId: esiaMockLogin
+      security: []
+      tags: [uk]
+      summary: Вход сотрудника УК (mock ЕСИА + реестр лицензий ГИС ЖКХ + полномочие «Сотрудник АДС»)
+      description: |
+        `Authorization: tma <initData>` необязателен; если он валиден — max user id пишется в аудит попыток.
+        Неизвестная организация, недействующая лицензия, нет полномочия АДС и неверный пароль — одинаковый 403.
+        Больше 5 неудачных попыток на ИНН за 15 минут — 429.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EsiaMockLoginRequest" }
+      responses:
+        "200":
+          description: Сессия диспетчера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UkSession" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /api/uk/queue:
+    get:
+      operationId: listUkQueue
+      tags: [uk]
+      summary: Очередь заявок домов своей УК (createdAt desc)
+      parameters:
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 100 }
+      responses:
+        "200":
+          description: Страница очереди
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedUkQueue" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /api/uk/events:
+    post:
+      operationId: createUkEvent
+      tags: [uk]
+      summary: Плановые работы по дому своей УК (чужой дом → 404)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateEventRequest" }
+      responses:
+        "201":
+          description: Событие создано
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Event" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /api/events:
+    get:
+      operationId: listEvents
+      tags: [events]
+      summary: Текущие и будущие плановые работы дома (житель дома или диспетчер его УК; иначе 404)
+      parameters:
+        - name: houseId
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: События (scheduledFrom asc)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventListResponse" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
 
   /api/houses/suggest:
     get:
@@ -217,7 +315,7 @@ paths:
     patch:
       operationId: setIncidentStatus
       tags: [incidents]
-      summary: Смена статуса диспетчером УК (accepted→in_progress, in_progress→verifying, verifying→done)
+      summary: Смена статуса диспетчером УК (accepted→in_progress, in_progress→verifying, verifying→done; чужая УК → 404)
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -231,6 +329,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Incident" }
         "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
 
@@ -287,6 +386,11 @@ components:
       in: header
       name: Authorization
       description: "`tma <initData>` из MAX WebApp Bridge"
+    UkBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "ES256 с `kid`; claims: sub, role, uk_id, org_inn, esia_oid, exp, jti"
 
   parameters:
     ID:
@@ -318,7 +422,7 @@ components:
 
     Role:
       type: string
-      enum: [resident]
+      enum: [resident, uk_dispatcher]
 
     User:
       type: object
@@ -474,3 +578,113 @@ components:
         total: { type: integer, minimum: 0 }
         offset: { type: integer, minimum: 0 }
         limit: { type: integer, minimum: 0 }
+
+    EsiaMockLoginRequest:
+      type: object
+      required: [inn, password]
+      properties:
+        inn: { type: string, example: "1655000003" }
+        password: { type: string, minLength: 1 }
+
+    UkDispatcher:
+      type: object
+      required: [id, fullName, position, role]
+      properties:
+        id: { type: string, example: u_77 }
+        fullName: { type: string }
+        position: { type: string }
+        role: { type: string, enum: [uk_dispatcher] }
+
+    UkOrganization:
+      type: object
+      required: [id, inn, ogrn, name, licenseNumber]
+      properties:
+        id: { type: string, example: uk_1 }
+        inn: { type: string }
+        ogrn: { type: string, nullable: true }
+        name: { type: string }
+        licenseNumber: { type: string, nullable: true }
+
+    UkSession:
+      type: object
+      required: [token, expiresAt, authMethod, user, organization]
+      properties:
+        token: { type: string }
+        expiresAt: { type: string, format: date-time }
+        authMethod: { type: string, enum: [esia_mock, esia] }
+        user: { $ref: "#/components/schemas/UkDispatcher" }
+        organization: { $ref: "#/components/schemas/UkOrganization" }
+
+    UkQueueItem:
+      type: object
+      required: [id, houseId, houseAddress, title, description, severity, status, createdAt, dueAt,
+                 affectedCount, confirmedCount, reporterName, photos]
+      properties:
+        id: { type: string }
+        houseId: { type: string }
+        houseAddress: { type: string }
+        title: { type: string }
+        description: { type: string }
+        severity: { $ref: "#/components/schemas/Severity" }
+        status: { $ref: "#/components/schemas/IncidentStatus" }
+        createdAt: { type: string, format: date-time }
+        dueAt: { type: string, format: date-time, nullable: true }
+        affectedCount: { type: integer, minimum: 0 }
+        confirmedCount: { type: integer, minimum: 0 }
+        reporterName: { type: string }
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/Photo" }
+
+    PaginatedUkQueue:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/UkQueueItem" }
+        total: { type: integer, minimum: 0 }
+        offset: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 0 }
+
+    EventStatus:
+      type: string
+      description: planned — до scheduledFrom, in_progress — идут работы, closed — после scheduledTo
+      enum: [planned, in_progress, awaiting_confirmation, disputed, closed]
+
+    Event:
+      type: object
+      required: [id, houseId, entrance, riser, reason, responsible, scheduledFrom, scheduledTo, status,
+                 createdAt, resolvedAt]
+      properties:
+        id: { type: string, example: ev_1 }
+        houseId: { type: string }
+        entrance: { type: string, nullable: true }
+        riser: { type: string, nullable: true }
+        reason: { type: string }
+        responsible: { type: string }
+        scheduledFrom: { type: string, format: date-time }
+        scheduledTo: { type: string, format: date-time }
+        status: { $ref: "#/components/schemas/EventStatus" }
+        createdAt: { type: string, format: date-time }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+
+    EventListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Event" }
+
+    CreateEventRequest:
+      type: object
+      required: [houseId, reason, responsible, scheduledFrom, scheduledTo]
+      properties:
+        houseId: { type: string }
+        reason: { type: string, minLength: 1, maxLength: 120 }
+        responsible: { type: string, minLength: 1, maxLength: 80 }
+        entrance: { type: string }
+        riser: { type: string }
+        scheduledFrom: { type: string, format: date-time }
+        scheduledTo: { type: string, format: date-time }

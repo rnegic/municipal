@@ -35,8 +35,15 @@ type UkIncidentUpdate struct {
 	UpdatedAt       time.Time
 }
 
-func (s *Service) CanAccessHouse(_ context.Context, u model.AppUser, houseID int64) (bool, error) {
-	return u.HouseID != nil && *u.HouseID == houseID, nil
+func (s *Service) CanAccessHouse(ctx context.Context, u model.AppUser, houseID int64) (bool, error) {
+	if u.Role != domain.RoleUkDispatcher {
+		return u.HouseID != nil && *u.HouseID == houseID, nil
+	}
+	h, err := s.repo.FindHouse(ctx, houseID)
+	if errors.Is(err, ErrNotFound) {
+		return false, nil
+	}
+	return err == nil && u.UkID != nil && *u.UkID == h.UkID, err
 }
 
 func (s *Service) HouseStats(ctx context.Context, houseID int64) (repository.HouseStats, error) {

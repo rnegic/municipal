@@ -19,4 +19,6 @@ func UseSchema(schema string) {
 	IncidentSubscription = IncidentSubscription.FromSchema(schema)
 	OutboxMessage = OutboxMessage.FromSchema(schema)
 	Uk = Uk.FromSchema(schema)
+	UkEvent = UkEvent.FromSchema(schema)
+	UkLoginAttempt = UkLoginAttempt.FromSchema(schema)
 }

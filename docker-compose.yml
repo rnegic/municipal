@@ -24,6 +24,7 @@ services:
       UK_BASE_URL: http://mock-uk:8080
       UK_API_TOKEN: ${UK_API_TOKEN:-demo-uk-token}
       UK_SYNC_INTERVAL: 5s
+      UK_JWT_PRIVATE_KEY: ${UK_JWT_PRIVATE_KEY:-}
     ports: ["127.0.0.1:8080:8080"] # наружу — через nginx на хосте
     depends_on:
       db: { condition: service_healthy }

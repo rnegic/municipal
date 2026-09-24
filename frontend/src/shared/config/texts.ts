@@ -6,6 +6,7 @@ export const commonTexts = {
     tryAgain: 'Попробовать снова',
     close: 'Закрыть',
     changeAddress: 'Сменить адрес',
+    signOut: 'Выйти из аккаунта',
   },
   states: {
     loading: 'Загрузка…',

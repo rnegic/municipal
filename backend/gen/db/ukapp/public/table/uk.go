@@ -17,10 +17,14 @@ type ukTable struct {
 	postgres.Table
 
 	// Columns
-	ID         postgres.ColumnInteger
-	ExternalID postgres.ColumnString
-	Name       postgres.ColumnString
-	Rating     postgres.ColumnInteger
+	ID                postgres.ColumnInteger
+	ExternalID        postgres.ColumnString
+	Name              postgres.ColumnString
+	Rating            postgres.ColumnInteger
+	Inn               postgres.ColumnString
+	Ogrn              postgres.ColumnString
+	LicenseNumber     postgres.ColumnString
+	LicenseValidUntil postgres.ColumnDate
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -62,23 +66,31 @@ func newUkTable(schemaName, tableName, alias string) *UkTable {
 
 func newUkTableImpl(schemaName, tableName, alias string) ukTable {
 	var (
-		IDColumn         = postgres.IntegerColumn("id")
-		ExternalIDColumn = postgres.StringColumn("external_id")
-		NameColumn       = postgres.StringColumn("name")
-		RatingColumn     = postgres.IntegerColumn("rating")
-		allColumns       = postgres.ColumnList{IDColumn, ExternalIDColumn, NameColumn, RatingColumn}
-		mutableColumns   = postgres.ColumnList{ExternalIDColumn, NameColumn, RatingColumn}
-		defaultColumns   = postgres.ColumnList{IDColumn, RatingColumn}
+		IDColumn                = postgres.IntegerColumn("id")
+		ExternalIDColumn        = postgres.StringColumn("external_id")
+		NameColumn              = postgres.StringColumn("name")
+		RatingColumn            = postgres.IntegerColumn("rating")
+		InnColumn               = postgres.StringColumn("inn")
+		OgrnColumn              = postgres.StringColumn("ogrn")
+		LicenseNumberColumn     = postgres.StringColumn("license_number")
+		LicenseValidUntilColumn = postgres.DateColumn("license_valid_until")
+		allColumns              = postgres.ColumnList{IDColumn, ExternalIDColumn, NameColumn, RatingColumn, InnColumn, OgrnColumn, LicenseNumberColumn, LicenseValidUntilColumn}
+		mutableColumns          = postgres.ColumnList{ExternalIDColumn, NameColumn, RatingColumn, InnColumn, OgrnColumn, LicenseNumberColumn, LicenseValidUntilColumn}
+		defaultColumns          = postgres.ColumnList{IDColumn, RatingColumn}
 	)
 
 	return ukTable{
 		Table: postgres.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:         IDColumn,
-		ExternalID: ExternalIDColumn,
-		Name:       NameColumn,
-		Rating:     RatingColumn,
+		ID:                IDColumn,
+		ExternalID:        ExternalIDColumn,
+		Name:              NameColumn,
+		Rating:            RatingColumn,
+		Inn:               InnColumn,
+		Ogrn:              OgrnColumn,
+		LicenseNumber:     LicenseNumberColumn,
+		LicenseValidUntil: LicenseValidUntilColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

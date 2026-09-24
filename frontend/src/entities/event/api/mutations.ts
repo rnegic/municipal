@@ -7,7 +7,7 @@ import { eventKeys } from './keys'
 export const createEvent = (input: CreateEventInput) =>
   apiRequest(
     '/uk/events',
-    { method: 'POST', body: createEventRequestSchema.parse(input) },
+    { method: 'POST', body: createEventRequestSchema.parse(input), auth: 'uk' },
     eventSchema,
   )
 

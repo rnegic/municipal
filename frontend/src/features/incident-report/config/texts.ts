@@ -19,7 +19,7 @@ export const incidentReportTexts = {
   next: 'Перейти к фото',
   photoTitle: 'Подтвердите проблему фото',
   photoDescription: 'Снимок с камеры помогает УК отличить реальную проблему от спама.',
-  choosePhoto: 'Сделать или выбрать фото',
+  choosePhoto: 'Выбрать фото',
   changePhoto: 'Выбрать другое фото',
   upload: 'Отправить обращение',
   retryUpload: 'Повторить отправку фото',

@@ -1,0 +1,1 @@
+export { ResidentModeLink } from './ResidentModeLink'
