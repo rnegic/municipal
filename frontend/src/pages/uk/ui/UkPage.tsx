@@ -308,11 +308,13 @@ export const UkPage = () => {
   const sessionHeader = (
     <UkSessionBadge
       actions={
-        <>
+        <div className={s.sessionActions}>
+          <div className={s.sessionIcons}>
+            <ThemeToggle />
+            <UkSignOutButton />
+          </div>
           <ResidentModeLink />
-          <ThemeToggle />
-          <UkSignOutButton />
-        </>
+        </div>
       }
     />
   )

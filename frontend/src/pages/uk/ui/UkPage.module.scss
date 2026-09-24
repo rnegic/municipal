@@ -33,6 +33,19 @@
   gap: var(--app-space-5);
 }
 
+.sessionActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--app-space-2);
+}
+
+.sessionIcons {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
 .headerTitle {
   display: flex;
   align-items: flex-end;
