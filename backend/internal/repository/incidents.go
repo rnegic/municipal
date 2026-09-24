@@ -21,7 +21,7 @@ var activeStatuses = []Expression{
 
 func (s *Store) OpenIncidents(ctx context.Context, houseID int64) ([]domain.OpenIncident, error) {
 	var rows []model.Incident
-	err := SELECT(Incident.ID, Incident.HouseID, Incident.Title, Incident.Riser, Incident.Status, Incident.CreatedAt).
+	err := SELECT(Incident.ID, Incident.HouseID, Incident.Category, Incident.Riser, Incident.Status, Incident.CreatedAt).
 		FROM(Incident).
 		WHERE(Incident.HouseID.EQ(Int64(houseID)).AND(Incident.Status.IN(openStatuses...))).
 		QueryContext(ctx, s.db, &rows)
@@ -30,31 +30,79 @@ func (s *Store) OpenIncidents(ctx context.Context, houseID int64) ([]domain.Open
 	}
 	out := make([]domain.OpenIncident, len(rows))
 	for i, r := range rows {
-		out[i] = domain.OpenIncident{ID: r.ID, HouseID: r.HouseID, Title: r.Title, Riser: r.Riser, Status: domain.IncidentStatus(r.Status), CreatedAt: r.CreatedAt}
+		out[i] = domain.OpenIncident{ID: r.ID, HouseID: r.HouseID, Riser: r.Riser, Status: domain.IncidentStatus(r.Status), CreatedAt: r.CreatedAt}
+		if r.Category != nil {
+			out[i].Category = domain.Category(*r.Category)
+		}
 	}
 	return out, nil
 }
 
-func (s *Store) CreateIncident(ctx context.Context, houseID, reporterID int64, title, description string, severity domain.Severity, entrance, riser *string, sla time.Duration) (int64, error) {
+var ErrPhotoNotOwned = errors.New("photo not owned or already bound")
+
+type Routing struct {
+	Source            string
+	CategoryPredicted *string
+	Confidence        *float32
+}
+
+type NewIncident struct {
+	HouseID, ReporterID int64
+	Title, Description  string
+	Severity            domain.Severity
+	Entrance, Riser     *string
+	Category            domain.Category
+	Routing             Routing
+	SLA                 time.Duration
+	PhotoIDs            []int64
+}
+
+func (s *Store) CreateIncident(ctx context.Context, in NewIncident) (int64, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback() //nolint:errcheck // no-op after Commit
 	var inc model.Incident
-	err = Incident.INSERT(Incident.HouseID, Incident.Title, Incident.Severity, Incident.ReporterID, Incident.Description, Incident.Entrance, Incident.Riser, Incident.DueAt).
-		VALUES(houseID, title, string(severity), reporterID, description, entrance, riser, NOW().ADD(INTERVALd(sla))).
+	err = Incident.INSERT(Incident.HouseID, Incident.Title, Incident.Severity, Incident.ReporterID, Incident.Description,
+		Incident.Entrance, Incident.Riser, Incident.DueAt, Incident.Category, Incident.Authority, Incident.RoutingSource,
+		Incident.CategoryPredicted, Incident.RoutingConfidence).
+		VALUES(in.HouseID, in.Title, string(in.Severity), in.ReporterID, in.Description, in.Entrance, in.Riser,
+			NOW().ADD(INTERVALd(in.SLA)), string(in.Category), string(in.Category.Authority()), in.Routing.Source,
+			in.Routing.CategoryPredicted, in.Routing.Confidence).
 		RETURNING(Incident.ID).
 		QueryContext(ctx, tx, &inc)
 	if err != nil {
 		return 0, err
 	}
-	_, err = IncidentSubscription.INSERT(IncidentSubscription.IncidentID, IncidentSubscription.UserID).
-		VALUES(inc.ID, reporterID).ExecContext(ctx, tx)
-	if err != nil {
+	if _, err = IncidentSubscription.INSERT(IncidentSubscription.IncidentID, IncidentSubscription.UserID).
+		VALUES(inc.ID, in.ReporterID).ExecContext(ctx, tx); err != nil {
+		return 0, err
+	}
+	if err := bindPhotos(ctx, tx, inc.ID, in.ReporterID, in.PhotoIDs); err != nil {
 		return 0, err
 	}
 	return inc.ID, tx.Commit()
+}
+
+func (s *Store) JoinWithPhotos(ctx context.Context, incidentID, userID int64, photoIDs []int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck // no-op after Commit
+	_, err = IncidentSubscription.INSERT(IncidentSubscription.IncidentID, IncidentSubscription.UserID).
+		VALUES(incidentID, userID).ON_CONFLICT().DO_NOTHING().ExecContext(ctx, tx)
+	if err != nil {
+		if isFKViolation(err) {
+			return ErrNotFound
+		}
+		return err
+	}
+	if err := bindPhotos(ctx, tx, incidentID, userID, photoIDs); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (s *Store) Subscribe(ctx context.Context, incidentID, userID int64) error {

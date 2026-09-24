@@ -12,17 +12,22 @@ import (
 )
 
 type Incident struct {
-	ID          int64 `sql:"primary_key"`
-	HouseID     int64
-	Title       string
-	Severity    string
-	ReporterID  int64
-	Description string
-	Entrance    *string
-	Riser       *string
-	Status      string
-	ExternalID  *string
-	CreatedAt   time.Time
-	DueAt       *time.Time
-	ResolvedAt  *time.Time
+	ID                int64 `sql:"primary_key"`
+	HouseID           int64
+	Title             string
+	Severity          string
+	ReporterID        int64
+	Description       string
+	Entrance          *string
+	Riser             *string
+	Status            string
+	ExternalID        *string
+	CreatedAt         time.Time
+	DueAt             *time.Time
+	ResolvedAt        *time.Time
+	Category          *string
+	Authority         *string
+	RoutingSource     string
+	CategoryPredicted *string
+	RoutingConfidence *float32
 }

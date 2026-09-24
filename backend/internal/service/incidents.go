@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
+	"unicode/utf8"
 
 	"ukapp/internal/domain"
 	"ukapp/internal/repository"
@@ -27,6 +29,7 @@ type IncidentRow struct {
 	JoinedByMe    bool
 	ConfirmedByMe bool
 	PhotoIDs      []int64
+	Category      *string
 }
 
 func (s *Service) toIncidentRows(ctx context.Context, rs []repository.IncidentRow) ([]IncidentRow, error) {
@@ -44,7 +47,7 @@ func (s *Service) toIncidentRows(ctx context.Context, rs []repository.IncidentRo
 			ID: r.ID, HouseID: r.HouseID, Title: r.Title, Description: r.Description, Entrance: r.Entrance, Riser: r.Riser,
 			Severity: r.Severity, Status: r.Status, AffectedCount: r.Subscribers,
 			CreatedAt: r.CreatedAt, DueAt: r.DueAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
-			PhotoIDs: photos[r.ID],
+			PhotoIDs: photos[r.ID], Category: r.Category,
 		}
 	}
 	return out, nil
@@ -62,21 +65,65 @@ func (s *Service) GetIncident(ctx context.Context, id, userID int64) (IncidentRo
 	return rows[0], nil
 }
 
-func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64, title, description, severityStr string, entrance, riser *string) (row IncidentRow, created bool, err error) {
-	sev := domain.Severity(severityStr)
-	if !sev.Valid() || title == "" || description == "" {
+var (
+	ErrPhotoRequired = errors.New("photo required")
+	ErrPhotoNotOwned = repository.ErrPhotoNotOwned
+)
+
+type NotUKError struct{ Authority domain.Authority }
+
+func (e NotUKError) Error() string { return "not uk responsibility: " + string(e.Authority) }
+
+type NewIncident struct {
+	Description         string
+	Category            domain.Category
+	Entrance, FloorZone *string
+	PhotoIDs            []int64
+}
+
+func tooLong(s *string, max int) bool { return s != nil && utf8.RuneCountInString(*s) > max }
+
+func (s *Service) route(ctx context.Context, description string, category domain.Category) repository.Routing {
+	r := repository.Routing{Source: "manual"}
+	p, err := s.classify(ctx, description)
+	if err != nil {
+		return r
+	}
+	cat, conf := string(p.Category), float32(p.P)
+	r.CategoryPredicted, r.Confidence = &cat, &conf
+	if p.P >= s.threshold {
+		r.Source = "auto"
+	}
+	if p.Category != category {
+		slog.Info("category mismatch", "client", category, "predicted", p.Category, "p", p.P)
+	}
+	return r
+}
+
+func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64, in NewIncident) (row IncidentRow, created bool, err error) {
+	d, ok := domain.ValidDescription(in.Description)
+	if !ok || !in.Category.Valid() || tooLong(in.Entrance, 40) || tooLong(in.FloorZone, 120) || len(in.PhotoIDs) > MaxPhotosPerIncident {
 		return IncidentRow{}, false, ErrInvalidInput
 	}
+	if auth := in.Category.Authority(); auth != domain.AuthorityUK {
+		return IncidentRow{}, false, NotUKError{Authority: auth}
+	}
+	if in.Category.PhotoRequired() && len(in.PhotoIDs) == 0 {
+		return IncidentRow{}, false, ErrPhotoRequired
+	}
+	routing := s.route(ctx, d, in.Category)
+	slog.Info("incident routed", "house", houseID, "category", in.Category, "routing_source", routing.Source)
 	open, err := s.repo.OpenIncidents(ctx, houseID)
 	if err != nil {
 		return IncidentRow{}, false, err
 	}
+	sev := in.Category.Severity()
 	report := repository.ReportInput{
-		ReporterID: reporterID, HouseID: houseID, Title: title, Description: description,
-		Severity: sev, Entrance: entrance, Riser: riser, DedupVersion: domain.DedupVersion,
+		ReporterID: reporterID, HouseID: houseID, Title: in.Category.Title(), Description: d,
+		Severity: sev, Entrance: in.Entrance, Riser: in.FloorZone, DedupVersion: domain.DedupVersion,
 	}
-	if dup := domain.FindDuplicate(houseID, title, riser, time.Now(), open); dup != 0 {
-		if err := s.repo.Subscribe(ctx, dup, reporterID); err != nil {
+	if dup := domain.FindDuplicate(houseID, in.Category, in.FloorZone, time.Now(), open); dup != 0 {
+		if err := s.repo.JoinWithPhotos(ctx, dup, reporterID, in.PhotoIDs); err != nil {
 			return IncidentRow{}, false, err
 		}
 		report.IncidentID, report.Outcome = dup, domain.ReportJoined
@@ -84,7 +131,11 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 		row, err = s.GetIncident(ctx, dup, reporterID)
 		return row, false, err
 	}
-	id, err := s.repo.CreateIncident(ctx, houseID, reporterID, title, description, sev, entrance, riser, domain.SLA(sev))
+	id, err := s.repo.CreateIncident(ctx, repository.NewIncident{
+		HouseID: houseID, ReporterID: reporterID, Title: in.Category.Title(), Description: d, Severity: sev,
+		Entrance: in.Entrance, Riser: in.FloorZone, Category: in.Category, Routing: routing, SLA: domain.SLA(sev),
+		PhotoIDs: in.PhotoIDs,
+	})
 	if err != nil {
 		return IncidentRow{}, false, err
 	}

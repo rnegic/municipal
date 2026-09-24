@@ -58,13 +58,13 @@ func TestCreateIncident_ReportsCreated(t *testing.T) {
 	s := testStore(t)
 	svc := New(s, nil, nil, &fakeUk{}, "testbot")
 	houseID, userID := seedHouse(t, s)
-	row, created, err := svc.CreateIncident(context.Background(), houseID, userID, "Нет воды", "с утра", "critical", nil, nil)
+	row, created, err := svc.CreateIncident(context.Background(), houseID, userID, NewIncident{Description: "нет воды с утра", Category: domain.CategoryWaterHeat})
 	if err != nil || !created {
 		t.Fatalf("created=%v err=%v", created, err)
 	}
 	got := serviceReports(t, s)
 	if len(got) != 1 || got[0].incidentID != row.ID || got[0].reporterID != userID ||
-		got[0].outcome != "created" || got[0].dedupVersion != "exact-title-riser-v1" {
+		got[0].outcome != "created" || got[0].dedupVersion != "exact-category-floorzone-v1" {
 		t.Fatalf("unexpected reports: %+v", got)
 	}
 }
@@ -73,7 +73,7 @@ func TestCreateIncident_ReportsJoined(t *testing.T) {
 	s := testStore(t)
 	svc := New(s, nil, nil, &fakeUk{}, "testbot")
 	houseID, userID := seedHouse(t, s)
-	first, _, err := svc.CreateIncident(context.Background(), houseID, userID, "Нет воды", "с утра", "critical", nil, nil)
+	first, _, err := svc.CreateIncident(context.Background(), houseID, userID, NewIncident{Description: "нет воды с утра", Category: domain.CategoryWaterHeat})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestCreateIncident_ReportsJoined(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	row, created, err := svc.CreateIncident(context.Background(), houseID, other.ID, "Нет воды", "и у нас", "critical", nil, nil)
+	row, created, err := svc.CreateIncident(context.Background(), houseID, other.ID, NewIncident{Description: "нет воды и у нас", Category: domain.CategoryWaterHeat})
 	if err != nil || created || row.ID != first.ID {
 		t.Fatalf("want join into %d, got id=%d created=%v err=%v", first.ID, row.ID, created, err)
 	}
@@ -96,7 +96,7 @@ func TestCreateIncident_RetryDoesNotDuplicateReport(t *testing.T) {
 	svc := New(s, nil, nil, &fakeUk{}, "testbot")
 	houseID, userID := seedHouse(t, s)
 	for range 2 {
-		if _, _, err := svc.CreateIncident(context.Background(), houseID, userID, "Нет воды", "с утра", "critical", nil, nil); err != nil {
+		if _, _, err := svc.CreateIncident(context.Background(), houseID, userID, NewIncident{Description: "нет воды с утра", Category: domain.CategoryWaterHeat}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -121,7 +121,7 @@ func TestCreateIncident_ReportFailureDoesNotBreakRequest(t *testing.T) {
 		}
 		st.Close()
 	})
-	row, created, err := svc.CreateIncident(context.Background(), houseID, userID, "Нет воды", "с утра", "critical", nil, nil)
+	row, created, err := svc.CreateIncident(context.Background(), houseID, userID, NewIncident{Description: "нет воды с утра", Category: domain.CategoryWaterHeat})
 	if err != nil || !created || row.ID == 0 {
 		t.Fatalf("request must succeed without report table: id=%d created=%v err=%v", row.ID, created, err)
 	}

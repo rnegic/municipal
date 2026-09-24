@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
@@ -74,4 +75,24 @@ func (s *Store) DeleteStalePhotos(ctx context.Context, olderThan time.Duration) 
 		return 0, err
 	}
 	return res.RowsAffected()
+}
+
+func bindPhotos(ctx context.Context, tx *sql.Tx, incidentID, userID int64, photoIDs []int64) error {
+	if len(photoIDs) == 0 {
+		return nil
+	}
+	res, err := tx.ExecContext(ctx,
+		`UPDATE incident_photo SET incident_id = $1 WHERE user_id = $2 AND incident_id IS NULL AND id = ANY($3)`,
+		incidentID, userID, photoIDs)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != int64(len(photoIDs)) {
+		return ErrPhotoNotOwned
+	}
+	return nil
 }

@@ -22,7 +22,7 @@ func seedIncident(t *testing.T, s *Store) (houseID, userID, incidentID int64) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	incidentID, err = s.CreateIncident(ctx, houseID, u.ID, "Нет воды", "с утра", domain.SeverityCritical, nil, nil, domain.SLA(domain.SeverityCritical))
+	incidentID, err = s.CreateIncident(ctx, NewIncident{HouseID: houseID, ReporterID: u.ID, Title: "Нет воды", Description: "с утра", Severity: domain.SeverityCritical, Category: domain.CategoryWaterHeat, Routing: Routing{Source: "auto"}, SLA: domain.SLA(domain.SeverityCritical)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestAddReport_SavesAllFields(t *testing.T) {
 	if r.incidentID != incID || r.reporterID != userID || r.houseID != houseID ||
 		r.title != "Нет воды" || r.description != "с утра" || r.severity != "warning" ||
 		r.entrance == nil || *r.entrance != "2" || r.riser == nil || *r.riser != "Б" ||
-		r.outcome != "created" || r.dedupVersion != "exact-title-riser-v1" {
+		r.outcome != "created" || r.dedupVersion != "exact-category-floorzone-v1" {
 		t.Fatalf("unexpected row: %+v", r)
 	}
 }

@@ -5,8 +5,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
+	"strings"
 
 	oapi "ukapp/gen/api"
 	"ukapp/internal/domain"
@@ -16,7 +18,7 @@ import (
 func toIncident(r service.IncidentRow) oapi.Incident {
 	return oapi.Incident{
 		Id: formatIncidentID(r.ID), HouseId: formatHouseID(r.HouseID),
-		Title: r.Title, Description: r.Description, Entrance: r.Entrance, Riser: r.Riser, Severity: oapi.Severity(r.Severity),
+		Title: r.Title, Description: r.Description, Category: (*oapi.IncidentCategory)(r.Category), Entrance: r.Entrance, Riser: r.Riser, Severity: oapi.Severity(r.Severity),
 		Status: oapi.IncidentStatus(r.Status), AffectedCount: r.AffectedCount,
 		CreatedAt: r.CreatedAt, DueAt: r.DueAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
 		Photos: toPhotos(r.PhotoIDs),
@@ -35,16 +37,54 @@ func toPhotos(ids []int64) []oapi.Photo {
 	return photos
 }
 
+func parsePhotoURLs(urls []string) ([]int64, bool) {
+	ids := make([]int64, 0, len(urls))
+	seen := map[int64]bool{}
+	for _, u := range urls {
+		rest, ok := strings.CutPrefix(u, "/api/photos/")
+		if !ok {
+			return nil, false
+		}
+		id, ok := parseID("ph_", rest)
+		if !ok {
+			return nil, false
+		}
+		if !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	return ids, true
+}
+
 func (s *server) CreateIncident(ctx context.Context, req oapi.CreateIncidentRequestObject) (oapi.CreateIncidentResponseObject, error) {
 	u := userFromCtx(ctx)
 	if u.HouseID == nil {
 		return oapi.CreateIncident404JSONResponse(apiErr("not_found", "дом не привязан")), nil
 	}
-	row, created, err := s.svc.CreateIncident(ctx, *u.HouseID, u.ID, req.Body.Title, req.Body.Description, string(req.Body.Severity), req.Body.Entrance, req.Body.Riser)
-	if errors.Is(err, service.ErrInvalidInput) {
-		return oapi.CreateIncident400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", "valid title, description and severity required"))}, nil
+	bad := oapi.CreateIncident400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed",
+		"описание 10–2000 символов, категория из списка, подъезд до 40 и зона до 120 символов, до 5 фото вида /api/photos/ph_N"))}
+	photoIDs, ok := parsePhotoURLs(req.Body.PhotoUrls)
+	if !ok {
+		return bad, nil
 	}
-	if err != nil {
+	row, created, err := s.svc.CreateIncident(ctx, *u.HouseID, u.ID, service.NewIncident{
+		Description: req.Body.Description, Category: domain.Category(req.Body.Category),
+		Entrance: req.Body.Entrance, FloorZone: req.Body.FloorZone, PhotoIDs: photoIDs,
+	})
+	var notUK service.NotUKError
+	switch {
+	case errors.Is(err, service.ErrInvalidInput):
+		return bad, nil
+	case errors.As(err, &notUK):
+		return oapi.CreateIncident422JSONResponse(apiErr("business_rule_failed",
+			"Эту проблему решает не управляющая компания, а "+notUK.Authority.Name()+". Обратитесь туда напрямую или через Госуслуги.")), nil
+	case errors.Is(err, service.ErrPhotoRequired):
+		return oapi.CreateIncident422JSONResponse(apiErr("business_rule_failed", "для этой категории нужно приложить хотя бы одно фото")), nil
+	case errors.Is(err, service.ErrPhotoNotOwned):
+		slog.Warn("photo bind failed", "user", u.ID, "photos", photoIDs)
+		return oapi.CreateIncident422JSONResponse(apiErr("business_rule_failed", "фото не найдено или уже прикреплено к другой заявке")), nil
+	case err != nil:
 		return nil, err
 	}
 	if created {

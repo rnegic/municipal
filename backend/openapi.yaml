@@ -244,7 +244,10 @@ paths:
     post:
       operationId: createIncident
       tags: [incidents]
-      summary: "«Сообщить о новой проблеме» (с дедупом по дому+заголовку+стояку в окне 2ч)"
+      summary: "«Сообщить о новой проблеме» (с дедупом по дому+категории+зоне в окне 2ч)"
+      description: |
+        title и severity выводятся из category. 422 business_rule_failed: категория не в зоне УК,
+        нет обязательного фото, фото чужое или уже привязано к другой заявке.
       requestBody:
         required: true
         content:
@@ -264,6 +267,7 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
 
   /api/incidents/analyze:
     post:
@@ -553,15 +557,19 @@ components:
 
     Incident:
       type: object
-      required: [id, houseId, title, description, entrance, riser, severity, status, affectedCount,
+      required: [id, houseId, title, description, category, entrance, riser, severity, status, affectedCount,
                  createdAt, dueAt, joinedByMe, confirmedByMe, photos]
       properties:
         id: { type: string, example: inc_01H }
         houseId: { type: string, example: h_123 }
         title: { type: string }
         description: { type: string }
+        category:
+          nullable: true
+          description: null у заявок, созданных до умного роутинга
+          allOf: [{ $ref: "#/components/schemas/IncidentCategory" }]
         entrance: { type: string, nullable: true }
-        riser: { type: string, nullable: true }
+        riser: { type: string, nullable: true, description: "Этаж/зона (floorZone из запроса)" }
         severity: { $ref: "#/components/schemas/Severity" }
         status: { $ref: "#/components/schemas/IncidentStatus" }
         affectedCount: { type: integer, minimum: 0 }
@@ -600,13 +608,17 @@ components:
 
     CreateIncidentRequest:
       type: object
-      required: [title, description, severity]
+      required: [description, category, photoUrls]
       properties:
-        title: { type: string, minLength: 1, maxLength: 120 }
-        description: { type: string, minLength: 1, maxLength: 2000 }
-        severity: { $ref: "#/components/schemas/Severity" }
-        entrance: { type: string }
-        riser: { type: string }
+        description: { type: string, minLength: 10, maxLength: 2000 }
+        category: { $ref: "#/components/schemas/IncidentCategory" }
+        entrance: { type: string, maxLength: 40 }
+        floorZone: { type: string, maxLength: 120 }
+        photoUrls:
+          type: array
+          maxItems: 5
+          description: url из POST /api/incidents/photos текущего пользователя, ещё не привязанные к заявке
+          items: { type: string, example: /api/photos/ph_1 }
 
     SetIncidentStatusRequest:
       type: object

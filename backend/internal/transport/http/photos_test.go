@@ -25,9 +25,9 @@ func TestHouseStats(t *testing.T) {
 	srv := newTestServer(t, s)
 	h10 := bindUser(t, srv, 1, "f-10")
 	bindUser(t, srv, 3, "f-12")
-	createIncident(t, srv, 1, `{"title":"A","description":"x","severity":"warning"}`)
-	inc, _ := createIncident(t, srv, 1, `{"title":"B","description":"x","severity":"critical"}`)
-	createIncident(t, srv, 3, `{"title":"C","description":"x","severity":"warning"}`)
+	createIncident(t, srv, 1, `{"description":"нет воды с самого утра","category":"WATER_HEAT","photoUrls":[]}`)
+	inc, _ := createIncident(t, srv, 1, `{"description":"в подъезде не горит свет","category":"ELECTRICITY","photoUrls":[]}`)
+	createIncident(t, srv, 3, `{"description":"лифт стоит третий день","category":"ELEVATOR","photoUrls":[]}`)
 	incID, _ := parseID("inc_", inc.Id)
 	if _, err := s.DB().ExecContext(context.Background(), `UPDATE incident SET status='in_progress' WHERE id=$1`, incID); err != nil {
 		t.Fatal(err)
@@ -83,7 +83,7 @@ func TestIncidentPhotos(t *testing.T) {
 	s := testStore(t)
 	srv := newTestServer(t, s)
 	bindUser(t, srv, 1, "f-10")
-	inc, _ := createIncident(t, srv, 1, `{"title":"A","description":"x","severity":"warning"}`)
+	inc, _ := createIncident(t, srv, 1, `{"description":"нет воды с самого утра","category":"WATER_HEAT","photoUrls":[]}`)
 
 	if w := uploadPhoto(t, srv, inc.Id, "photo", []byte("hello, not an image")); w.Code != 400 {
 		t.Fatalf("text: want 400 got %d %s", w.Code, w.Body)
@@ -136,7 +136,7 @@ func TestIncidentPhotos(t *testing.T) {
 		t.Fatalf("6th photo: want 422 got %d", w.Code)
 	}
 
-	inc2, _ := createIncident(t, srv, 1, `{"title":"B","description":"x","severity":"warning"}`)
+	inc2, _ := createIncident(t, srv, 1, `{"description":"в подъезде не горит свет","category":"ELECTRICITY","photoUrls":[]}`)
 	if _, err := s.DB().ExecContext(context.Background(),
 		`INSERT INTO incident_photo (incident_id, user_id, content_type, data) SELECT $1, user_id, 'image/png', ''::bytea FROM incident_photo, generate_series(1,4) WHERE incident_id=$2 AND user_id=(SELECT id FROM app_user WHERE max_user_id=1)`,
 		mustID(t, inc2.Id), mustID(t, inc.Id)); err != nil {
