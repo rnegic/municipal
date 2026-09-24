@@ -59,6 +59,13 @@ func TestStagedPhotos(t *testing.T) {
 	if code, _ := uploadStaged(t, srv, 1, heic[:40]); code != 400 {
 		t.Fatalf("truncated heic: %d", code)
 	}
+	huge, err := os.ReadFile("testdata/huge.heic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code, _ := uploadStaged(t, srv, 1, huge); code != 400 {
+		t.Fatalf("heic over 50 MP must be rejected before decoding: %d", code)
+	}
 	if code, _ := uploadStaged(t, srv, 1, []byte("GIF89a......")); code != 400 {
 		t.Fatalf("gif: %d", code)
 	}
@@ -76,5 +83,9 @@ func TestStagedPhotosRateLimit(t *testing.T) {
 	}
 	if code, _ := uploadStaged(t, srv, 1, p); code != 429 {
 		t.Fatalf("21st: %d", code)
+	}
+	garbageHEIC := append([]byte("\x00\x00\x00\x18ftypheic"), bytes.Repeat([]byte{0xAB}, 1<<20)...)
+	if code, _ := uploadStaged(t, srv, 1, garbageHEIC); code != 429 {
+		t.Fatalf("rate limit must be checked before decoding: %d", code)
 	}
 }

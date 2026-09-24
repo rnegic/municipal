@@ -237,6 +237,9 @@ func readPhoto(body *multipart.Reader) (data []byte, contentType, problem string
 		return nil, "", "photo must be image/jpeg, image/png or image/heic"
 	}
 	jpg, err := heicToJPEG(data)
+	if errors.Is(err, errHEICTooLarge) {
+		return nil, "", "photo must be at most 50 megapixels"
+	}
 	if err != nil {
 		return nil, "", "cannot decode heic"
 	}
@@ -244,6 +247,12 @@ func readPhoto(body *multipart.Reader) (data []byte, contentType, problem string
 }
 
 func (s *server) UploadStagedPhoto(ctx context.Context, req oapi.UploadStagedPhotoRequestObject) (oapi.UploadStagedPhotoResponseObject, error) {
+	if limited, err := s.svc.PhotoRateLimited(ctx, userFromCtx(ctx).ID); err != nil || limited {
+		if err != nil {
+			return nil, err
+		}
+		return oapi.UploadStagedPhoto429JSONResponse(apiErr("rate_limited", "не больше 20 фото в час")), nil
+	}
 	data, ct, problem := readPhoto(req.Body)
 	if problem != "" {
 		return oapi.UploadStagedPhoto400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", problem))}, nil
@@ -262,6 +271,12 @@ func (s *server) UploadIncidentPhoto(ctx context.Context, req oapi.UploadInciden
 	id, ok := parseID("inc_", req.Id)
 	if !ok {
 		return oapi.UploadIncidentPhoto404JSONResponse(apiErr("not_found", "авария не найдена")), nil
+	}
+	if limited, err := s.svc.PhotoRateLimited(ctx, userFromCtx(ctx).ID); err != nil || limited {
+		if err != nil {
+			return nil, err
+		}
+		return oapi.UploadIncidentPhoto429JSONResponse(apiErr("rate_limited", "не больше 20 фото в час")), nil
 	}
 	data, ct, problem := readPhoto(req.Body)
 	if problem != "" {

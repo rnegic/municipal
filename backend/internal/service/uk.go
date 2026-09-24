@@ -77,6 +77,11 @@ func (s *Service) AddPhoto(ctx context.Context, incidentID, userID int64, conten
 	return s.repo.InsertPhoto(ctx, &incidentID, userID, contentType, data)
 }
 
+func (s *Service) PhotoRateLimited(ctx context.Context, userID int64) (bool, error) {
+	_, byUser, err := s.repo.PhotoCounts(ctx, 0, userID, time.Hour)
+	return byUser >= MaxPhotosPerUserHour, err
+}
+
 func (s *Service) AddStagedPhoto(ctx context.Context, userID int64, contentType string, data []byte) (int64, error) {
 	_, byUser, err := s.repo.PhotoCounts(ctx, 0, userID, time.Hour)
 	if err != nil {

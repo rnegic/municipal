@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"image/jpeg"
 
@@ -19,12 +20,27 @@ func isHEIF(b []byte) bool {
 	return false
 }
 
+const maxHEICPixels = 50_000_000
+
+var errHEICTooLarge = errors.New("heic larger than 50 MP")
+
+var heicSlot = make(chan struct{}, 1)
+
 func heicToJPEG(b []byte) (out []byte, err error) {
+	heicSlot <- struct{}{}
+	defer func() { <-heicSlot }()
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("heic decode panic: %v", r)
 		}
 	}()
+	cfg, err := heic.DecodeConfig(bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+	if cfg.Width*cfg.Height > maxHEICPixels {
+		return nil, errHEICTooLarge
+	}
 	img, err := heic.Decode(bytes.NewReader(b))
 	if err != nil {
 		return nil, err
