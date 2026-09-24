@@ -44,7 +44,7 @@ export const fetchIncident = (incidentId: string) =>
 export const fetchUkQueue = (offset = 0, limit = 100) =>
   apiRequest(
     '/uk/queue',
-    { method: 'GET', query: { offset, limit } },
+    { method: 'GET', query: { offset, limit }, auth: 'uk' },
     paginatedUkQueueSchema,
   )
 

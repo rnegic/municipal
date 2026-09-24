@@ -11,7 +11,7 @@ import {
 } from '@/entities/incident'
 import { EventCreateFab } from '@/features/event-create'
 import { ThemeToggle } from '@/features/theme-switch'
-import { UkSessionBadge, UkSignOutButton } from '@/features/uk-auth'
+import { ResidentModeLink, UkSessionBadge, UkSignOutButton } from '@/features/uk-auth'
 import { IconLocation } from '@/shared/assets/icons'
 import { cn } from '@/shared/lib/cn'
 import { formatDateTime } from '@/shared/lib/date'
@@ -309,6 +309,7 @@ export const UkPage = () => {
     <UkSessionBadge
       actions={
         <>
+          <ResidentModeLink />
           <ThemeToggle />
           <UkSignOutButton />
         </>

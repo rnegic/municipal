@@ -50,7 +50,7 @@ export const uploadIncidentPhoto = (incidentId: string, file: File) => {
 export const setIncidentStatus = (incidentId: string, status: Incident['status']) =>
   apiRequest(
     `/incidents/${incidentId}/status`,
-    { method: 'PATCH', body: { status } },
+    { method: 'PATCH', body: { status }, auth: 'uk' },
     incidentSchema,
   )
 

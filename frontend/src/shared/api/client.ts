@@ -6,6 +6,9 @@ import { getInitData } from '@/shared/lib/max'
 
 export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 
+/** max — житель (initData из MAX), uk — сотрудник УК (ESIA-токен). По умолчанию житель. */
+export type AuthMode = 'max' | 'uk'
+
 export type QueryValue = string | number | boolean | undefined
 
 export interface ApiErrorPayload {
@@ -21,6 +24,7 @@ export interface ApiRequestOptions<TBody = never> {
   headers?: Record<string, string>
   signal?: AbortSignal
   withAuth?: boolean
+  auth?: AuthMode
 }
 
 export class ApiError extends Error {
@@ -37,11 +41,11 @@ export class ApiError extends Error {
 
 const AUTH_HEADER = 'Authorization'
 
-const resolveAuthHeader = (): string | null => {
-  const accessToken = getValidAccessToken()
+const resolveAuthHeader = (mode: AuthMode): string | null => {
+  if (mode === 'uk') {
+    const accessToken = getValidAccessToken()
 
-  if (accessToken) {
-    return `Bearer ${accessToken}`
+    return accessToken ? `Bearer ${accessToken}` : null
   }
 
   const initData = getInitData()
@@ -74,8 +78,8 @@ export const apiRequest = async <TResponse, TBody = never>(
   options: ApiRequestOptions<TBody> = {},
   schema?: ZodType<TResponse>,
 ): Promise<TResponse> => {
-  const { method = 'GET', body, query, headers, signal, withAuth = true } = options
-  const authorization = withAuth ? resolveAuthHeader() : null
+  const { method = 'GET', body, query, headers, signal, withAuth = true, auth = 'max' } = options
+  const authorization = withAuth ? resolveAuthHeader(auth) : null
 
   const response = await fetch(buildUrl(path, query), {
     method,

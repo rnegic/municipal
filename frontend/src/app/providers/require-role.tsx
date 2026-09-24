@@ -27,9 +27,5 @@ export const RequireRole = ({ role, children }: RequireRoleProps) => {
     return <Navigate to={ROUTES.onboarding} state={state} replace />
   }
 
-  if (role === 'resident' && session) {
-    return <Navigate to={ROUTES.dispatcher} replace />
-  }
-
   return <>{children}</>
 }
