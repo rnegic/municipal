@@ -1,0 +1,45 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-2);
+  width: 100%;
+}
+
+.label {
+  cursor: pointer;
+}
+
+.control {
+  width: 100%;
+  min-height: 3rem;
+  padding: var(--app-space-3) var(--app-space-4);
+  border: 1px solid var(--app-color-border-input);
+  border-radius: var(--app-radius-control);
+  color: var(--app-color-text-primary);
+  background-color: var(--app-color-surface-card);
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--app-color-progress);
+  outline-offset: 2px;
+}
+
+.control:disabled {
+  color: var(--app-color-text-tertiary);
+  cursor: not-allowed;
+}
+
+.invalid {
+  border-color: var(--app-color-danger);
+}
+
+.hint {
+  color: var(--app-color-text-tertiary);
+}
+
+.hintInvalid {
+  color: var(--app-color-danger);
+}

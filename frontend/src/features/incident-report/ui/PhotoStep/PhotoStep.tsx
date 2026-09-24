@@ -1,4 +1,4 @@
-import { useId, type FormEvent } from 'react'
+import { useId } from 'react'
 
 import { Typography } from '@maxhub/max-ui'
 
