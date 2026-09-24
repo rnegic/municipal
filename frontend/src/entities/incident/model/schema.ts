@@ -1,8 +1,23 @@
 import { z } from 'zod'
 
+import {
+  INCIDENT_AUTHORITY_VALUES,
+  INCIDENT_CATEGORY_VALUES,
+  INCIDENT_DESCRIPTION_MAX_LENGTH,
+  INCIDENT_DESCRIPTION_MIN_LENGTH,
+  INCIDENT_ENTRANCE_MAX_LENGTH,
+  INCIDENT_FLOOR_ZONE_MAX_LENGTH,
+  INCIDENT_PHOTOS_MAX_COUNT,
+  INCIDENT_REASONING_MAX_LENGTH,
+} from '../config/domain'
+
 export const incidentSeveritySchema = z.enum(['critical', 'warning'])
 
 export const incidentStatusSchema = z.enum(['accepted', 'in_progress', 'verifying', 'done'])
+
+export const incidentCategorySchema = z.enum(INCIDENT_CATEGORY_VALUES)
+
+export const incidentAuthoritySchema = z.enum(INCIDENT_AUTHORITY_VALUES)
 
 const timestampSchema = z.iso.datetime({ offset: true })
 
@@ -81,18 +96,64 @@ export const confirmResponseSchema = z.object({
   confirmedAt: timestampSchema,
 })
 
-export const createIncidentRequestSchema = z.object({
-  title: z.string().min(1).max(120),
-  description: z.string().min(1).max(2000),
-  severity: incidentSeveritySchema,
-  entrance: z.string().optional(),
-  riser: z.string().optional(),
+const optionalTrimmedText = (maxLength: number) =>
+  z
+    .string()
+    .trim()
+    .max(maxLength)
+    .optional()
+    .transform((value) => (value ? value : undefined))
+
+export const analyzeIncidentRequestSchema = z.object({
+  description: z
+    .string()
+    .trim()
+    .min(INCIDENT_DESCRIPTION_MIN_LENGTH)
+    .max(INCIDENT_DESCRIPTION_MAX_LENGTH),
 })
+
+export const analyzeIncidentResponseSchema = z
+  .object({
+    category: incidentCategorySchema,
+    authority: incidentAuthoritySchema,
+    is_uk_responsibility: z.boolean(),
+    photo_required: z.boolean(),
+    reasoning_text: z.string().optional(),
+  })
+  .transform((value) => ({
+    category: value.category,
+    authority: value.authority,
+    isUkResponsibility: value.is_uk_responsibility,
+    photoRequired: value.photo_required,
+    reasoningText: value.reasoning_text?.trim().slice(0, INCIDENT_REASONING_MAX_LENGTH) || null,
+  }))
+
+export const createIncidentRequestSchema = z
+  .object({
+    description: z
+      .string()
+      .trim()
+      .min(INCIDENT_DESCRIPTION_MIN_LENGTH)
+      .max(INCIDENT_DESCRIPTION_MAX_LENGTH),
+    category: incidentCategorySchema,
+    entrance: optionalTrimmedText(INCIDENT_ENTRANCE_MAX_LENGTH),
+    floorZone: optionalTrimmedText(INCIDENT_FLOOR_ZONE_MAX_LENGTH),
+    photoUrls: z.array(z.string().min(1)).max(INCIDENT_PHOTOS_MAX_COUNT).optional(),
+  })
+  .transform((value) => ({
+    description: value.description,
+    category: value.category,
+    entrance: value.entrance,
+    floor_zone: value.floorZone,
+    photo_urls: value.photoUrls ?? [],
+  }))
 
 export type Incident = z.infer<typeof incidentSchema>
 export type IncidentPhoto = z.infer<typeof incidentPhotoSchema>
 export type IncidentSeverity = z.infer<typeof incidentSeveritySchema>
 export type IncidentStatus = z.infer<typeof incidentStatusSchema>
+export type IncidentCategory = z.infer<typeof incidentCategorySchema>
+export type IncidentAuthority = z.infer<typeof incidentAuthoritySchema>
 export type IncidentListResponse = z.infer<typeof incidentListResponseSchema>
 export type ResidentRequest = z.infer<typeof residentRequestSchema>
 export type PaginatedResidentRequests = z.infer<typeof paginatedResidentRequestsSchema>
@@ -100,4 +161,6 @@ export type UkQueueItem = z.infer<typeof ukQueueItemSchema>
 export type PaginatedUkQueue = z.infer<typeof paginatedUkQueueSchema>
 export type JoinResponse = z.infer<typeof joinResponseSchema>
 export type ConfirmResponse = z.infer<typeof confirmResponseSchema>
-export type CreateIncidentInput = z.infer<typeof createIncidentRequestSchema>
+export type AnalyzeIncidentInput = z.input<typeof analyzeIncidentRequestSchema>
+export type AnalyzeIncidentResult = z.infer<typeof analyzeIncidentResponseSchema>
+export type CreateIncidentInput = z.input<typeof createIncidentRequestSchema>

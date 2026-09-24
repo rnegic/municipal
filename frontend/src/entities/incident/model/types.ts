@@ -1,7 +1,11 @@
 export type {
+  AnalyzeIncidentInput,
+  AnalyzeIncidentResult,
   ConfirmResponse,
   CreateIncidentInput,
   Incident,
+  IncidentAuthority,
+  IncidentCategory,
   IncidentPhoto,
   IncidentListResponse,
   IncidentSeverity,
