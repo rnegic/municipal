@@ -2,47 +2,8 @@
   gap: var(--app-space-6);
 }
 
-.card {
-  gap: var(--app-space-4);
-}
+.allAction {
+  --MaxUi-Button_foreground: currentcolor;
 
-.head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--app-space-4);
-}
-
-.titleRow {
-  display: flex;
-  flex: 1 1 12rem;
-  align-items: center;
-  gap: var(--app-space-4);
-  min-width: 0;
-}
-
-.severityIcon {
-  display: flex;
   flex: none;
-  align-items: center;
-  color: var(--app-color-progress);
-}
-
-.severityIconCritical {
-  color: var(--app-color-danger);
-}
-
-.shareButton {
-  margin: 8px 0;
-}
-
-.title {
-  min-width: 0;
-}
-
-.join,
-.footer {
-  padding-block: var(--app-space-4);
-  border-top: 1px solid var(--app-color-border);
 }

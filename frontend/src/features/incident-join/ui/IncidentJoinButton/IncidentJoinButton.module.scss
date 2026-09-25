@@ -12,11 +12,3 @@
   align-items: center;
   gap: var(--app-space-3);
 }
-
-.avatars {
-  display: flex;
-}
-
-.avatars > * + * {
-  margin-left: -0.8rem;
-}

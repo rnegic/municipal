@@ -1,0 +1,52 @@
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  padding: 0;
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--app-space-4);
+  padding: var(--app-space-4);
+  border: 1px solid var(--app-color-border-card);
+  border-radius: var(--app-radius-paper);
+  cursor: pointer;
+}
+
+.optionTarget {
+  border-color: var(--app-color-progress);
+  background: var(--app-color-progress-surface);
+}
+
+.optionBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+  min-width: 0;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-1);
+  padding: var(--app-space-4);
+  border-radius: var(--app-radius-paper);
+  background: var(--app-color-surface-muted);
+}
+
+.error {
+  color: var(--app-color-danger);
+}
+
+.actions {
+  display: flex;
+  gap: var(--app-space-3);
+}
