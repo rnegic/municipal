@@ -26,9 +26,11 @@ export const IncidentReportForm = ({ onSuccess, onCancel, className }: IncidentR
 
       {wizard.step === 'description' ? (
         <DescriptionStep
+          title={wizard.title}
           value={wizard.description}
           isAnalyzing={wizard.isAnalyzing}
           validationError={wizard.validationError}
+          onTitleChange={wizard.setTitle}
           onChange={wizard.setDescription}
           onSubmit={wizard.analyze}
         />

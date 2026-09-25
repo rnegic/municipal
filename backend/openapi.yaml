@@ -610,6 +610,7 @@ components:
       type: object
       required: [description, category, photoUrls]
       properties:
+        title: { type: string, minLength: 3, maxLength: 120, description: краткое название заявки от пользователя; не влияет на автоопределение категории }
         description: { type: string, minLength: 10, maxLength: 2000 }
         category: { $ref: "#/components/schemas/IncidentCategory" }
         entrance: { type: string, maxLength: 40 }

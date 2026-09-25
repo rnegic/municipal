@@ -8,6 +8,8 @@ export {
   INCIDENT_PHOTOS_MAX_COUNT,
   INCIDENT_PHOTO_MAX_BYTES,
   INCIDENT_PHOTO_MIME_TYPES,
+  INCIDENT_TITLE_MAX_LENGTH,
+  INCIDENT_TITLE_MIN_LENGTH,
   UK_AUTHORITY,
 } from './config/domain'
 export { incidentTexts } from './config/texts'

@@ -63,13 +63,13 @@ func (s *server) CreateIncident(ctx context.Context, req oapi.CreateIncidentRequ
 		return oapi.CreateIncident404JSONResponse(apiErr("not_found", "дом не привязан")), nil
 	}
 	bad := oapi.CreateIncident400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed",
-		"описание 10–2000 символов, категория из списка, подъезд до 40 и зона до 120 символов, до 5 фото вида /api/photos/ph_N"))}
+		"название 3–120 символов, описание 10–2000 символов, категория из списка, подъезд до 40 и зона до 120 символов, до 5 фото вида /api/photos/ph_N"))}
 	photoIDs, ok := parsePhotoURLs(req.Body.PhotoUrls)
 	if !ok {
 		return bad, nil
 	}
 	row, created, err := s.svc.CreateIncident(ctx, *u.HouseID, u.ID, service.NewIncident{
-		Description: req.Body.Description, Category: domain.Category(req.Body.Category),
+		Title: req.Body.Title, Description: req.Body.Description, Category: domain.Category(req.Body.Category),
 		Entrance: req.Body.Entrance, FloorZone: req.Body.FloorZone, PhotoIDs: photoIDs,
 	})
 	var notUK service.NotUKError

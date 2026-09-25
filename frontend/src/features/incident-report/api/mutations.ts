@@ -8,6 +8,7 @@ import {
 } from '@/entities/incident'
 
 export interface SubmitIncidentReportInput {
+  title: string
   description: string
   category: IncidentCategory
   entrance?: string

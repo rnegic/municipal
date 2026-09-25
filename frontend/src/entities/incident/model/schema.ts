@@ -9,6 +9,8 @@ import {
   INCIDENT_FLOOR_ZONE_MAX_LENGTH,
   INCIDENT_PHOTOS_MAX_COUNT,
   INCIDENT_REASONING_MAX_LENGTH,
+  INCIDENT_TITLE_MAX_LENGTH,
+  INCIDENT_TITLE_MIN_LENGTH,
 } from '../config/domain'
 
 export const incidentSeveritySchema = z.enum(['critical', 'warning'])
@@ -128,6 +130,11 @@ export const analyzeIncidentResponseSchema = z
 
 export const createIncidentRequestSchema = z
   .object({
+    title: z
+      .string()
+      .trim()
+      .min(INCIDENT_TITLE_MIN_LENGTH)
+      .max(INCIDENT_TITLE_MAX_LENGTH),
     description: z
       .string()
       .trim()

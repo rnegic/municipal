@@ -8,6 +8,8 @@ export const incidentReportTexts = {
     photo: 'Шаг 3 из 3 · Фото',
   },
   descriptionStep: {
+    titleLabel: 'Кратко: что случилось?',
+    titlePlaceholder: 'Например: нет горячей воды',
     label: 'Опишите проблему своими словами',
     placeholder: 'Например: нет горячей воды, сломан лифт, течёт крыша',
     hint: (min: number, max: number) => `От ${min} до ${max} символов`,
@@ -50,6 +52,8 @@ export const incidentReportTexts = {
     back: 'Назад',
   },
   errors: {
+    titleTooShort: (min: number) => `Кратко назовите проблему — минимум ${min} символа`,
+    titleTooLong: (max: number) => `Название не должно превышать ${max} символов`,
     descriptionTooShort: (min: number) => `Опишите проблему подробнее — минимум ${min} символов`,
     descriptionTooLong: (max: number) => `Описание не должно превышать ${max} символов`,
     routingRequired: 'Выберите ведомство и категорию проблемы',

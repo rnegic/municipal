@@ -1,10 +1,12 @@
 import { useId, type FormEvent } from 'react'
 
-import { Textarea, Typography } from '@maxhub/max-ui'
+import { Input, Textarea, Typography } from '@maxhub/max-ui'
 
 import {
   INCIDENT_DESCRIPTION_MAX_LENGTH,
   INCIDENT_DESCRIPTION_MIN_LENGTH,
+  INCIDENT_TITLE_MAX_LENGTH,
+  INCIDENT_TITLE_MIN_LENGTH,
 } from '@/entities/incident'
 import { Button } from '@/shared/ui/button'
 import { LoadingState } from '@/shared/ui/loading-state'
@@ -13,7 +15,9 @@ import { incidentReportTexts as texts } from '../../config/texts'
 import s from './DescriptionStep.module.scss'
 
 export interface DescriptionStepProps {
+  title: string
   value: string
+  onTitleChange: (value: string) => void
   onChange: (value: string) => void
   onSubmit: () => void
   isAnalyzing: boolean
@@ -21,12 +25,15 @@ export interface DescriptionStepProps {
 }
 
 export const DescriptionStep = ({
+  title,
   value,
+  onTitleChange,
   onChange,
   onSubmit,
   isAnalyzing,
   validationError,
 }: DescriptionStepProps) => {
+  const titleId = useId()
   const fieldId = useId()
   const errorId = useId()
 
@@ -56,6 +63,32 @@ export const DescriptionStep = ({
 
   return (
     <form className={s.form} onSubmit={handleSubmit} noValidate>
+      <div className={s.field}>
+        <label htmlFor={titleId}>
+          <Typography.Text variant="description" color="secondary">
+            {texts.descriptionStep.titleLabel}
+          </Typography.Text>
+        </label>
+        <Input
+          id={titleId}
+          size="large"
+          maxLength={INCIDENT_TITLE_MAX_LENGTH}
+          placeholder={texts.descriptionStep.titlePlaceholder}
+          value={title}
+          aria-invalid={Boolean(validationError)}
+          aria-describedby={validationError ? errorId : undefined}
+          onChange={(event) => onTitleChange(event.target.value)}
+        />
+        <div className={s.meta}>
+          <Typography.Text variant="note" color="tertiary">
+            {texts.descriptionStep.hint(INCIDENT_TITLE_MIN_LENGTH, INCIDENT_TITLE_MAX_LENGTH)}
+          </Typography.Text>
+          <Typography.Text variant="note" color="tertiary">
+            {texts.descriptionStep.counter(title.length, INCIDENT_TITLE_MAX_LENGTH)}
+          </Typography.Text>
+        </div>
+      </div>
+
       <div className={s.field}>
         <label htmlFor={fieldId}>
           <Typography.Text variant="description" color="secondary">

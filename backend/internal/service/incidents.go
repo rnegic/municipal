@@ -75,6 +75,7 @@ type NotUKError struct{ Authority domain.Authority }
 func (e NotUKError) Error() string { return "not uk responsibility: " + string(e.Authority) }
 
 type NewIncident struct {
+	Title               *string
 	Description         string
 	Category            domain.Category
 	Entrance, FloorZone *string
@@ -105,6 +106,16 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	if !ok || !in.Category.Valid() || tooLong(in.Entrance, 40) || tooLong(in.FloorZone, 120) || len(in.PhotoIDs) > MaxPhotosPerIncident {
 		return IncidentRow{}, false, ErrInvalidInput
 	}
+	// Название заявки задаёт пользователь; если он его не прислал, откатываемся
+	// на название категории. На автоопределение категории название не влияет.
+	title := in.Category.Title()
+	if in.Title != nil {
+		t, ok := domain.ValidTitle(*in.Title)
+		if !ok {
+			return IncidentRow{}, false, ErrInvalidInput
+		}
+		title = t
+	}
 	if auth := in.Category.Authority(); auth != domain.AuthorityUK {
 		return IncidentRow{}, false, NotUKError{Authority: auth}
 	}
@@ -119,7 +130,7 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	}
 	sev := in.Category.Severity()
 	report := repository.ReportInput{
-		ReporterID: reporterID, HouseID: houseID, Title: in.Category.Title(), Description: d,
+		ReporterID: reporterID, HouseID: houseID, Title: title, Description: d,
 		Severity: sev, Entrance: in.Entrance, Riser: in.FloorZone, DedupVersion: domain.DedupVersion,
 	}
 	if dup := domain.FindDuplicate(houseID, in.Category, in.FloorZone, time.Now(), open); dup != 0 {
@@ -132,7 +143,7 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 		return row, false, err
 	}
 	id, err := s.repo.CreateIncident(ctx, repository.NewIncident{
-		HouseID: houseID, ReporterID: reporterID, Title: in.Category.Title(), Description: d, Severity: sev,
+		HouseID: houseID, ReporterID: reporterID, Title: title, Description: d, Severity: sev,
 		Entrance: in.Entrance, Riser: in.FloorZone, Category: in.Category, Routing: routing, SLA: domain.SLA(sev),
 		PhotoIDs: in.PhotoIDs,
 	})

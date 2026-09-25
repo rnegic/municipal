@@ -67,7 +67,7 @@ func TestCreate_ForeignPhotoAndDedupBinding(t *testing.T) {
 	if _, code := createIncident(t, srv, 1, `{"description":"лифт стоит третий день","category":"ELEVATOR","floorZone":"1 подъезд","photoUrls":["`+theirs+`"]}`); code != 422 {
 		t.Fatalf("foreign photo: %d", code)
 	}
-	first, code := createIncident(t, srv, 1, `{"description":"лифт стоит третий день","category":"ELEVATOR","floorZone":"1 подъезд","photoUrls":["`+mine+`"]}`)
+	first, code := createIncident(t, srv, 1, `{"title":"Лифт не работает","description":"лифт стоит третий день","category":"ELEVATOR","floorZone":"1 подъезд","photoUrls":["`+mine+`"]}`)
 	if code != 201 {
 		t.Fatalf("create: %d", code)
 	}
@@ -86,7 +86,7 @@ func TestCreate_ForeignPhotoAndDedupBinding(t *testing.T) {
 		Photos   []struct{ Url string }
 	}
 	getJSON(t, srv, "/api/incidents/"+first.Id, 1, &full)
-	if full.Category != "ELEVATOR" || full.Title != "Лифт" || full.Severity != "critical" || full.Riser != "1 подъезд" || len(full.Photos) != 2 {
+	if full.Category != "ELEVATOR" || full.Title != "Лифт не работает" || full.Severity != "critical" || full.Riser != "1 подъезд" || len(full.Photos) != 2 {
 		t.Fatalf("%+v", full)
 	}
 

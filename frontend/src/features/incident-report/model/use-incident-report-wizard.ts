@@ -3,6 +3,8 @@ import { useReducer } from 'react'
 import {
   INCIDENT_DESCRIPTION_MAX_LENGTH,
   INCIDENT_DESCRIPTION_MIN_LENGTH,
+  INCIDENT_TITLE_MAX_LENGTH,
+  INCIDENT_TITLE_MIN_LENGTH,
   isPhotoRequiredForCategory,
   isUkAuthority,
   useAnalyzeIncidentMutation,
@@ -18,6 +20,7 @@ import type { IncidentReportStep, IncidentRoutingDecision } from './types'
 
 interface WizardState {
   step: IncidentReportStep
+  title: string
   description: string
   entrance: string
   floorZone: string
@@ -30,6 +33,7 @@ interface WizardState {
 }
 
 type WizardAction =
+  | { type: 'setTitle'; value: string }
   | { type: 'setDescription'; value: string }
   | { type: 'setEntrance'; value: string }
   | { type: 'setFloorZone'; value: string }
@@ -45,6 +49,7 @@ type WizardAction =
 
 const initialState: WizardState = {
   step: 'description',
+  title: '',
   description: '',
   entrance: '',
   floorZone: '',
@@ -58,6 +63,8 @@ const initialState: WizardState = {
 
 const wizardReducer = (state: WizardState, action: WizardAction): WizardState => {
   switch (action.type) {
+    case 'setTitle':
+      return { ...state, title: action.value, validationError: null }
     case 'setDescription':
       return { ...state, description: action.value, validationError: null }
     case 'setEntrance':
@@ -136,7 +143,24 @@ export const useIncidentReportWizard = ({ onSuccess }: UseIncidentReportWizardOp
       : null)
 
   const analyze = () => {
+    const title = state.title.trim()
     const description = state.description.trim()
+
+    if (title.length < INCIDENT_TITLE_MIN_LENGTH) {
+      dispatch({
+        type: 'reject',
+        message: texts.errors.titleTooShort(INCIDENT_TITLE_MIN_LENGTH),
+      })
+      return
+    }
+
+    if (title.length > INCIDENT_TITLE_MAX_LENGTH) {
+      dispatch({
+        type: 'reject',
+        message: texts.errors.titleTooLong(INCIDENT_TITLE_MAX_LENGTH),
+      })
+      return
+    }
 
     if (description.length < INCIDENT_DESCRIPTION_MIN_LENGTH) {
       dispatch({
@@ -189,6 +213,7 @@ export const useIncidentReportWizard = ({ onSuccess }: UseIncidentReportWizardOp
 
     submitMutation.mutate(
       {
+        title: state.title.trim(),
         description: state.description.trim(),
         category: decision.category,
         entrance: state.entrance.trim() || undefined,
@@ -201,6 +226,7 @@ export const useIncidentReportWizard = ({ onSuccess }: UseIncidentReportWizardOp
 
   return {
     step: state.step,
+    title: state.title,
     description: state.description,
     entrance: state.entrance,
     floorZone: state.floorZone,
@@ -213,6 +239,7 @@ export const useIncidentReportWizard = ({ onSuccess }: UseIncidentReportWizardOp
     isAnalyzing: analyzeMutation.isPending,
     isSubmitting: submitMutation.isPending,
     submitError: submitMutation.error,
+    setTitle: (value: string) => dispatch({ type: 'setTitle', value }),
     setDescription: (value: string) => dispatch({ type: 'setDescription', value }),
     setEntrance: (value: string) => dispatch({ type: 'setEntrance', value }),
     setFloorZone: (value: string) => dispatch({ type: 'setFloorZone', value }),
