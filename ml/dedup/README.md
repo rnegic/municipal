@@ -1,6 +1,6 @@
 # ml/dedup — модель дедупликации заявок
 
-Pairwise Cross-Encoder (`cointegrated/rubert-tiny2`, 29M параметров), дообученный на задаче
+Pairwise Cross-Encoder (текущая модель — `sergeyzh/BERTA`, `runs/ftJ-berta-s14`), дообученный на задаче
 «две заявки сообщают об одной и той же конкретной аварии?». Вход: две заявки
 (title, description, подъезд, стояк, срочность). Выход: `P(duplicate)`.
 
@@ -15,7 +15,7 @@ uv pip install -p .venv/bin/python -r requirements.txt --index-strategy unsafe-b
 export HF_HOME=$PWD/cache/hf TOKENIZERS_PARALLELISM=false
 ```
 
-CPU-only torch: сервер без GPU, модель учится на CPU примерно за 45 минут.
+В `requirements.txt` CPU-сборка torch для сервера. Для обучения на GPU поставьте CUDA-сборку (`torch 2.4.1+cu121`), `dedup/scorers.py` сам выберет cuda.
 
 ## Полный цикл
 
@@ -25,9 +25,11 @@ CPU-only torch: сервер без GPU, модель учится на CPU пр
 .venv/bin/python train.py --config configs/ft-text.json
 .venv/bin/python train.py --config configs/pp-pretrain.json
 .venv/bin/python gen_synthetic.py --extra-vocab --out data/raw/synthetic_template_v4.jsonl.gz && .venv/bin/python build_dataset.py --synthetic data/raw/synthetic_template_v4.jsonl.gz
-.venv/bin/python train.py --config configs/ftB-pp-struct-v4.json
-.venv/bin/python evaluate.py --models runs/ft-rubert-tiny2-text runs/ft-rubert-tiny2-struct
-.venv/bin/python export.py --run runs/ftB-pp-struct-v4
+.venv/bin/python build_dataset.py
+.venv/bin/python train.py --config configs/pp2-berta.json
+.venv/bin/python train.py --config configs/ftJ-berta-s14.json
+.venv/bin/python evaluate.py --models runs/ftJ-berta-s14 --threshold-split val_hw
+.venv/bin/python export.py --run runs/ftJ-berta-s14
 ```
 
 | Шаг | Что делает | Результат |
@@ -57,7 +59,7 @@ psql "$DATABASE_URL" -c "\copy (SELECT id, incident_id, reporter_id, house_id, t
 ## Inference
 
 ```bash
-.venv/bin/python serve.py --bundle runs/ftB-pp-struct-v4/onnx --port 8090
+.venv/bin/python serve.py --bundle runs/ftJ-berta-s14/onnx --port 8090
 curl -s localhost:8090/score -d '{"request_a":{"title":"Нет горячей воды","description":"с утра, стояк 3","riser":"3"},"request_b":{"title":"Горячей нет","description":"кв 27, 2 подъезд","riser":"3"}}'
 ```
 
@@ -69,6 +71,6 @@ curl -s localhost:8090/score -d '{"request_a":{"title":"Нет горячей в
 
 ```python
 from dedup.onnx_infer import OnnxDeduper
-d = OnnxDeduper("runs/ftB-pp-struct-v4/onnx")
+d = OnnxDeduper("runs/ftJ-berta-s14/onnx")
 d.score(a, b)
 ```

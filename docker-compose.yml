@@ -35,7 +35,7 @@ services:
 
   laya:
     image: ghcr.io/rnegic/municipal-laya:latest
-    mem_limit: 2g
+    mem_limit: 3g
     environment:
       LAYA_THREADS: ${LAYA_THREADS:-2}
     healthcheck:
