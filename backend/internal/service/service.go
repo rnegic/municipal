@@ -30,6 +30,7 @@ type Service struct {
 
 	cls       Classifier
 	threshold float64
+	matcher   Matcher
 	inflight  chan struct{}
 }
 

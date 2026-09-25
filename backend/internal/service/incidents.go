@@ -129,11 +129,16 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 		return IncidentRow{}, false, err
 	}
 	sev := in.Category.Severity()
+	req := domain.OpenIncident{
+		HouseID: houseID, Category: in.Category, Title: title, Description: d,
+		Entrance: in.Entrance, Riser: in.FloorZone, Severity: sev,
+	}
+	dup, dedupVersion := s.findDuplicate(ctx, req, open)
 	report := repository.ReportInput{
 		ReporterID: reporterID, HouseID: houseID, Title: title, Description: d,
-		Severity: sev, Entrance: in.Entrance, Riser: in.FloorZone, DedupVersion: domain.DedupVersion,
+		Severity: sev, Entrance: in.Entrance, Riser: in.FloorZone, DedupVersion: dedupVersion,
 	}
-	if dup := domain.FindDuplicate(houseID, in.Category, in.FloorZone, time.Now(), open); dup != 0 {
+	if dup != 0 {
 		if err := s.repo.JoinWithPhotos(ctx, dup, reporterID, in.PhotoIDs); err != nil {
 			return IncidentRow{}, false, err
 		}
