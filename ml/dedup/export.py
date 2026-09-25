@@ -64,7 +64,7 @@ def main():
     check = {"pairs": len(pairs)}
     for f in ("model.onnx", "model.int8.onnx"):
         d = OnnxDeduper(bundle, f, threads=2)
-        s = d.scores([p["a"] for p in pairs], [p["b"] for p in pairs])
+        s = np.concatenate([d.scores([p["a"] for p in pairs[i:i + 64]], [p["b"] for p in pairs[i:i + 64]]) for i in range(0, len(pairs), 64)])
         diff = np.abs(s - ref)
         t = time.time()
         for p in pairs[:100]:
