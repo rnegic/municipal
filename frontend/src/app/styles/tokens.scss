@@ -34,7 +34,7 @@
   --app-color-border: var(--divider-secondary);
   --app-color-border-card: color-mix(in srgb, var(--app-color-text-primary) 14%, transparent);
   --app-color-border-input: color-mix(in srgb, var(--app-color-text-primary) 32%, transparent);
-  --app-color-border-cta: light-dark(rgb(122 139 182), rgb(220 230 255));
+  --app-color-border-cta: light-dark(#6c95ff, rgb(220 230 255));
   --app-color-track: var(--controls-inactive);
 
   /* панель */

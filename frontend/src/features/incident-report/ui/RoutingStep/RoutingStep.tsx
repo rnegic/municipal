@@ -5,6 +5,7 @@ import { Input, Typography } from '@maxhub/max-ui'
 import {
   INCIDENT_ENTRANCE_MAX_LENGTH,
   INCIDENT_FLOOR_ZONE_MAX_LENGTH,
+  isUkAuthority,
   type IncidentAuthority,
   type IncidentCategory,
 } from '@/entities/incident'
@@ -53,6 +54,14 @@ export const RoutingStep = ({
 
   const isUkFlow = decision?.isUkResponsibility ?? false
 
+  // В ручном сценарии показываем вердикт сразу после выбора ведомства,
+  // не дожидаясь выбора категории.
+  const verdict =
+    decision ??
+    (isManualRouting && manualAuthority
+      ? { authority: manualAuthority, isUkResponsibility: isUkAuthority(manualAuthority) }
+      : null)
+
   const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     onSubmit()
@@ -69,7 +78,7 @@ export const RoutingStep = ({
         />
       ) : null}
 
-      {decision ? <RoutingVerdict decision={decision} /> : null}
+      {verdict ? <RoutingVerdict decision={verdict} /> : null}
 
       {isUkFlow ? (
         <fieldset className={s.details}>

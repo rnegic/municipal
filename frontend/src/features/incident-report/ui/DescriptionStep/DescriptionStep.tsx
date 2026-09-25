@@ -71,6 +71,7 @@ export const DescriptionStep = ({
         </label>
         <Input
           id={titleId}
+          className={s.titleInput}
           size="large"
           maxLength={INCIDENT_TITLE_MAX_LENGTH}
           placeholder={texts.descriptionStep.titlePlaceholder}

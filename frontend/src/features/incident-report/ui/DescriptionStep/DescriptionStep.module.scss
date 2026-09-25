@@ -14,6 +14,11 @@
   gap: var(--app-space-2);
 }
 
+.titleInput {
+  border: 1px solid var(--app-color-border-input);
+  background-color: var(--app-color-surface-card);
+}
+
 .textareaRoot {
   width: 100%;
   border: 1px solid var(--app-color-border-input);
