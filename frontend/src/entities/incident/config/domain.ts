@@ -28,3 +28,9 @@ export const INCIDENT_REASONING_MAX_LENGTH = 600
 export const INCIDENT_PHOTOS_MAX_COUNT = 5
 export const INCIDENT_PHOTO_MAX_BYTES = 10 * 1024 * 1024
 export const INCIDENT_PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif'] as const
+
+export const INCIDENT_SUPPORTERS_PREVIEW_COUNT = 3
+
+export const INCIDENT_MERGE_MIN_COUNT = 2
+
+export const UK_QUEUE_PRIORITY_MIN_AFFECTED = 3

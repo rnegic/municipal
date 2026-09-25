@@ -14,11 +14,15 @@ import {
   incidentSchema,
   incidentPhotoSchema,
   joinResponseSchema,
+  mergeIncidentsRequestSchema,
+  mergeIncidentsResponseSchema,
   type AnalyzeIncidentInput,
   type CreateIncidentInput,
   type Incident,
   type IncidentListResponse,
+  type MergeIncidentsInput,
   type PaginatedUkQueue,
+  type UkQueueItem,
 } from '../model/schema'
 import { incidentKeys } from './keys'
 
@@ -78,6 +82,28 @@ export const setIncidentStatus = (incidentId: string, status: Incident['status']
     { method: 'PATCH', body: { status }, auth: 'uk' },
     incidentSchema,
   )
+
+export const mergeIncidents = (input: MergeIncidentsInput) =>
+  apiRequest(
+    '/uk/incidents/merge',
+    { method: 'POST', body: mergeIncidentsRequestSchema.parse(input), auth: 'uk' },
+    mergeIncidentsResponseSchema,
+  )
+
+const patchUkQueueCaches = (
+  queryClient: QueryClient,
+  patch: (items: readonly UkQueueItem[]) => UkQueueItem[],
+): void => {
+  queryClient.setQueriesData<PaginatedUkQueue>({ queryKey: incidentKeys.ukQueues() }, (data) => {
+    if (!data) {
+      return data
+    }
+
+    const items = patch(data.items)
+
+    return { ...data, items, total: data.total - (data.items.length - items.length) }
+  })
+}
 
 const patchIncidentCaches = (
   queryClient: QueryClient,
@@ -192,22 +218,52 @@ export const useSetIncidentStatusMutation = () => {
     mutationFn: ({ incidentId, status }: { incidentId: string; status: Incident['status'] }) =>
       setIncidentStatus(incidentId, status),
     onMutate: async ({ incidentId, status }) => {
-      await queryClient.cancelQueries({ queryKey: incidentKeys.ukQueue(0, 100) })
-      const queryKey = incidentKeys.ukQueue(0, 100)
-      const previous = queryClient.getQueryData<PaginatedUkQueue>(queryKey)
+      const context = await snapshotIncidentCaches(queryClient)
 
-      queryClient.setQueryData<PaginatedUkQueue>(queryKey, (data) =>
-        data
-          ? { ...data, items: data.items.map((item) => (item.id === incidentId ? { ...item, status } : item)) }
-          : data,
+      patchUkQueueCaches(queryClient, (items) =>
+        items.map((item) => (item.id === incidentId ? { ...item, status } : item)),
       )
 
-      return { previous, queryKey }
+      return context
     },
     onError: (_error, _variables, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(context.queryKey, context.previous)
-      }
+      restoreIncidentCaches(queryClient, context)
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: incidentKeys.all }),
+  })
+}
+
+export const useMergeIncidentsMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: mergeIncidents,
+    onMutate: async ({ targetIncidentId, sourceIncidentIds }) => {
+      const context = await snapshotIncidentCaches(queryClient)
+      const sources = new Set(sourceIncidentIds)
+
+      patchUkQueueCaches(queryClient, (items) => {
+        const merged = items.filter((item) => sources.has(item.id))
+        const affected = merged.reduce((sum, item) => sum + item.affectedCount, 0)
+        const duplicates = merged.reduce((sum, item) => sum + item.mergedCount, 0)
+
+        return items
+          .filter((item) => !sources.has(item.id))
+          .map((item) =>
+            item.id === targetIncidentId
+              ? {
+                  ...item,
+                  affectedCount: item.affectedCount + affected,
+                  mergedCount: item.mergedCount + merged.length + duplicates,
+                }
+              : item,
+          )
+      })
+
+      return context
+    },
+    onError: (_error, _variables, context) => {
+      restoreIncidentCaches(queryClient, context)
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: incidentKeys.all }),
   })

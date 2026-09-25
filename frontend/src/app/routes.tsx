@@ -9,6 +9,9 @@ import { RequireAddress } from './providers/require-address'
 import { RequireRole } from './providers/require-role'
 
 const FeedPage = lazy(() => import('@/pages/feed').then((module) => ({ default: module.FeedPage })))
+const HouseIncidentsPage = lazy(() =>
+  import('@/pages/house-incidents').then((module) => ({ default: module.HouseIncidentsPage })),
+)
 const IncidentPage = lazy(() =>
   import('@/pages/incident').then((module) => ({ default: module.IncidentPage })),
 )
@@ -58,6 +61,16 @@ export const AppRoutes = () => {
         }
       />
       <Route path={ROUTES.incidentCreate} element={<IncidentCreatePage />} />
+      <Route
+        path={ROUTES.houseIncidents}
+        element={
+          <RequireAddress>
+            <RequireRole role="resident">
+              <HouseIncidentsPage />
+            </RequireRole>
+          </RequireAddress>
+        }
+      />
       <Route path={ROUTES.incident()} element={<IncidentPage />} />
       <Route
         path={ROUTES.dispatcher}
