@@ -1,15 +1,15 @@
 import { readFileSync } from "node:fs";
 import { Laya } from "@receptron/laya";
-import { questions, toState, loadOptions } from "./questions.mjs";
+import { createClassifier, loadOptions } from "./questions.mjs";
 
 const { labeled, noise } = JSON.parse(readFileSync(new URL("./eval.json", import.meta.url)));
 const laya = await Laya.load(loadOptions());
 console.log("model", laya.modelDir);
+const classify = await createClassifier(laya);
 
 const run = async (text) => {
   const t = Date.now();
-  const { answers } = await laya.systemOne(toState(text), questions);
-  const a = answers.category;
+  const a = await classify(text);
   return { label: a.choice, p: a.probabilities[a.choice], ms: Date.now() - t };
 };
 
