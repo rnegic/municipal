@@ -27,6 +27,8 @@ services:
       UK_JWT_PRIVATE_KEY: ${UK_JWT_PRIVATE_KEY:-}
       LAYA_URL: http://laya:8090
       LAYA_CATEGORY_THRESHOLD: ${LAYA_CATEGORY_THRESHOLD:-0.7}
+      DEDUP_URL: http://dedup:8090
+      DEDUP_TIMEOUT: ${DEDUP_TIMEOUT:-5s}
     ports: ["127.0.0.1:8080:8080"] # наружу — через nginx на хосте
     depends_on:
       db: { condition: service_healthy }
@@ -42,6 +44,17 @@ services:
       test: ["CMD", "node", "-e", "fetch('http://localhost:8090/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
       start_period: 120s
+    restart: unless-stopped
+
+  dedup:
+    image: ghcr.io/rnegic/municipal-dedup:latest
+    mem_limit: 1536m
+    environment:
+      DEDUP_THREADS: ${DEDUP_THREADS:-2}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/healthz')"]
+      interval: 10s
+      start_period: 60s
     restart: unless-stopped
 
   mock-uk-db:
