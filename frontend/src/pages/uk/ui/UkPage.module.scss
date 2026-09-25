@@ -94,6 +94,11 @@
   cursor: pointer;
 }
 
+.archiveSwitch {
+  /* stylelint-disable-next-line custom-property-pattern */
+  --MaxUi-Switch__toggle_background: var(--app-color-track);
+}
+
 .column {
   display: flex;
   flex-direction: column;
@@ -164,6 +169,7 @@
 
 .categoryIcon {
   align-self: center;
+  flex: none;
 }
 
 .content {
@@ -171,6 +177,14 @@
   flex: 1;
   flex-direction: column;
   gap: var(--app-space-4);
+  min-width: 0;
+}
+
+.cardTitleRow {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--app-space-2);
   min-width: 0;
 }
 
@@ -247,7 +261,6 @@
 }
 
 .cardTitle {
-  flex: 1 1 auto;
   min-width: 0;
 }
 

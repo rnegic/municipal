@@ -173,7 +173,6 @@ const QueueCard = ({
         )
       }}
     >
-      <CategoryIcon category={incident.category} size={35} className={s.categoryIcon} />
       <div className={s.content}>
         <div className={s.cardHead}>
           {selection.isActive ? (
@@ -184,9 +183,12 @@ const QueueCard = ({
               onChange={selection.onToggle}
             />
           ) : null}
-          <Typography.Text className={s.cardTitle} variant="body-strong">
-            {incident.title}
-          </Typography.Text>
+          <div className={s.cardTitleRow}>
+            <CategoryIcon category={incident.category} size={18} className={s.categoryIcon} />
+            <Typography.Text className={s.cardTitle} variant="body-strong">
+              {incident.title}
+            </Typography.Text>
+          </div>
           <span className={incident.severity === 'critical' ? s.critical : s.warning}>
             {incidentTexts.severity[incident.severity]}
           </span>
@@ -456,6 +458,7 @@ export const UkPage = () => {
             </Typography.Text>
             <Switch
               checked={showArchive}
+              className={s.archiveSwitch}
               aria-label="Показать архив закрытых"
               onChange={(event) => setShowArchive(event.target.checked)}
             />
