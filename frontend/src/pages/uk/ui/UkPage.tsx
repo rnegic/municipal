@@ -156,126 +156,126 @@ const QueueCard = ({
   const isDimmed = selection.isActive && !selection.isSelectable && !selection.isSelected
 
   return (
-    <div className={s.cardRow}>
-      <CategoryIcon category={incident.category} size={40} className={s.cardIcon} />
-      <Card
-        className={cn(
-          s.card,
-          isPriority && s.cardPriority,
-          selection.isSelected && s.cardSelected,
-          isDimmed && s.cardDimmed,
-        )}
-        padding="compact"
-        draggable={!selection.isActive}
-        onDragStart={(event) => {
-          event.dataTransfer.effectAllowed = 'move'
-          event.dataTransfer.setData(
-            'text/plain',
-            JSON.stringify({ id: incident.id, status: incident.status }),
-          )
-        }}
-      >
-      <div className={s.cardHead}>
-        {selection.isActive ? (
-          <Checkbox
-            checked={selection.isSelected}
-            disabled={!selection.isSelectable && !selection.isSelected}
-            aria-label={incidentTexts.queue.selectCard}
-            onChange={selection.onToggle}
-          />
-        ) : null}
-        <Typography.Text className={s.cardTitle} variant="body-strong">
-          {incident.title}
-        </Typography.Text>
-        <span className={incident.severity === 'critical' ? s.critical : s.warning}>
-          {incidentTexts.severity[incident.severity]}
-        </span>
-      </div>
-      {isPriority || incident.mergedCount > 0 ? (
-        <div className={s.badges}>
-          {isPriority ? (
-            <span className={s.priority}>
-              {incidentTexts.queue.priorityBadge} · {incident.affectedCount}
-            </span>
+    <Card
+      className={cn(
+        s.card,
+        isPriority && s.cardPriority,
+        selection.isSelected && s.cardSelected,
+        isDimmed && s.cardDimmed,
+      )}
+      padding="compact"
+      draggable={!selection.isActive}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = 'move'
+        event.dataTransfer.setData(
+          'text/plain',
+          JSON.stringify({ id: incident.id, status: incident.status }),
+        )
+      }}
+    >
+      <CategoryIcon category={incident.category} size={35} className={s.categoryIcon} />
+      <div className={s.content}>
+        <div className={s.cardHead}>
+          {selection.isActive ? (
+            <Checkbox
+              checked={selection.isSelected}
+              disabled={!selection.isSelectable && !selection.isSelected}
+              aria-label={incidentTexts.queue.selectCard}
+              onChange={selection.onToggle}
+            />
           ) : null}
-          {incident.mergedCount > 0 ? (
-            <span className={s.merged}>{incidentTexts.merge.duplicatesBadge(incident.mergedCount)}</span>
-          ) : null}
-        </div>
-      ) : null}
-      <Typography.Text variant="description" color="secondary">
-        {incident.description}
-      </Typography.Text>
-      <IncidentPhotos photos={incident.photos} />
-      <div className={s.details}>
-        <div className={s.addressRow}>
-          <IconLocation size={16} className={s.addressIcon} />
-          <Typography.Text className={s.address} variant="note" color="tertiary">
-            {incident.houseAddress}
+          <Typography.Text className={s.cardTitle} variant="body-strong">
+            {incident.title}
           </Typography.Text>
+          <span className={incident.severity === 'critical' ? s.critical : s.warning}>
+            {incidentTexts.severity[incident.severity]}
+          </span>
         </div>
-        <div className={s.meta}>
-          <div className={s.metaItem}>
-            <Typography.Text variant="note" color="tertiary">
-              {incidentTexts.queue.reporter}
-            </Typography.Text>
-            <Typography.Text variant="note-strong">{incident.reporterName}</Typography.Text>
+        {isPriority || incident.mergedCount > 0 ? (
+          <div className={s.badges}>
+            {isPriority ? (
+              <span className={s.priority}>
+                {incidentTexts.queue.priorityBadge} · {incident.affectedCount}
+              </span>
+            ) : null}
+            {incident.mergedCount > 0 ? (
+              <span className={s.merged}>{incidentTexts.merge.duplicatesBadge(incident.mergedCount)}</span>
+            ) : null}
           </div>
-          <div className={s.metaItem}>
-            <Typography.Text variant="note" color="tertiary">
-              {incidentTexts.queue.signatories}
-            </Typography.Text>
-            <Typography.Text className={isPriority ? s.signatories : undefined} variant="note-strong">
-              {incident.affectedCount}
-            </Typography.Text>
-          </div>
-          <div className={s.metaItem}>
-            <Typography.Text variant="note" color="tertiary">
-              {incidentTexts.queue.due}
-            </Typography.Text>
-            <Typography.Text
-              className={isOverdue(incident.dueAt) ? s.slaOverdue : undefined}
-              variant="note-strong"
-            >
-              {getSlaLabel(incident.dueAt)}
+        ) : null}
+        <Typography.Text variant="description" color="secondary">
+          {incident.description}
+        </Typography.Text>
+        <IncidentPhotos photos={incident.photos} />
+        <div className={s.details}>
+          <div className={s.addressRow}>
+            <IconLocation size={16} className={s.addressIcon} />
+            <Typography.Text className={s.address} variant="note" color="tertiary">
+              {incident.houseAddress}
             </Typography.Text>
           </div>
-          <div className={s.metaItem}>
-            <Typography.Text variant="note" color="tertiary">
-              {incidentTexts.queue.createdAt}
-            </Typography.Text>
-            <Typography.Text variant="note-strong">{formatDateTime(incident.createdAt)}</Typography.Text>
+          <div className={s.meta}>
+            <div className={s.metaItem}>
+              <Typography.Text variant="note" color="tertiary">
+                {incidentTexts.queue.reporter}
+              </Typography.Text>
+              <Typography.Text variant="note-strong">{incident.reporterName}</Typography.Text>
+            </div>
+            <div className={s.metaItem}>
+              <Typography.Text variant="note" color="tertiary">
+                {incidentTexts.queue.signatories}
+              </Typography.Text>
+              <Typography.Text className={isPriority ? s.signatories : undefined} variant="note-strong">
+                {incident.affectedCount}
+              </Typography.Text>
+            </div>
+            <div className={s.metaItem}>
+              <Typography.Text variant="note" color="tertiary">
+                {incidentTexts.queue.due}
+              </Typography.Text>
+              <Typography.Text
+                className={isOverdue(incident.dueAt) ? s.slaOverdue : undefined}
+                variant="note-strong"
+              >
+                {getSlaLabel(incident.dueAt)}
+              </Typography.Text>
+            </div>
+            <div className={s.metaItem}>
+              <Typography.Text variant="note" color="tertiary">
+                {incidentTexts.queue.createdAt}
+              </Typography.Text>
+              <Typography.Text variant="note-strong">{formatDateTime(incident.createdAt)}</Typography.Text>
+            </div>
           </div>
         </div>
+        {!selection.isActive && (column.prevAction || (column.action && nextStatus)) ? (
+          <div className={s.actions}>
+            {column.prevAction && prevStatus ? (
+              <Button
+                size="small"
+                tone="secondary"
+                stretched
+                disabled={isPending}
+                onClick={() => onMove(incident.id, prevStatus)}
+              >
+                {column.prevAction}
+              </Button>
+            ) : null}
+            {column.action && nextStatus ? (
+              <Button
+                size="small"
+                tone={column.actionTone}
+                stretched
+                disabled={isPending}
+                onClick={() => onMove(incident.id, nextStatus)}
+              >
+                {column.action}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
-      {!selection.isActive && (column.prevAction || (column.action && nextStatus)) ? (
-        <div className={s.actions}>
-          {column.prevAction && prevStatus ? (
-            <Button
-              size="small"
-              tone="secondary"
-              stretched
-              disabled={isPending}
-              onClick={() => onMove(incident.id, prevStatus)}
-            >
-              {column.prevAction}
-            </Button>
-          ) : null}
-          {column.action && nextStatus ? (
-            <Button
-              size="small"
-              tone={column.actionTone}
-              stretched
-              disabled={isPending}
-              onClick={() => onMove(incident.id, nextStatus)}
-            >
-              {column.action}
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-      </Card>
-    </div>
+    </Card>
   )
 }
 

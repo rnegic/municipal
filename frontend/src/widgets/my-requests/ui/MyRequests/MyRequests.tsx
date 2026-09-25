@@ -30,24 +30,26 @@ export const MyRequests = ({ requests, className }: MyRequestsProps) => (
     ) : (
       <ul className={s.list}>
         {requests.map((request) => (
-          <li key={request.id} className={s.item}>
-            <CategoryIcon category={request.category} size={40} className={s.icon} />
+          <li key={request.id}>
             <Card padding="compact" className={s.card}>
-              <div className={s.head}>
-                <Typography.Text className={s.title} variant="body-strong">
-                  {request.title}
-                </Typography.Text>
-                <IncidentStatusBadge status={request.status} />
-              </div>
-              <div className={s.meta}>
-                <Typography.Text variant="note" color="tertiary">
-                  {incidentTexts.requests.createdAt(formatDateTime(request.createdAt))}
-                </Typography.Text>
-                {request.dueAt ? (
-                  <Typography.Text variant="note" color="tertiary">
-                    {incidentTexts.requests.dueAt(formatDate(request.dueAt))}
+              <CategoryIcon category={request.category} size={35} />
+              <div className={s.content}>
+                <div className={s.head}>
+                  <Typography.Text className={s.title} variant="body-strong">
+                    {request.title}
                   </Typography.Text>
-                ) : null}
+                  <IncidentStatusBadge status={request.status} />
+                </div>
+                <div className={s.meta}>
+                  <Typography.Text variant="note" color="tertiary">
+                    {incidentTexts.requests.createdAt(formatDateTime(request.createdAt))}
+                  </Typography.Text>
+                  {request.dueAt ? (
+                    <Typography.Text variant="note" color="tertiary">
+                      {incidentTexts.requests.dueAt(formatDate(request.dueAt))}
+                    </Typography.Text>
+                  ) : null}
+                </div>
               </div>
             </Card>
           </li>

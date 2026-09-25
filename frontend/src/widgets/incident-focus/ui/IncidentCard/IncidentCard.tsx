@@ -1,6 +1,7 @@
 import { Typography } from '@maxhub/max-ui'
 
 import {
+  CategoryIcon,
   IncidentStatusBadge,
   IncidentPhotos,
   incidentTexts,
@@ -27,43 +28,46 @@ const SEVERITY_TO_ICON_CLASS: Record<IncidentSeverity, string | undefined> = {
 
 export const IncidentCard = ({ incident, className }: IncidentCardProps) => (
   <Card className={cn(s.root, className)}>
-    <div className={s.head}>
-      <div className={s.titleRow}>
-        <span className={cn(s.severityIcon, SEVERITY_TO_ICON_CLASS[incident.severity])}>
-          <IconAlertTriangle size={24} />
-        </span>
-        <Typography.Text className={s.title} variant="title">
-          {incident.title}
-        </Typography.Text>
+    <CategoryIcon category={incident.category} size={35} className={s.categoryIcon} />
+    <div className={s.content}>
+      <div className={s.head}>
+        <div className={s.titleRow}>
+          <span className={cn(s.severityIcon, SEVERITY_TO_ICON_CLASS[incident.severity])}>
+            <IconAlertTriangle size={24} />
+          </span>
+          <Typography.Text className={s.title} variant="title">
+            {incident.title}
+          </Typography.Text>
+        </div>
+        <IncidentStatusBadge status={incident.status} />
       </div>
-      <IncidentStatusBadge status={incident.status} />
-    </div>
-    <Typography.Text variant="description" color="secondary">
-      {incident.description}
-    </Typography.Text>
-    {incident.mergedCount > 0 ? (
-      <Typography.Text variant="note" color="tertiary">
-        {incidentTexts.merge.duplicatesBadge(incident.mergedCount)}
+      <Typography.Text variant="description" color="secondary">
+        {incident.description}
       </Typography.Text>
-    ) : null}
-    <IncidentPhotos photos={incident.photos} />
-    <IncidentShareButton incident={incident} className={s.shareButton} />
-    {incident.status === 'verifying' ? (
-      <div className={s.footer}>
-        <IncidentConfirmButton
+      {incident.mergedCount > 0 ? (
+        <Typography.Text variant="note" color="tertiary">
+          {incidentTexts.merge.duplicatesBadge(incident.mergedCount)}
+        </Typography.Text>
+      ) : null}
+      <IncidentPhotos photos={incident.photos} />
+      <IncidentShareButton incident={incident} className={s.shareButton} />
+      {incident.status === 'verifying' ? (
+        <div className={s.footer}>
+          <IncidentConfirmButton
+            incidentId={incident.id}
+            alreadyConfirmed={incident.confirmedByMe}
+            stretched
+          />
+        </div>
+      ) : (
+        <IncidentJoinButton
           incidentId={incident.id}
-          alreadyConfirmed={incident.confirmedByMe}
-          stretched
+          affectedCount={incident.affectedCount}
+          supporters={incident.supporters}
+          alreadyJoined={incident.joinedByMe}
+          className={s.join}
         />
-      </div>
-    ) : (
-      <IncidentJoinButton
-        incidentId={incident.id}
-        affectedCount={incident.affectedCount}
-        supporters={incident.supporters}
-        alreadyJoined={incident.joinedByMe}
-        className={s.join}
-      />
-    )}
+      )}
+    </div>
   </Card>
 )

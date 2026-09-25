@@ -1,6 +1,6 @@
 import { Link, Navigate } from 'react-router-dom'
 
-import { CategoryIcon, incidentTexts, useActiveIncidentsQuery } from '@/entities/incident'
+import { incidentTexts, useActiveIncidentsQuery } from '@/entities/incident'
 import { useCurrentHouseQuery } from '@/entities/user'
 import { IconChevronLeft } from '@/shared/assets/icons'
 import { AllOkIllustration } from '@/shared/assets/illustrations'
@@ -62,9 +62,8 @@ export const HouseIncidentsPage = () => {
         <Section title={incidentTexts.houseIncidents.title}>
           <ul className={s.list}>
             {incidentsQuery.data.items.map((incident) => (
-              <li key={incident.id} className={s.item}>
-                <CategoryIcon category={incident.category} size={40} className={s.icon} />
-                <IncidentCard incident={incident} className={s.card} />
+              <li key={incident.id}>
+                <IncidentCard incident={incident} />
               </li>
             ))}
           </ul>

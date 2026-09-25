@@ -11,18 +11,16 @@
   list-style: none;
 }
 
-.item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--app-space-4);
-}
-
-.icon {
-  margin-top: var(--app-space-2);
-}
-
 .card {
+  flex-direction: row;
+  align-items: center;
+}
+
+.content {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  gap: var(--app-space-4);
   min-width: 0;
 }
 
