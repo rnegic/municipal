@@ -233,8 +233,8 @@ func TestSetIncidentStatus_DispatcherTransitionsAndNotifies(t *testing.T) {
 		return serve(srv, bearerReq("PATCH", "/api/incidents/"+inc.Id+"/status", `{"status":"`+status+`"}`, token)).Code
 	}
 
-	if code := setStatus("verifying"); code != 422 {
-		t.Fatalf("out-of-order transition: want 422 got %d", code)
+	if code := setStatus("done"); code != 422 {
+		t.Fatalf("accepted → done: want 422 got %d", code)
 	}
 
 	for _, status := range []string{"in_progress", "verifying", "done"} {
