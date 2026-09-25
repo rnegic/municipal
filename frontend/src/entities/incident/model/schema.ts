@@ -28,6 +28,12 @@ export const incidentPhotoSchema = z.object({
   url: z.string(),
 })
 
+export const incidentSupporterSchema = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+  avatarUrl: z.string().nullable(),
+})
+
 export const incidentSchema = z.object({
   id: z.string(),
   houseId: z.string(),
@@ -42,6 +48,8 @@ export const incidentSchema = z.object({
   joinedByMe: z.boolean(),
   confirmedByMe: z.boolean(),
   photos: z.array(incidentPhotoSchema),
+  supporters: z.array(incidentSupporterSchema).default([]),
+  mergedCount: z.number().int().nonnegative().default(0),
 })
 
 export const incidentListResponseSchema = z.object({
@@ -78,6 +86,8 @@ export const ukQueueItemSchema = z.object({
   confirmedCount: z.number().int().nonnegative(),
   reporterName: z.string(),
   photos: z.array(incidentPhotoSchema),
+  category: incidentCategorySchema.nullable().default(null),
+  mergedCount: z.number().int().nonnegative().default(0),
 })
 
 export const paginatedUkQueueSchema = z.object({
@@ -97,6 +107,17 @@ export const confirmResponseSchema = z.object({
   incidentId: z.string(),
   status: incidentStatusSchema,
   confirmedAt: timestampSchema,
+})
+
+export const mergeIncidentsRequestSchema = z.object({
+  targetIncidentId: z.string().min(1),
+  sourceIncidentIds: z.array(z.string().min(1)).min(1),
+})
+
+export const mergeIncidentsResponseSchema = z.object({
+  targetIncidentId: z.string(),
+  mergedIncidentIds: z.array(z.string()),
+  affectedCount: z.number().int().nonnegative(),
 })
 
 const optionalTrimmedText = (maxLength: number) =>
@@ -149,6 +170,7 @@ export const createIncidentRequestSchema = z
 
 export type Incident = z.infer<typeof incidentSchema>
 export type IncidentPhoto = z.infer<typeof incidentPhotoSchema>
+export type IncidentSupporter = z.infer<typeof incidentSupporterSchema>
 export type IncidentSeverity = z.infer<typeof incidentSeveritySchema>
 export type IncidentStatus = z.infer<typeof incidentStatusSchema>
 export type IncidentCategory = z.infer<typeof incidentCategorySchema>
@@ -160,6 +182,8 @@ export type UkQueueItem = z.infer<typeof ukQueueItemSchema>
 export type PaginatedUkQueue = z.infer<typeof paginatedUkQueueSchema>
 export type JoinResponse = z.infer<typeof joinResponseSchema>
 export type ConfirmResponse = z.infer<typeof confirmResponseSchema>
+export type MergeIncidentsInput = z.input<typeof mergeIncidentsRequestSchema>
+export type MergeIncidentsResult = z.infer<typeof mergeIncidentsResponseSchema>
 export type AnalyzeIncidentInput = z.input<typeof analyzeIncidentRequestSchema>
 export type AnalyzeIncidentResult = z.infer<typeof analyzeIncidentResponseSchema>
 export type CreateIncidentInput = z.input<typeof createIncidentRequestSchema>
