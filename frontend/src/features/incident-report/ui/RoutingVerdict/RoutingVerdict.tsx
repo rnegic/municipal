@@ -1,14 +1,20 @@
 import { Typography } from '@maxhub/max-ui'
 
-import { incidentTexts } from '@/entities/incident'
+import { incidentTexts, type IncidentAuthority, type IncidentCategory } from '@/entities/incident'
 import { IconAlertTriangle, IconCheckCircle } from '@/shared/assets/icons'
 import { cn } from '@/shared/lib/cn'
 import { incidentReportTexts as texts } from '../../config/texts'
-import type { IncidentRoutingDecision } from '../../model/types'
 import s from './RoutingVerdict.module.scss'
 
+export interface RoutingVerdictData {
+  authority: IncidentAuthority
+  isUkResponsibility: boolean
+  category?: IncidentCategory | null
+  reasoningText?: string | null
+}
+
 export interface RoutingVerdictProps {
-  decision: IncidentRoutingDecision
+  decision: RoutingVerdictData
   className?: string
 }
 
@@ -31,18 +37,20 @@ export const RoutingVerdict = ({ decision, className }: RoutingVerdictProps) => 
       </header>
 
       <dl className={s.facts}>
-        <div className={s.fact}>
-          <dt>
-            <Typography.Text variant="note" color="inherit">
-              {texts.routingStep.categoryLabel}
-            </Typography.Text>
-          </dt>
-          <dd className={s.factValue}>
-            <Typography.Text variant="body-strong" color="inherit">
-              {incidentTexts.categories[decision.category]}
-            </Typography.Text>
-          </dd>
-        </div>
+        {decision.category ? (
+          <div className={s.fact}>
+            <dt>
+              <Typography.Text variant="note" color="inherit">
+                {texts.routingStep.categoryLabel}
+              </Typography.Text>
+            </dt>
+            <dd className={s.factValue}>
+              <Typography.Text variant="body-strong" color="inherit">
+                {incidentTexts.categories[decision.category]}
+              </Typography.Text>
+            </dd>
+          </div>
+        ) : null}
         <div className={s.fact}>
           <dt>
             <Typography.Text variant="note" color="inherit">

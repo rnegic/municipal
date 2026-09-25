@@ -34,7 +34,7 @@
   --app-color-border: var(--divider-secondary);
   --app-color-border-card: color-mix(in srgb, var(--app-color-text-primary) 14%, transparent);
   --app-color-border-input: color-mix(in srgb, var(--app-color-text-primary) 32%, transparent);
-  --app-color-border-cta: light-dark(rgb(165 178 214), rgb(220 230 255));
+  --app-color-border-cta: rgb(220 230 255);
   --app-color-track: var(--controls-inactive);
 
   /* панель */
@@ -77,3 +77,11 @@
   --app-layout-width-wide: 1200px;
   --app-z-floating: 10;
 }
+
+/* Тема-специфичные токены: цвет берём от класса темы приложения, а не от
+   системного color-scheme (light-dark()), чтобы значения не расходились с
+   выбранной пользователем темой. */
+.app-theme-root.app-theme-light {
+  --app-color-border-cta: #6c95ff;
+}
+
