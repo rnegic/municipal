@@ -21,16 +21,22 @@ var activeStatuses = []Expression{
 
 func (s *Store) OpenIncidents(ctx context.Context, houseID int64) ([]domain.OpenIncident, error) {
 	var rows []model.Incident
-	err := SELECT(Incident.ID, Incident.HouseID, Incident.Category, Incident.Riser, Incident.Status, Incident.CreatedAt).
+	err := SELECT(Incident.ID, Incident.HouseID, Incident.Category, Incident.Title, Incident.Description,
+		Incident.Entrance, Incident.Riser, Incident.Severity, Incident.Status, Incident.CreatedAt).
 		FROM(Incident).
-		WHERE(Incident.HouseID.EQ(Int64(houseID)).AND(Incident.Status.IN(openStatuses...))).
+		WHERE(Incident.HouseID.EQ(Int64(houseID)).
+			AND(Incident.Status.IN(openStatuses...)).
+			AND(Incident.CreatedAt.GT_EQ(TimestampzT(time.Now().Add(-domain.DedupCandidateWindow))))).
 		QueryContext(ctx, s.db, &rows)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]domain.OpenIncident, len(rows))
 	for i, r := range rows {
-		out[i] = domain.OpenIncident{ID: r.ID, HouseID: r.HouseID, Riser: r.Riser, Status: domain.IncidentStatus(r.Status), CreatedAt: r.CreatedAt}
+		out[i] = domain.OpenIncident{
+			ID: r.ID, HouseID: r.HouseID, Title: r.Title, Description: r.Description, Entrance: r.Entrance, Riser: r.Riser,
+			Severity: domain.Severity(r.Severity), Status: domain.IncidentStatus(r.Status), CreatedAt: r.CreatedAt,
+		}
 		if r.Category != nil {
 			out[i].Category = domain.Category(*r.Category)
 		}

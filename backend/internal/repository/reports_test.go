@@ -138,3 +138,24 @@ func TestAddReport_DuplicateIsIgnored(t *testing.T) {
 		t.Fatalf("want 1 report after repeat, got %d", len(got))
 	}
 }
+
+func TestOpenIncidentsCarriesTextAndSkipsOld(t *testing.T) {
+	s := testStore(t)
+	houseID, _, incidentID := seedIncident(t, s)
+	ctx := context.Background()
+	got, err := s.OpenIncidents(ctx, houseID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].ID != incidentID || got[0].Title != "Нет воды" || got[0].Description != "с утра" ||
+		got[0].Severity != domain.SeverityCritical || got[0].Category != domain.CategoryWaterHeat {
+		t.Fatalf("%+v", got)
+	}
+	if _, err := s.db.ExecContext(ctx, `UPDATE incident SET created_at = now() - interval '8 days' WHERE id = $1`, incidentID); err != nil {
+		t.Fatal(err)
+	}
+	got, err = s.OpenIncidents(ctx, houseID)
+	if err != nil || len(got) != 0 {
+		t.Fatalf("old incident must be skipped: %+v %v", got, err)
+	}
+}
