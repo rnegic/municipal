@@ -22,4 +22,5 @@ type AppUser struct {
 	Position     *string
 	PasswordHash *string
 	AdsAuthority bool
+	AvatarURL    *string
 }

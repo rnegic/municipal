@@ -7,6 +7,7 @@ import (
 	"time"
 
 	oapi "ukapp/gen/api"
+	"ukapp/internal/domain"
 	"ukapp/internal/service"
 
 	"ukapp/gen/db/ukapp/public/model"
@@ -72,6 +73,7 @@ func (s *server) ListUkQueue(ctx context.Context, req oapi.ListUkQueueRequestObj
 			Title: r.Title, Description: r.Description, Severity: oapi.Severity(r.Severity), Status: oapi.IncidentStatus(r.Status),
 			CreatedAt: r.CreatedAt, DueAt: r.DueAt, AffectedCount: r.AffectedCount, ConfirmedCount: r.ConfirmedCount,
 			ReporterName: r.ReporterName, Photos: toPhotos(r.PhotoIDs),
+			Category: (*oapi.IncidentCategory)(r.Category), MergedCount: r.MergedCount,
 		}
 	}
 	return oapi.ListUkQueue200JSONResponse{Items: items, Total: int(total), Offset: int(offset), Limit: int(limit)}, nil
@@ -131,4 +133,38 @@ func (s *server) ListEvents(ctx context.Context, req oapi.ListEventsRequestObjec
 		items[i] = toEvent(e, now)
 	}
 	return oapi.ListEvents200JSONResponse{Items: items}, nil
+}
+
+func (s *server) MergeIncidents(ctx context.Context, req oapi.MergeIncidentsRequestObject) (oapi.MergeIncidentsResponseObject, error) {
+	notFound := oapi.MergeIncidents404JSONResponse(apiErr("not_found", "заявка не найдена"))
+	target, ok := parseID("inc_", req.Body.TargetIncidentId)
+	if !ok {
+		return notFound, nil
+	}
+	sources := make([]int64, len(req.Body.SourceIncidentIds))
+	for i, raw := range req.Body.SourceIncidentIds {
+		if sources[i], ok = parseID("inc_", raw); !ok {
+			return notFound, nil
+		}
+	}
+	res, err := s.svc.MergeIncidents(ctx, userFromCtx(ctx), target, sources)
+	switch {
+	case errors.Is(err, domain.ErrMergeInvalid):
+		return oapi.MergeIncidents400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", "нужна хотя бы одна заявка-дубликат, отличная от главной"))}, nil
+	case errors.Is(err, domain.ErrMergeNotFound):
+		return notFound, nil
+	case errors.Is(err, domain.ErrMergeForeign):
+		return oapi.MergeIncidents403JSONResponse(apiErr("forbidden", "заявка относится к дому другой УК")), nil
+	case errors.Is(err, domain.ErrMergeRuleFails):
+		return oapi.MergeIncidents422JSONResponse(apiErr("business_rule_failed", "склеивать можно только незакрытые заявки одного дома")), nil
+	case err != nil:
+		return nil, err
+	}
+	merged := make([]string, 0, len(sources))
+	for _, id := range sources {
+		merged = append(merged, formatIncidentID(id))
+	}
+	return oapi.MergeIncidents200JSONResponse{
+		TargetIncidentId: formatIncidentID(target), MergedIncidentIds: merged, AffectedCount: res.AffectedCount,
+	}, nil
 }

@@ -21,7 +21,7 @@ type maxUserKey struct{}
 
 var publicOps = map[string]bool{"Health": true, "GetPhoto": true}
 
-var dispatcherOps = map[string]bool{"ListUkQueue": true, "CreateUkEvent": true, "SetIncidentStatus": true}
+var dispatcherOps = map[string]bool{"ListUkQueue": true, "CreateUkEvent": true, "SetIncidentStatus": true, "MergeIncidents": true}
 
 var residentOps = map[string]bool{
 	"BindHouse": true, "UnbindHouse": true, "CreateIncident": true, "JoinIncident": true,

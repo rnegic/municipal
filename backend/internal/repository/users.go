@@ -16,10 +16,17 @@ import (
 
 func (s *Store) UpsertUser(ctx context.Context, iu domain.InitUser) (model.AppUser, error) {
 	name := strings.TrimSpace(iu.FirstName + " " + iu.LastName)
+	var avatar *string
+	if iu.PhotoURL != "" {
+		avatar = &iu.PhotoURL
+	}
 	var u model.AppUser
-	err := AppUser.INSERT(AppUser.MaxUserID, AppUser.FullName).
-		VALUES(iu.ID, name).
-		ON_CONFLICT(AppUser.MaxUserID).DO_UPDATE(SET(AppUser.FullName.SET(AppUser.EXCLUDED.FullName))).
+	err := AppUser.INSERT(AppUser.MaxUserID, AppUser.FullName, AppUser.AvatarURL).
+		VALUES(iu.ID, name, avatar).
+		ON_CONFLICT(AppUser.MaxUserID).DO_UPDATE(SET(
+		AppUser.FullName.SET(AppUser.EXCLUDED.FullName),
+		AppUser.AvatarURL.SET(AppUser.EXCLUDED.AvatarURL),
+	)).
 		RETURNING(AppUser.AllColumns).
 		QueryContext(ctx, s.db, &u)
 	return u, err

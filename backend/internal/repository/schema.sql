@@ -35,6 +35,7 @@ ALTER TABLE app_user ALTER COLUMN max_user_id DROP NOT NULL;
 ALTER TABLE app_user ADD COLUMN IF NOT EXISTS position TEXT;
 ALTER TABLE app_user ADD COLUMN IF NOT EXISTS password_hash TEXT;
 ALTER TABLE app_user ADD COLUMN IF NOT EXISTS ads_authority BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE app_user ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE app_user DROP CONSTRAINT IF EXISTS app_user_role_check;
 ALTER TABLE app_user ADD CONSTRAINT app_user_role_check CHECK (
   (role = 'resident' AND max_user_id IS NOT NULL) OR (role = 'uk_dispatcher' AND uk_id IS NOT NULL));
@@ -82,6 +83,9 @@ ALTER TABLE incident ADD COLUMN IF NOT EXISTS routing_source TEXT
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS category_predicted TEXT;
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS routing_confidence REAL;
 CREATE INDEX IF NOT EXISTS incident_house_category ON incident(house_id, category, status, created_at DESC);
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS merged_into_id BIGINT REFERENCES incident(id);
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS merged_count INT NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS incident_merged_into ON incident(merged_into_id) WHERE merged_into_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS incident_subscription (
   incident_id BIGINT NOT NULL REFERENCES incident(id),
@@ -114,6 +118,9 @@ CREATE TABLE IF NOT EXISTS incident_report (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (incident_id, reporter_id)
 );
+ALTER TABLE incident_report DROP CONSTRAINT IF EXISTS incident_report_outcome_check;
+ALTER TABLE incident_report ADD CONSTRAINT incident_report_outcome_check
+  CHECK (outcome IN ('created','joined','merged_manual'));
 
 CREATE TABLE IF NOT EXISTS uk_event (
   id             BIGSERIAL PRIMARY KEY,

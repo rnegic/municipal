@@ -27,6 +27,7 @@ type appUserTable struct {
 	Position     postgres.ColumnString
 	PasswordHash postgres.ColumnString
 	AdsAuthority postgres.ColumnBool
+	AvatarURL    postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -78,8 +79,9 @@ func newAppUserTableImpl(schemaName, tableName, alias string) appUserTable {
 		PositionColumn     = postgres.StringColumn("position")
 		PasswordHashColumn = postgres.StringColumn("password_hash")
 		AdsAuthorityColumn = postgres.BoolColumn("ads_authority")
-		allColumns         = postgres.ColumnList{IDColumn, MaxUserIDColumn, FullNameColumn, RoleColumn, HouseIDColumn, UkIDColumn, CreatedAtColumn, PositionColumn, PasswordHashColumn, AdsAuthorityColumn}
-		mutableColumns     = postgres.ColumnList{MaxUserIDColumn, FullNameColumn, RoleColumn, HouseIDColumn, UkIDColumn, CreatedAtColumn, PositionColumn, PasswordHashColumn, AdsAuthorityColumn}
+		AvatarURLColumn    = postgres.StringColumn("avatar_url")
+		allColumns         = postgres.ColumnList{IDColumn, MaxUserIDColumn, FullNameColumn, RoleColumn, HouseIDColumn, UkIDColumn, CreatedAtColumn, PositionColumn, PasswordHashColumn, AdsAuthorityColumn, AvatarURLColumn}
+		mutableColumns     = postgres.ColumnList{MaxUserIDColumn, FullNameColumn, RoleColumn, HouseIDColumn, UkIDColumn, CreatedAtColumn, PositionColumn, PasswordHashColumn, AdsAuthorityColumn, AvatarURLColumn}
 		defaultColumns     = postgres.ColumnList{IDColumn, RoleColumn, CreatedAtColumn, AdsAuthorityColumn}
 	)
 
@@ -97,6 +99,7 @@ func newAppUserTableImpl(schemaName, tableName, alias string) appUserTable {
 		Position:     PositionColumn,
 		PasswordHash: PasswordHashColumn,
 		AdsAuthority: AdsAuthorityColumn,
+		AvatarURL:    AvatarURLColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

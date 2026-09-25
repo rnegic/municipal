@@ -198,3 +198,37 @@ func (s *Store) SubscriberCount(ctx context.Context, incidentID int64) (int, err
 		WHERE(IncidentSubscription.IncidentID.EQ(Int64(incidentID))).QueryContext(ctx, s.db, &cnt)
 	return cnt.Count, err
 }
+
+type Supporter struct {
+	UserID    int64
+	FullName  string
+	AvatarURL *string
+}
+
+func (s *Store) SupportersByIncident(ctx context.Context, incidentIDs []int64, limit int) (map[int64][]Supporter, error) {
+	out := map[int64][]Supporter{}
+	if len(incidentIDs) == 0 {
+		return out, nil
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT x.incident_id, u.id, u.full_name, u.avatar_url
+		FROM (SELECT incident_id, user_id, joined_at,
+		             row_number() OVER (PARTITION BY incident_id ORDER BY joined_at, user_id) AS rn
+		      FROM incident_subscription WHERE incident_id = ANY($1)) x
+		JOIN app_user u ON u.id = x.user_id
+		WHERE x.rn <= $2
+		ORDER BY x.incident_id, x.rn`, incidentIDs, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var incID int64
+		var sp Supporter
+		if err := rows.Scan(&incID, &sp.UserID, &sp.FullName, &sp.AvatarURL); err != nil {
+			return nil, err
+		}
+		out[incID] = append(out[incID], sp)
+	}
+	return out, rows.Err()
+}

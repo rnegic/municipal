@@ -30,7 +30,13 @@ type IncidentRow struct {
 	ConfirmedByMe bool
 	PhotoIDs      []int64
 	Category      *string
+	MergedCount   int
+	Supporters    []Supporter
 }
+
+type Supporter = repository.Supporter
+
+const maxSupporters = 5
 
 func (s *Service) toIncidentRows(ctx context.Context, rs []repository.IncidentRow) ([]IncidentRow, error) {
 	ids := make([]int64, len(rs))
@@ -41,13 +47,17 @@ func (s *Service) toIncidentRows(ctx context.Context, rs []repository.IncidentRo
 	if err != nil {
 		return nil, err
 	}
+	supporters, err := s.repo.SupportersByIncident(ctx, ids, maxSupporters)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]IncidentRow, len(rs))
 	for i, r := range rs {
 		out[i] = IncidentRow{
 			ID: r.ID, HouseID: r.HouseID, Title: r.Title, Description: r.Description, Entrance: r.Entrance, Riser: r.Riser,
 			Severity: r.Severity, Status: r.Status, AffectedCount: r.Subscribers,
 			CreatedAt: r.CreatedAt, DueAt: r.DueAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
-			PhotoIDs: photos[r.ID], Category: r.Category,
+			PhotoIDs: photos[r.ID], Category: r.Category, MergedCount: int(r.MergedCount), Supporters: supporters[r.ID],
 		}
 	}
 	return out, nil
