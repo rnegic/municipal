@@ -154,17 +154,20 @@ const QueueCard = ({
   const prevStatus = getPrevStatus(incident.status)
   const isPriority = isPriorityQueueItem(incident)
   const isDimmed = selection.isActive && !selection.isSelectable && !selection.isSelected
+  const canToggle = selection.isActive && (selection.isSelectable || selection.isSelected)
 
   return (
     <Card
       className={cn(
         s.card,
+        selection.isActive && s.cardSelecting,
         isPriority && s.cardPriority,
         selection.isSelected && s.cardSelected,
         isDimmed && s.cardDimmed,
       )}
       padding="compact"
       draggable={!selection.isActive}
+      onClick={canToggle ? selection.onToggle : undefined}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = 'move'
         event.dataTransfer.setData(
@@ -181,6 +184,7 @@ const QueueCard = ({
               disabled={!selection.isSelectable && !selection.isSelected}
               aria-label={incidentTexts.queue.selectCard}
               onChange={selection.onToggle}
+              onClick={(event) => event.stopPropagation()}
             />
           ) : null}
           <div className={s.cardTitleRow}>

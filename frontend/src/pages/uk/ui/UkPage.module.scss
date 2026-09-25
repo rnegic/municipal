@@ -96,7 +96,7 @@
 
 .archiveSwitch {
   /* stylelint-disable-next-line custom-property-pattern */
-  --MaxUi-Switch__toggle_background: var(--app-color-track);
+  --MaxUi-Switch__toggle_background: var(--app-color-surface-card);
 }
 
 .column {
@@ -190,6 +190,12 @@
 
 .card:active {
   cursor: grabbing;
+}
+
+.cardSelecting,
+.cardSelecting:active {
+  cursor: pointer;
+  user-select: none;
 }
 
 .cardPriority {
