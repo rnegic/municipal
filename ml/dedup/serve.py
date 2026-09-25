@@ -52,12 +52,13 @@ def handler(deduper):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bundle", required=True)
+    ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8090)
     ap.add_argument("--threads", type=int, default=2)
     args = ap.parse_args()
     d = OnnxDeduper(args.bundle, threads=args.threads)
-    print(f"serving {d.model_version} threshold={d.threshold} on :{args.port}", flush=True)
-    ThreadingHTTPServer(("127.0.0.1", args.port), handler(d)).serve_forever()
+    print(f"serving {d.model_version} threshold={d.threshold} on {args.host}:{args.port}", flush=True)
+    ThreadingHTTPServer((args.host, args.port), handler(d)).serve_forever()
 
 
 if __name__ == "__main__":

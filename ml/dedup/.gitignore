@@ -4,3 +4,4 @@ runs/
 cache/
 data/versions/
 data/raw/incident_report*.csv
+bundle.tar.gz
