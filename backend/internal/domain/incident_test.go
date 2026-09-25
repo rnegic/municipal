@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"slices"
 	"testing"
 	"time"
 )
@@ -70,5 +71,36 @@ func TestFindDuplicate_LegacyWithoutCategoryNeverMatches(t *testing.T) {
 	open := []OpenIncident{{ID: 9, HouseID: 1, Riser: nil, Status: IncidentAccepted, CreatedAt: now}}
 	if got := FindDuplicate(1, "", nil, now, open); got != 0 {
 		t.Fatalf("legacy incident without category matched: %d", got)
+	}
+}
+
+func TestDedupCandidates(t *testing.T) {
+	now := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
+	open := []OpenIncident{
+		{ID: 1, Status: IncidentAccepted, CreatedAt: now.Add(-time.Hour)},
+		{ID: 2, Status: IncidentInProgress, CreatedAt: now.Add(-7 * 24 * time.Hour)},
+		{ID: 3, Status: IncidentAccepted, CreatedAt: now.Add(-7*24*time.Hour - time.Second)},
+		{ID: 4, Status: IncidentVerifying, CreatedAt: now},
+		{ID: 5, Status: IncidentAccepted, Category: CategoryElevator, CreatedAt: now.Add(-time.Minute)},
+	}
+	got := DedupCandidates(open, now)
+	var ids []int64
+	for _, c := range got {
+		ids = append(ids, c.ID)
+	}
+	if !slices.Equal(ids, []int64{5, 1, 2}) {
+		t.Fatalf("got %v", ids)
+	}
+}
+
+func TestDedupCandidatesLimit(t *testing.T) {
+	now := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
+	var open []OpenIncident
+	for i := range 25 {
+		open = append(open, OpenIncident{ID: int64(i + 1), Status: IncidentAccepted, CreatedAt: now.Add(-time.Duration(i) * time.Minute)})
+	}
+	got := DedupCandidates(open, now)
+	if len(got) != MaxDedupCandidates || got[0].ID != 1 || got[19].ID != 20 {
+		t.Fatalf("len=%d first=%d last=%d", len(got), got[0].ID, got[len(got)-1].ID)
 	}
 }

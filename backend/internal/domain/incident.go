@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"slices"
+	"time"
+)
 
 type Severity string
 
@@ -39,12 +42,16 @@ const (
 )
 
 type OpenIncident struct {
-	ID        int64
-	HouseID   int64
-	Category  Category
-	Riser     *string
-	Status    IncidentStatus
-	CreatedAt time.Time
+	ID          int64
+	HouseID     int64
+	Category    Category
+	Title       string
+	Description string
+	Entrance    *string
+	Riser       *string
+	Severity    Severity
+	Status      IncidentStatus
+	CreatedAt   time.Time
 }
 
 func FindDuplicate(houseID int64, category Category, riser *string, now time.Time, open []OpenIncident) int64 {
@@ -97,4 +104,29 @@ func sameRiser(a, b *string) bool {
 		return a == b
 	}
 	return *a == *b
+}
+
+const (
+	DedupCandidateWindow = 7 * 24 * time.Hour
+	MaxDedupCandidates   = 20
+)
+
+type DedupMatch struct {
+	IncidentID   int64
+	P            float64
+	ModelVersion string
+}
+
+func DedupCandidates(open []OpenIncident, now time.Time) []OpenIncident {
+	var out []OpenIncident
+	for _, inc := range open {
+		if (inc.Status == IncidentAccepted || inc.Status == IncidentInProgress) && now.Sub(inc.CreatedAt) <= DedupCandidateWindow {
+			out = append(out, inc)
+		}
+	}
+	slices.SortStableFunc(out, func(a, b OpenIncident) int { return b.CreatedAt.Compare(a.CreatedAt) })
+	if len(out) > MaxDedupCandidates {
+		out = out[:MaxDedupCandidates]
+	}
+	return out
 }
