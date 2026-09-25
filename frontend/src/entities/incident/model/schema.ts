@@ -60,6 +60,7 @@ export const residentRequestSchema = z.object({
   id: z.string(),
   title: z.string(),
   status: incidentStatusSchema,
+  category: incidentCategorySchema.nullable().default(null),
   createdAt: timestampSchema,
   dueAt: timestampSchema.nullable(),
   confirmedByMe: z.boolean(),

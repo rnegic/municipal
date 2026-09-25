@@ -67,6 +67,7 @@ export type {
   PaginatedUkQueue,
   UkQueueItem,
 } from './model/types'
+export { CategoryIcon, type CategoryIconProps } from './ui/CategoryIcon'
 export {
   IncidentPhotos,
 } from './ui/IncidentPhotos'

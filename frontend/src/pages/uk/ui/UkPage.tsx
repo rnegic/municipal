@@ -2,6 +2,7 @@ import { Counter, Switch, Typography } from '@maxhub/max-ui'
 import { useState, type ReactNode } from 'react'
 
 import {
+  CategoryIcon,
   IncidentPhotos,
   incidentTexts,
   isPriorityQueueItem,
@@ -155,23 +156,25 @@ const QueueCard = ({
   const isDimmed = selection.isActive && !selection.isSelectable && !selection.isSelected
 
   return (
-    <Card
-      className={cn(
-        s.card,
-        isPriority && s.cardPriority,
-        selection.isSelected && s.cardSelected,
-        isDimmed && s.cardDimmed,
-      )}
-      padding="compact"
-      draggable={!selection.isActive}
-      onDragStart={(event) => {
-        event.dataTransfer.effectAllowed = 'move'
-        event.dataTransfer.setData(
-          'text/plain',
-          JSON.stringify({ id: incident.id, status: incident.status }),
-        )
-      }}
-    >
+    <div className={s.cardRow}>
+      <CategoryIcon category={incident.category} size={40} className={s.cardIcon} />
+      <Card
+        className={cn(
+          s.card,
+          isPriority && s.cardPriority,
+          selection.isSelected && s.cardSelected,
+          isDimmed && s.cardDimmed,
+        )}
+        padding="compact"
+        draggable={!selection.isActive}
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = 'move'
+          event.dataTransfer.setData(
+            'text/plain',
+            JSON.stringify({ id: incident.id, status: incident.status }),
+          )
+        }}
+      >
       <div className={s.cardHead}>
         {selection.isActive ? (
           <Checkbox
@@ -271,7 +274,8 @@ const QueueCard = ({
           ) : null}
         </div>
       ) : null}
-    </Card>
+      </Card>
+    </div>
   )
 }
 

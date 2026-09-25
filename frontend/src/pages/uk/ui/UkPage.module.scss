@@ -152,7 +152,19 @@
   gap: var(--app-space-8);
 }
 
+.cardRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--app-space-3);
+}
+
+.cardIcon {
+  margin-top: var(--app-space-1);
+}
+
 .card {
+  flex: 1;
+  min-width: 0;
   gap: var(--app-space-4);
   border: 1px solid var(--app-color-border-card);
   background: transparent;

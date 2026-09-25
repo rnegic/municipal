@@ -1,6 +1,11 @@
 import { Typography } from '@maxhub/max-ui'
 
-import { IncidentStatusBadge, incidentTexts, type ResidentRequest } from '@/entities/incident'
+import {
+  CategoryIcon,
+  IncidentStatusBadge,
+  incidentTexts,
+  type ResidentRequest,
+} from '@/entities/incident'
 import { NoIncidentsIllustration } from '@/shared/assets/illustrations'
 import { cn } from '@/shared/lib/cn'
 import { formatDate, formatDateTime } from '@/shared/lib/date'
@@ -25,8 +30,9 @@ export const MyRequests = ({ requests, className }: MyRequestsProps) => (
     ) : (
       <ul className={s.list}>
         {requests.map((request) => (
-          <li key={request.id}>
-            <Card padding="compact">
+          <li key={request.id} className={s.item}>
+            <CategoryIcon category={request.category} size={40} className={s.icon} />
+            <Card padding="compact" className={s.card}>
               <div className={s.head}>
                 <Typography.Text className={s.title} variant="body-strong">
                   {request.title}

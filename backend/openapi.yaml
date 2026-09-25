@@ -646,11 +646,15 @@ components:
     ResidentRequest:
       type: object
       description: Заявка в «Моих заявках» — это тот же инцидент, id общий (inc_…) и годится для /confirm.
-      required: [id, title, status, createdAt, dueAt, confirmedByMe]
+      required: [id, title, status, category, createdAt, dueAt, confirmedByMe]
       properties:
         id: { type: string, example: inc_01H }
         title: { type: string }
         status: { $ref: "#/components/schemas/IncidentStatus" }
+        category:
+          nullable: true
+          description: null у заявок, созданных до умного роутинга
+          allOf: [{ $ref: "#/components/schemas/IncidentCategory" }]
         createdAt: { type: string, format: date-time }
         dueAt: { type: string, format: date-time, nullable: true }
         confirmedByMe: { type: boolean }

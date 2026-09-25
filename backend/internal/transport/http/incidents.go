@@ -202,6 +202,7 @@ func (s *server) ListHouseRequests(ctx context.Context, req oapi.ListHouseReques
 	for i, r := range rows {
 		items[i] = oapi.ResidentRequest{
 			Id: formatIncidentID(r.ID), Title: r.Title, Status: oapi.IncidentStatus(r.Status),
+			Category: (*oapi.IncidentCategory)(r.Category),
 			CreatedAt: r.CreatedAt, DueAt: r.DueAt, ConfirmedByMe: r.ConfirmedByMe,
 		}
 	}
