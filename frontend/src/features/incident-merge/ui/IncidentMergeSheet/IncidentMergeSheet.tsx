@@ -72,17 +72,6 @@ export const IncidentMergeSheet = ({
         )
       })}
     </fieldset>
-    <div className={s.summary}>
-      <Typography.Text variant="description-strong">
-        {incidentTexts.merge.resultAffected(affectedCount)}
-      </Typography.Text>
-      <Typography.Text variant="note" color="secondary">
-        {incidentTexts.merge.resultDuplicates(Math.max(items.length - 1, 0))}
-      </Typography.Text>
-      <Typography.Text variant="note" color="tertiary">
-        {incidentTexts.merge.targetHint}
-      </Typography.Text>
-    </div>
     {error ? (
       <Typography.Text className={s.error} variant="note">
         {describeApiError(error).description}

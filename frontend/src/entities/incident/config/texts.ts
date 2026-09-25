@@ -44,10 +44,6 @@ export const incidentTexts = {
     sheetTitle: 'Объединение заявок',
     sheetDescription: 'Выберите главную заявку — в неё перейдут подписанты и фото остальных',
     targetLegend: 'Главная заявка',
-    targetHint: 'Остаётся открытой, срок SLA берётся от неё',
-    resultAffected: (count: number) => `Подписантов после объединения: ${count}`,
-    resultDuplicates: (count: number) =>
-      `${count} ${requestForms[ruPlural.select(count)] ?? 'заявок'} станут дубликатами и закроются`,
     duplicatesBadge: (count: number) =>
       `${count} ${duplicateForms[ruPlural.select(count)] ?? 'дубликатов'}`,
     blockers: {
