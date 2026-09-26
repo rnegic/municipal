@@ -46,6 +46,7 @@ export {
 } from './lib/options'
 export { isPriorityQueueItem, sortUkQueueByPriority } from './lib/priority'
 export { isPhotoRequiredForCategory, isUkAuthority } from './lib/routing'
+export { isIncidentClosed, isIncidentFalseAlarm } from './lib/status'
 export type {
   AnalyzeIncidentInput,
   AnalyzeIncidentResult,

@@ -15,6 +15,7 @@ const STATUS_TO_CLASS: Record<IncidentStatus, string> = {
   in_progress: s.inProgress,
   verifying: s.resolved,
   done: s.resolved,
+  false_alarm: s.falseAlarm,
 }
 
 export const IncidentStatusBadge = ({ status, className }: IncidentStatusBadgeProps) => (

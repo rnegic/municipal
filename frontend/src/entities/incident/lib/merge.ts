@@ -1,13 +1,14 @@
 import { INCIDENT_MERGE_MIN_COUNT } from '../config/domain'
 import { incidentTexts } from '../config/texts'
 import type { UkQueueItem } from '../model/schema'
+import { isIncidentClosed } from './status'
 
 export const getMergeBlocker = (items: readonly UkQueueItem[]): string | null => {
   if (items.length < INCIDENT_MERGE_MIN_COUNT) {
     return incidentTexts.merge.blockers.tooFew
   }
 
-  if (items.some((item) => item.status === 'done')) {
+  if (items.some((item) => isIncidentClosed(item.status))) {
     return incidentTexts.merge.blockers.closed
   }
 

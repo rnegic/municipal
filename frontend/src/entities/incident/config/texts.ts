@@ -70,6 +70,7 @@ export const incidentTexts = {
     in_progress: 'В работе',
     verifying: 'Проверка жителями',
     done: 'Решена',
+    false_alarm: 'Ложный вызов',
   },
   confirm: {
     action: 'Подтвердите',
