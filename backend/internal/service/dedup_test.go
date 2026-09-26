@@ -123,6 +123,29 @@ func TestCreateIncident_ModelSkipsAlreadySubscribedIncident(t *testing.T) {
 	}
 }
 
+func TestCreateIncident_RetryJoinsOwnIncidentDespiteOtherCandidates(t *testing.T) {
+	s := testStore(t)
+	m := &fakeMatcher{}
+	svc := New(s, nil, nil, &fakeUk{}, "testbot").WithMatcher(m)
+	houseID, userID := seedHouse(t, s)
+	ctx := context.Background()
+	if _, _, err := svc.CreateIncident(ctx, houseID, secondUser(t, svc, 201), NewIncident{Description: "лифт стоит третий день", Category: domain.CategoryElevator}); err != nil {
+		t.Fatal(err)
+	}
+	first, _, err := svc.CreateIncident(ctx, houseID, userID, NewIncident{Description: "нет воды с утра", Category: domain.CategoryWaterHeat})
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := m.calls
+	row, created, err := svc.CreateIncident(ctx, houseID, userID, NewIncident{Description: "нет воды с утра", Category: domain.CategoryWaterHeat})
+	if err != nil || created || row.ID != first.ID || m.calls != calls {
+		t.Fatalf("retry must join own incident %d without the model: id=%d created=%v calls=%d err=%v", first.ID, row.ID, created, m.calls-calls, err)
+	}
+	if got := serviceReports(t, s); len(got) != 2 {
+		t.Fatalf("retry must not add a report: %+v", got)
+	}
+}
+
 func TestCreateIncident_ModelRetryDoesNotDuplicateReport(t *testing.T) {
 	s := testStore(t)
 	m := &fakeMatcher{}
