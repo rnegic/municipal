@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"ukapp/internal/domain"
@@ -99,27 +100,46 @@ func TestCreateIncident_ModelErrorFallsBackToRule(t *testing.T) {
 	}
 }
 
-func TestCreateIncident_ModelSkipsAlreadySubscribedIncident(t *testing.T) {
+func TestCreateIncident_ModelJoinsOwnIncidentAcrossCategories(t *testing.T) {
 	s := testStore(t)
 	m := &fakeMatcher{}
 	svc := New(s, nil, nil, &fakeUk{}, "testbot").WithMatcher(m)
 	houseID, userID := seedHouse(t, s)
 	ctx := context.Background()
-	first, created, err := svc.CreateIncident(ctx, houseID, userID, NewIncident{Description: "нет горячей воды с утра", Category: domain.CategoryWaterHeat})
+	first, created, err := svc.CreateIncident(ctx, houseID, userID, NewIncident{Description: "упал самолёт во двор", Category: domain.CategoryWaterHeat})
 	if err != nil || !created {
 		t.Fatalf("first: created=%v err=%v", created, err)
 	}
 	m.id = first.ID
-	row, created, err := svc.CreateIncident(ctx, houseID, userID, NewIncident{Description: "сломан лифт", Category: domain.CategoryElevator})
-	if err != nil || !created || row.ID == first.ID {
-		t.Fatalf("must not join own subscribed incident: id=%d created=%v err=%v", row.ID, created, err)
+	row, created, err := svc.CreateIncident(ctx, houseID, userID, NewIncident{Description: "самолёт упал, нет света", Category: domain.CategoryElevator})
+	if err != nil || created || row.ID != first.ID {
+		t.Fatalf("must join own incident %d: id=%d created=%v err=%v", first.ID, row.ID, created, err)
 	}
-	if m.calls != 0 || len(m.cands) != 0 {
-		t.Fatalf("matcher must not see already-subscribed incident: calls=%d cands=%+v", m.calls, m.cands)
+	if m.calls != 1 || len(m.cands) != 1 || m.cands[0].ID != first.ID {
+		t.Fatalf("matcher must see own incident: calls=%d cands=%+v", m.calls, m.cands)
 	}
-	got := serviceReports(t, s)
-	if len(got) != 2 || got[0].outcome != "created" || got[1].outcome != "created" {
-		t.Fatalf("%+v", got)
+}
+
+func TestCreateIncident_ConcurrentRetryCreatesOneIncident(t *testing.T) {
+	s := testStore(t)
+	svc := New(s, nil, nil, &fakeUk{}, "testbot")
+	houseID, userID := seedHouse(t, s)
+	ids := make(chan int64, 2)
+	var wg sync.WaitGroup
+	for range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			row, _, err := svc.CreateIncident(context.Background(), houseID, userID, NewIncident{Description: "самолёт упал во двор", Category: domain.CategoryWaterHeat})
+			if err != nil {
+				t.Error(err)
+			}
+			ids <- row.ID
+		}()
+	}
+	wg.Wait()
+	if a, b := <-ids, <-ids; a != b {
+		t.Fatalf("double submit created two incidents: %d, %d", a, b)
 	}
 }
 

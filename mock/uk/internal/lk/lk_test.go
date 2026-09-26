@@ -71,7 +71,7 @@ func TestLoginAndChangeStatus(t *testing.T) {
 	r := httptest.NewRequest("GET", "/lk", nil)
 	r.Header.Set("Cookie", cookie)
 	h.ServeHTTP(w, r)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "Нет воды") || !strings.Contains(w.Body.String(), "INC-001") {
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "Нет воды") || !strings.Contains(w.Body.String(), "INC-001") || !strings.Contains(w.Body.String(), "Принять") {
 		t.Fatalf("list: %d %s", w.Code, w.Body)
 	}
 

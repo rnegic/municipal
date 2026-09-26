@@ -14,7 +14,9 @@ import (
 	. "ukapp/gen/db/ukapp/public/table"
 )
 
-var openStatuses = []Expression{String(string(domain.IncidentAccepted)), String(string(domain.IncidentInProgress))}
+var openStatuses = []Expression{
+	String(string(domain.IncidentPending)), String(string(domain.IncidentAccepted)), String(string(domain.IncidentInProgress)),
+}
 var activeStatuses = []Expression{
 	String(string(domain.IncidentAccepted)), String(string(domain.IncidentInProgress)), String(string(domain.IncidentVerifying)),
 }
@@ -95,10 +97,10 @@ func (s *Store) CreateIncident(ctx context.Context, in NewIncident) (int64, erro
 	var inc model.Incident
 	err = Incident.INSERT(Incident.HouseID, Incident.Title, Incident.Severity, Incident.ReporterID, Incident.Description,
 		Incident.Entrance, Incident.Riser, Incident.DueAt, Incident.Category, Incident.Authority, Incident.RoutingSource,
-		Incident.CategoryPredicted, Incident.RoutingConfidence, Incident.Suspicious).
+		Incident.CategoryPredicted, Incident.RoutingConfidence, Incident.Suspicious, Incident.Status).
 		VALUES(in.HouseID, in.Title, string(in.Severity), in.ReporterID, in.Description, in.Entrance, in.Riser,
 			NOW().ADD(INTERVALd(in.SLA)), string(in.Category), string(in.Category.Authority()), in.Routing.Source,
-			in.Routing.CategoryPredicted, in.Routing.Confidence, in.Suspicious).
+			in.Routing.CategoryPredicted, in.Routing.Confidence, in.Suspicious, string(domain.IncidentPending)).
 		RETURNING(Incident.ID).
 		QueryContext(ctx, tx, &inc)
 	if err != nil {

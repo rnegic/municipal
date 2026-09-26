@@ -78,7 +78,7 @@ func TestAddReport_SavesAllFields(t *testing.T) {
 	if r.incidentID != incID || r.reporterID != userID || r.houseID != houseID ||
 		r.title != "Нет воды" || r.description != "с утра" || r.severity != "warning" ||
 		r.entrance == nil || *r.entrance != "2" || r.riser == nil || *r.riser != "Б" ||
-		r.outcome != "created" || r.dedupVersion != "exact-category-floorzone-v1" {
+		r.outcome != "created" || r.dedupVersion != domain.DedupVersion {
 		t.Fatalf("unexpected row: %+v", r)
 	}
 }

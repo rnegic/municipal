@@ -106,7 +106,8 @@ components:
         message: { type: string }
     IncidentStatus:
       type: string
-      enum: [accepted, in_progress, verifying, done, false_alarm]
+      description: "pending — новое обращение ждёт приёмки диспетчером; принятое переходит в accepted"
+      enum: [pending, accepted, in_progress, verifying, done, false_alarm]
     Severity:
       type: string
       enum: [critical, warning]

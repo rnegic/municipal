@@ -16,6 +16,7 @@ import {
 export const incidentSeveritySchema = z.enum(['critical', 'warning'])
 
 export const incidentStatusSchema = z.enum([
+  'pending',
   'accepted',
   'in_progress',
   'verifying',

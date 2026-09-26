@@ -52,13 +52,14 @@ interface QueueSelection {
 }
 
 const QUEUE_COLUMNS: readonly QueueColumn[] = [
-  { status: 'accepted', title: 'Новые', action: 'Взять в работу', actionTone: 'primary' },
+  { status: 'pending', title: 'Ожидают приёмки', action: 'Принять', actionTone: 'primary' },
+  { status: 'accepted', title: 'Принятые', action: 'Взять в работу', actionTone: 'primary' },
   {
     status: 'in_progress',
     title: 'В работе',
     action: 'Передать на проверку',
     actionTone: 'secondary',
-    prevAction: 'В новые',
+    prevAction: 'В принятые',
   },
   {
     status: 'verifying',
@@ -93,6 +94,9 @@ const getSlaLabel = (dueAt: string | null): string => {
 }
 
 const getNextStatus = (status: IncidentStatus): IncidentStatus | null => {
+  if (status === 'pending') {
+    return 'accepted'
+  }
   if (status === 'accepted') {
     return 'in_progress'
   }
@@ -131,6 +135,9 @@ const getCountTone = (count: number): string => {
 }
 
 const getColumnTone = (status: IncidentStatus): string => {
+  if (status === 'pending') {
+    return s.columnTitlePending
+  }
   if (status === 'in_progress') {
     return s.columnTitleProgress
   }

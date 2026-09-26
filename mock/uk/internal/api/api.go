@@ -18,7 +18,7 @@ type server struct{ st *store.Store }
 
 func validStatus(s ukapi.IncidentStatus) bool {
 	switch s {
-	case ukapi.Accepted, ukapi.InProgress, ukapi.Verifying, ukapi.Done, ukapi.FalseAlarm:
+	case ukapi.Pending, ukapi.Accepted, ukapi.InProgress, ukapi.Verifying, ukapi.Done, ukapi.FalseAlarm:
 		return true
 	default:
 		return false

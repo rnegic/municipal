@@ -132,6 +132,7 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	if in.Category.PhotoRequired() && len(in.PhotoIDs) == 0 {
 		return IncidentRow{}, false, ErrPhotoRequired
 	}
+	defer s.lockHouse(houseID)()
 	falseAlarms, recent, err := s.repo.ReporterStats(ctx, reporterID, time.Hour)
 	if err != nil {
 		return IncidentRow{}, false, err
@@ -234,6 +235,11 @@ func (s *Service) SetIncidentStatus(ctx context.Context, u model.AppUser, incide
 	}
 	if !moved {
 		return IncidentRow{}, ErrInvalidStatus
+	}
+	if r, err := s.repo.GetIncident(ctx, incidentID, u.ID); err == nil && r.ExternalID != nil {
+		if err := s.uk.SetStatus(ctx, *r.ExternalID, to); err != nil {
+			slog.Warn("uk: dispatcher status not synced", "incident", incidentID, "status", to, "err", err)
+		}
 	}
 	return s.GetIncident(ctx, incidentID, u.ID)
 }

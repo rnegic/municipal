@@ -64,7 +64,7 @@ func TestCreateIncident_ReportsCreated(t *testing.T) {
 	}
 	got := serviceReports(t, s)
 	if len(got) != 1 || got[0].incidentID != row.ID || got[0].reporterID != userID ||
-		got[0].outcome != "created" || got[0].dedupVersion != "exact-category-floorzone-v1" {
+		got[0].outcome != "created" || got[0].dedupVersion != domain.DedupVersion {
 		t.Fatalf("unexpected reports: %+v", got)
 	}
 }

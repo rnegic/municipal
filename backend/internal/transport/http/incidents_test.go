@@ -67,6 +67,14 @@ func TestIncidents_DedupAndJoin(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	srv.ServeHTTP(w, authedReq(t, "GET", "/api/houses/"+h10+"/incidents?status=active", "", 1, "U"))
+	if w.Code != 200 || strings.Contains(w.Body.String(), inc1.Id) {
+		t.Fatalf("pending incidents must stay out of the house feed: %d %s", w.Code, w.Body)
+	}
+	if _, err := s.DB().ExecContext(context.Background(), `UPDATE incident SET status = 'accepted'`); err != nil {
+		t.Fatal(err)
+	}
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, authedReq(t, "GET", "/api/houses/"+h10+"/incidents?status=active", "", 1, "U"))
 	if w.Code != 200 {
 		t.Fatalf("list: %d %s", w.Code, w.Body)
 	}
@@ -233,11 +241,16 @@ func TestSetIncidentStatus_DispatcherTransitionsAndNotifies(t *testing.T) {
 		return serve(srv, bearerReq("PATCH", "/api/incidents/"+inc.Id+"/status", `{"status":"`+status+`"}`, token)).Code
 	}
 
-	if code := setStatus("done"); code != 422 {
-		t.Fatalf("accepted → done: want 422 got %d", code)
+	if inc.Status != "pending" {
+		t.Fatalf("new incident must be pending: %s", inc.Status)
+	}
+	for _, status := range []string{"in_progress", "done"} {
+		if code := setStatus(status); code != 422 {
+			t.Fatalf("pending → %s: want 422 got %d", status, code)
+		}
 	}
 
-	for _, status := range []string{"in_progress", "verifying", "done"} {
+	for _, status := range []string{"accepted", "in_progress", "verifying", "done"} {
 		if code := setStatus(status); code != 200 {
 			t.Fatalf("transition to %s: want 200 got %d", status, code)
 		}
@@ -252,8 +265,8 @@ func TestSetIncidentStatus_DispatcherTransitionsAndNotifies(t *testing.T) {
 	}
 
 	texts := outboxTexts(t, s)
-	if len(texts) != 3 {
-		t.Fatalf("want 3 pushes, got %d: %v", len(texts), texts)
+	if len(texts) != 4 {
+		t.Fatalf("want 4 pushes, got %d: %v", len(texts), texts)
 	}
 	for _, text := range texts {
 		if !strings.Contains(text, "https://max.ru/testbot?startapp="+inc.Id) {

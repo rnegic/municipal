@@ -77,7 +77,7 @@ func TestIncidentLifecycle(t *testing.T) {
 	}
 	var inc struct{ Id, Status string }
 	_ = json.Unmarshal(w.Body.Bytes(), &inc)
-	if inc.Id != "INC-001" || inc.Status != "accepted" {
+	if inc.Id != "INC-001" || inc.Status != "pending" {
 		t.Fatalf("bad incident %+v", inc)
 	}
 	// idempotent by externalRef

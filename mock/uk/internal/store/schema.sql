@@ -8,6 +8,12 @@ CREATE TABLE IF NOT EXISTS organization (
   office_address  TEXT,
   working_hours   TEXT
 );
+ALTER TABLE organization ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE organization ADD COLUMN IF NOT EXISTS emergency_phone TEXT;
+ALTER TABLE organization ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE organization ADD COLUMN IF NOT EXISTS website TEXT;
+ALTER TABLE organization ADD COLUMN IF NOT EXISTS office_address TEXT;
+ALTER TABLE organization ADD COLUMN IF NOT EXISTS working_hours TEXT;
 
 CREATE TABLE IF NOT EXISTS house (
   id              TEXT PRIMARY KEY,
@@ -35,7 +41,8 @@ CREATE TABLE IF NOT EXISTS incident (
 CREATE INDEX IF NOT EXISTS incident_updated ON incident(updated_at);
 ALTER TABLE incident DROP CONSTRAINT IF EXISTS incident_status_check;
 ALTER TABLE incident ADD CONSTRAINT incident_status_check
-  CHECK (status IN ('accepted','in_progress','verifying','done','false_alarm'));
+  CHECK (status IN ('pending','accepted','in_progress','verifying','done','false_alarm'));
+ALTER TABLE incident ALTER COLUMN status SET DEFAULT 'pending';
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS suspicious BOOLEAN NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS dispatcher (
