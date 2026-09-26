@@ -24,6 +24,7 @@ func (s Severity) Valid() bool {
 type IncidentStatus string
 
 const (
+	IncidentPending    IncidentStatus = "pending"
 	IncidentAccepted   IncidentStatus = "accepted"
 	IncidentInProgress IncidentStatus = "in_progress"
 	IncidentVerifying  IncidentStatus = "verifying"
@@ -71,7 +72,7 @@ func FindDuplicate(houseID int64, category Category, riser *string, now time.Tim
 		if inc.HouseID != houseID || inc.Category == "" || inc.Category != category || !sameRiser(inc.Riser, riser) {
 			continue
 		}
-		if inc.Status != IncidentAccepted && inc.Status != IncidentInProgress {
+		if !inc.Status.Dedupable() {
 			continue
 		}
 		if now.Sub(inc.CreatedAt) <= DedupWindow {
@@ -98,9 +99,16 @@ var openStatuses = map[IncidentStatus]bool{
 	IncidentVerifying:  true,
 }
 
+func (s IncidentStatus) Dedupable() bool {
+	return s == IncidentPending || s == IncidentAccepted || s == IncidentInProgress
+}
+
 func CanDispatcherMove(from, to IncidentStatus) bool {
 	if from == to {
 		return false
+	}
+	if from == IncidentPending {
+		return to == IncidentAccepted
 	}
 	if openStatuses[from] && openStatuses[to] {
 		return true
@@ -137,7 +145,7 @@ type DedupMatch struct {
 func DedupCandidates(open []OpenIncident, now time.Time) []OpenIncident {
 	var out []OpenIncident
 	for _, inc := range open {
-		if (inc.Status == IncidentAccepted || inc.Status == IncidentInProgress) && now.Sub(inc.CreatedAt) <= DedupCandidateWindow {
+		if inc.Status.Dedupable() && now.Sub(inc.CreatedAt) <= DedupCandidateWindow {
 			out = append(out, inc)
 		}
 	}

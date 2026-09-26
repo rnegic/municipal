@@ -117,3 +117,17 @@ func TestDedupCandidates_IncludesSubscribed(t *testing.T) {
 		t.Fatalf("own incidents must reach the model: %+v", got)
 	}
 }
+
+func TestCanDispatcherMove_PendingOnlyToAccepted(t *testing.T) {
+	for _, to := range []IncidentStatus{IncidentInProgress, IncidentVerifying, IncidentDone, IncidentFalseAlarm} {
+		if CanDispatcherMove(IncidentPending, to) {
+			t.Fatalf("pending → %s must be forbidden", to)
+		}
+		if CanDispatcherMove(to, IncidentPending) {
+			t.Fatalf("%s → pending must be forbidden", to)
+		}
+	}
+	if !CanDispatcherMove(IncidentPending, IncidentAccepted) {
+		t.Fatal("pending → accepted must be allowed")
+	}
+}

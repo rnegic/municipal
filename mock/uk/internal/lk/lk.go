@@ -121,7 +121,7 @@ func (l *lk) setStatus(c *gin.Context) {
 		return
 	}
 	switch c.PostForm("status") {
-	case "accepted", "in_progress", "verifying", "done", "false_alarm":
+	case "pending", "accepted", "in_progress", "verifying", "done", "false_alarm":
 	default:
 		c.String(http.StatusBadRequest, "неизвестный статус")
 		return

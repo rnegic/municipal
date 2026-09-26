@@ -608,9 +608,11 @@ components:
     IncidentStatus:
       type: string
       description: |
+        pending — заявка ждёт приёмки УК: видна диспетчеру и участникам (автор, склеенные),
+        но не попадает в ленту дома; диспетчер переводит её только в accepted.
         false_alarm — заявку закрыла УК с отметкой «Ложный вызов»; статус финальный,
         диспетчер его не выставляет (приходит только из УК) и обратно из него не выйти.
-      enum: [accepted, in_progress, verifying, done, false_alarm]
+      enum: [pending, accepted, in_progress, verifying, done, false_alarm]
 
     Incident:
       type: object

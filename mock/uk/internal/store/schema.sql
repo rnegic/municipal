@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS incident (
 CREATE INDEX IF NOT EXISTS incident_updated ON incident(updated_at);
 ALTER TABLE incident DROP CONSTRAINT IF EXISTS incident_status_check;
 ALTER TABLE incident ADD CONSTRAINT incident_status_check
-  CHECK (status IN ('accepted','in_progress','verifying','done','false_alarm'));
+  CHECK (status IN ('pending','accepted','in_progress','verifying','done','false_alarm'));
+ALTER TABLE incident ALTER COLUMN status SET DEFAULT 'pending';
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS suspicious BOOLEAN NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS dispatcher (

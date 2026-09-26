@@ -47,6 +47,9 @@ func TestCreateIncident_SuspiciousAfterThreeFalseAlarms(t *testing.T) {
 	if last := uk.suspicious[len(uk.suspicious)-1]; !last {
 		t.Fatal("4th incident must be registered in UK as suspicious")
 	}
+	if _, err := s.DB().ExecContext(ctx, `UPDATE incident SET status = 'accepted' WHERE id = $1`, fake.ID); err != nil {
+		t.Fatal(err)
+	}
 	if own, _ := svc.ListActiveIncidents(ctx, houseID, troll); len(own) != 1 || own[0].ID != fake.ID {
 		t.Fatalf("author must still see own incident: %+v", own)
 	}

@@ -67,6 +67,10 @@
   align-items: start;
 }
 
+.board {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .boardToolbar {
   display: flex;
   flex-wrap: wrap;
@@ -129,6 +133,11 @@
 
 .columnTitleText {
   color: inherit;
+}
+
+.columnTitlePending {
+  color: var(--app-color-danger);
+  background: color-mix(in srgb, var(--app-color-danger) 14%, transparent);
 }
 
 .columnTitleNew {

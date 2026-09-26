@@ -29,6 +29,9 @@ func TestHouseStats(t *testing.T) {
 	inc, _ := createIncident(t, srv, 1, `{"description":"в подъезде не горит свет","category":"ELECTRICITY","photoUrls":[]}`)
 	createIncident(t, srv, 3, `{"description":"лифт стоит третий день","category":"ELEVATOR","photoUrls":[]}`)
 	incID, _ := parseID("inc_", inc.Id)
+	if _, err := s.DB().ExecContext(context.Background(), `UPDATE incident SET status='accepted'`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := s.DB().ExecContext(context.Background(), `UPDATE incident SET status='in_progress' WHERE id=$1`, incID); err != nil {
 		t.Fatal(err)
 	}

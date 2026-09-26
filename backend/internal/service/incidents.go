@@ -236,5 +236,10 @@ func (s *Service) SetIncidentStatus(ctx context.Context, u model.AppUser, incide
 	if !moved {
 		return IncidentRow{}, ErrInvalidStatus
 	}
+	if r, err := s.repo.GetIncident(ctx, incidentID, u.ID); err == nil && r.ExternalID != nil {
+		if err := s.uk.SetStatus(ctx, *r.ExternalID, to); err != nil {
+			slog.Warn("uk: dispatcher status not synced", "incident", incidentID, "status", to, "err", err)
+		}
+	}
 	return s.GetIncident(ctx, incidentID, u.ID)
 }

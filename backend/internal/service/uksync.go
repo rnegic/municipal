@@ -42,6 +42,7 @@ func (s *Service) syncUnregistered(ctx context.Context) error {
 const ukSyncDefaultTick = 5 * time.Second
 
 var ukStatusText = map[domain.IncidentStatus]string{
+	domain.IncidentAccepted:   "Управляющая компания приняла заявку.",
 	domain.IncidentInProgress: "Проблема взята в работу управляющей компанией.",
 	domain.IncidentVerifying:  "УК сообщает, что проблема решена. Подтвердите, пожалуйста, в приложении.",
 	domain.IncidentDone:       "Проблема закрыта управляющей компанией.",

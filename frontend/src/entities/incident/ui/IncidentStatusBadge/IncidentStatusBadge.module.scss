@@ -9,6 +9,11 @@
   white-space: nowrap;
 }
 
+.pending {
+  color: var(--app-color-text-secondary);
+  background-color: var(--app-color-surface-muted);
+}
+
 .accepted {
   color: var(--app-color-progress);
   background-color: var(--app-color-progress-surface);

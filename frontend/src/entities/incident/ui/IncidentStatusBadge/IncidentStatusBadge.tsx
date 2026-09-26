@@ -11,6 +11,7 @@ export interface IncidentStatusBadgeProps {
 }
 
 const STATUS_TO_CLASS: Record<IncidentStatus, string> = {
+  pending: s.pending,
   accepted: s.accepted,
   in_progress: s.inProgress,
   verifying: s.resolved,

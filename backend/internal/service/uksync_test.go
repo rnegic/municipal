@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -33,7 +34,7 @@ func (f *fakeUk) RegisterIncident(_ context.Context, in UkIncident) (string, dom
 	}
 	f.registered++
 	f.suspicious = append(f.suspicious, in.Suspicious)
-	return "INC-" + in.ExternalRef, domain.IncidentAccepted, nil
+	return "INC-" + in.ExternalRef, domain.IncidentPending, nil
 }
 
 func (f *fakeUk) IncidentUpdates(context.Context, time.Time) ([]UkIncidentUpdate, error) {
@@ -242,5 +243,41 @@ func TestSyncStatuses_CursorNotAdvancedOnError(t *testing.T) {
 	}
 	if !svc.ukSince.Equal(t3) {
 		t.Fatalf("cursor must advance past skipped (accepted) statuses, want %v got %v", t3, svc.ukSince)
+	}
+}
+
+func TestUkAcceptPublishesPendingIncident(t *testing.T) {
+	ctx := context.Background()
+	s := testStore(t)
+	uk := &fakeUk{}
+	svc := New(s, nil, nil, uk, "testbot")
+	houseID, userID := seedHouse(t, s)
+	neighbour := secondUser(t, svc, 201)
+	if _, err := s.DB().ExecContext(ctx, `UPDATE app_user SET house_id = $1 WHERE id = $2`, houseID, neighbour); err != nil {
+		t.Fatal(err)
+	}
+	row, created, err := svc.CreateIncident(ctx, houseID, userID, NewIncident{Description: "нет воды с утра", Category: domain.CategoryWaterHeat})
+	if err != nil || !created || row.Status != string(domain.IncidentPending) {
+		t.Fatalf("new incident must be pending: status=%s created=%v err=%v", row.Status, created, err)
+	}
+	if feed, _ := svc.ListActiveIncidents(ctx, houseID, neighbour); len(feed) != 0 {
+		t.Fatalf("pending incident leaked into house feed: %+v", feed)
+	}
+	if own, _ := svc.ListActiveIncidents(ctx, houseID, userID); len(own) != 0 {
+		t.Fatalf("pending incident must not be in author's house feed: %+v", own)
+	}
+	if mine, _, _ := svc.ListRequests(ctx, houseID, userID, 0, 20); len(mine) != 1 || mine[0].ID != row.ID {
+		t.Fatalf("author must see pending incident in own requests: %+v", mine)
+	}
+	joined, created, err := svc.CreateIncident(ctx, houseID, neighbour, NewIncident{Description: "и у нас нет воды", Category: domain.CategoryWaterHeat})
+	if err != nil || created || joined.ID != row.ID {
+		t.Fatalf("report must join pending incident: id=%d created=%v err=%v", joined.ID, created, err)
+	}
+	uk.updates = []UkIncidentUpdate{{ID: "INC-" + strconv.FormatInt(row.ID, 10), Status: domain.IncidentAccepted, UpdatedAt: time.Now()}}
+	if err := svc.syncStatuses(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if feed, _ := svc.ListActiveIncidents(ctx, houseID, neighbour); len(feed) != 1 || feed[0].ID != row.ID {
+		t.Fatalf("accepted incident must appear in house feed: %+v", feed)
 	}
 }

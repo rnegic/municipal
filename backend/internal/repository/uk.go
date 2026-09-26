@@ -21,7 +21,7 @@ func (s *Store) HouseStats(ctx context.Context, houseID int64) (HouseStats, erro
 		       count(*) FILTER (WHERE status = 'done' AND resolved_at >= now() - interval '30 days'),
 		       avg(EXTRACT(EPOCH FROM resolved_at - created_at) / 3600)::float8,
 		       max(created_at)
-		FROM incident WHERE house_id = $1`, houseID).
+		FROM incident WHERE house_id = $1 AND status <> 'pending'`, houseID).
 		Scan(&st.ActiveIncidents, &st.InProgress, &st.ResolvedLast30Days, &st.AvgResolutionHours, &st.LastIncidentAt)
 	return st, err
 }

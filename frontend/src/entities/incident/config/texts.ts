@@ -66,6 +66,7 @@ export const incidentTexts = {
     warning: 'Плановые работы',
   },
   statuses: {
+    pending: 'Ожидает приёмки',
     accepted: 'Принята',
     in_progress: 'В работе',
     verifying: 'Проверка жителями',

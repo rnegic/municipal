@@ -94,7 +94,7 @@ ALTER TABLE incident ADD COLUMN IF NOT EXISTS merged_count INT NOT NULL DEFAULT 
 CREATE INDEX IF NOT EXISTS incident_merged_into ON incident(merged_into_id) WHERE merged_into_id IS NOT NULL;
 ALTER TABLE incident DROP CONSTRAINT IF EXISTS incident_status_check;
 ALTER TABLE incident ADD CONSTRAINT incident_status_check
-  CHECK (status IN ('accepted','in_progress','verifying','done','false_alarm'));
+  CHECK (status IN ('pending','accepted','in_progress','verifying','done','false_alarm'));
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS suspicious BOOLEAN NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS incident_reporter_false_alarm ON incident(reporter_id) WHERE status = 'false_alarm';
 

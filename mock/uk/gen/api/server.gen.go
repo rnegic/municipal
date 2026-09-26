@@ -21,6 +21,7 @@ const (
 	Done       IncidentStatus = "done"
 	FalseAlarm IncidentStatus = "false_alarm"
 	InProgress IncidentStatus = "in_progress"
+	Pending    IncidentStatus = "pending"
 	Verifying  IncidentStatus = "verifying"
 )
 
@@ -34,6 +35,8 @@ func (e IncidentStatus) Valid() bool {
 	case FalseAlarm:
 		return true
 	case InProgress:
+		return true
+	case Pending:
 		return true
 	case Verifying:
 		return true
@@ -81,12 +84,14 @@ type Incident struct {
 	ExternalRef string `json:"externalRef"`
 
 	// Id Example: INC-001
-	Id        string         `json:"id"`
+	Id string `json:"id"`
+
+	// Status pending — новое обращение ждёт приёмки диспетчером; принятое переходит в accepted
 	Status    IncidentStatus `json:"status"`
 	UpdatedAt time.Time      `json:"updatedAt"`
 }
 
-// IncidentStatus defines model for IncidentStatus.
+// IncidentStatus pending — новое обращение ждёт приёмки диспетчером; принятое переходит в accepted
 type IncidentStatus string
 
 // IncidentUpdates defines model for IncidentUpdates.
@@ -136,6 +141,7 @@ type RegisterIncidentRequest struct {
 
 // SetStatusRequest defines model for SetStatusRequest.
 type SetStatusRequest struct {
+	// Status pending — новое обращение ждёт приёмки диспетчером; принятое переходит в accepted
 	Status IncidentStatus `json:"status"`
 }
 
