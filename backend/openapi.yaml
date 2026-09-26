@@ -315,8 +315,8 @@ paths:
       tags: [incidents]
       summary: Категория по описанию (классификатор Laya) и ответственный по таблице категорий
       description: |
-        503 model_unavailable — модель недоступна, не ответила за 10 с или не уверена.
-        Любой не-2xx фронт превращает в ручной выбор.
+        Если модель недоступна, не ответила за 10 с или не уверена — 200 с category = null
+        и authority = null: фронт переходит к ручному выбору.
       requestBody:
         required: true
         content:
@@ -324,13 +324,12 @@ paths:
             schema: { $ref: "#/components/schemas/AnalyzeIncidentRequest" }
       responses:
         "200":
-          description: Уверенная классификация
+          description: Классификация; category = null — категорию не определили, выбор вручную
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AnalyzeIncidentResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
-        "503": { $ref: "#/components/responses/Error" }
 
   /api/incidents/photos:
     post:
@@ -599,8 +598,12 @@ components:
       type: object
       required: [category, authority, isUkResponsibility, photoRequired]
       properties:
-        category: { $ref: "#/components/schemas/IncidentCategory" }
-        authority: { $ref: "#/components/schemas/IncidentAuthority" }
+        category:
+          allOf: [{ $ref: "#/components/schemas/IncidentCategory" }]
+          nullable: true
+        authority:
+          allOf: [{ $ref: "#/components/schemas/IncidentAuthority" }]
+          nullable: true
         isUkResponsibility: { type: boolean }
         photoRequired: { type: boolean }
         reasoningText: { type: string }

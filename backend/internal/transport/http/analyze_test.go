@@ -33,11 +33,14 @@ func TestAnalyze(t *testing.T) {
 		t.Fatalf("city: %d %v", code, out)
 	}
 
-	if code, _ := analyze(t, &fakeClassifier{p: domain.Prediction{Category: domain.CategoryBuildingStructure, P: 0.5}}, roof); code != 503 {
-		t.Fatalf("unsure: %d", code)
-	}
-	if code, out := analyze(t, &fakeClassifier{err: errors.New("down")}, roof); code != 503 || out["code"] != "model_unavailable" {
-		t.Fatalf("down: %d %v", code, out)
+	for name, cls := range map[string]*fakeClassifier{
+		"unsure": {p: domain.Prediction{Category: domain.CategoryBuildingStructure, P: 0.5}},
+		"down":   {err: errors.New("down")},
+	} {
+		code, out := analyze(t, cls, roof)
+		if code != 200 || out["category"] != nil || out["authority"] != nil {
+			t.Fatalf("%s: want 200 with null category, got %d %v", name, code, out)
+		}
 	}
 	if code, out := analyze(t, &fakeClassifier{}, `{"description":"   коротко   "}`); code != 400 || out["code"] != "validation_failed" {
 		t.Fatalf("short: %d %v", code, out)

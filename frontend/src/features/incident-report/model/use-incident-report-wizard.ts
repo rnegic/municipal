@@ -120,7 +120,7 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
   }
 }
 
-const toAutoDecision = (result: AnalyzeIncidentResult): IncidentRoutingDecision => ({
+const toAutoDecision = (result: NonNullable<AnalyzeIncidentResult>): IncidentRoutingDecision => ({
   category: result.category,
   authority: result.authority,
   isUkResponsibility: isUkAuthority(result.authority) && result.isUkResponsibility,
@@ -204,7 +204,11 @@ export const useIncidentReportWizard = ({ onSuccess }: UseIncidentReportWizardOp
       { description: state.description.trim() },
       {
         onSuccess: (result) =>
-          dispatch({ type: 'resolveRouting', decision: toAutoDecision(result) }),
+          dispatch(
+            result
+              ? { type: 'resolveRouting', decision: toAutoDecision(result) }
+              : { type: 'fallbackRouting' },
+          ),
         onError: () => dispatch({ type: 'fallbackRouting' }),
       },
     )

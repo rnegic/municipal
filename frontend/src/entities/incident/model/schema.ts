@@ -146,16 +146,22 @@ export const analyzeIncidentRequestSchema = z.object({
 
 export const analyzeIncidentResponseSchema = z
   .object({
-    category: incidentCategorySchema,
-    authority: incidentAuthoritySchema,
+    category: incidentCategorySchema.nullable(),
+    authority: incidentAuthoritySchema.nullable(),
     isUkResponsibility: z.boolean(),
     photoRequired: z.boolean(),
     reasoningText: z.string().optional(),
   })
-  .transform((value) => ({
-    ...value,
-    reasoningText: value.reasoningText?.trim().slice(0, INCIDENT_REASONING_MAX_LENGTH) || null,
-  }))
+  .transform(({ category, authority, ...value }) =>
+    category && authority
+      ? {
+          ...value,
+          category,
+          authority,
+          reasoningText: value.reasoningText?.trim().slice(0, INCIDENT_REASONING_MAX_LENGTH) || null,
+        }
+      : null,
+  )
 
 export const createIncidentRequestSchema = z
   .object({
