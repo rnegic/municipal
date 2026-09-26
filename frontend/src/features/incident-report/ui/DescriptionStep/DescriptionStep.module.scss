@@ -27,12 +27,15 @@
 .actionButton {
   height: auto;
   padding-block: var(--app-space-3);
-  white-space: pre-line;
   text-align: center;
 }
 
 .actionButton span {
   font-size: var(--font-size-action-medium);
+}
+
+.actionLabel {
+  display: block;
 }
 
 .titleInput {
