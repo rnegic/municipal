@@ -32,7 +32,10 @@ type report struct {
 }
 
 func toReport(o domain.OpenIncident) report {
-	r := report{ID: o.ID, Title: o.Title, Description: o.Description, Entrance: o.Entrance, Riser: o.Riser, Severity: string(o.Severity)}
+	r := report{ID: o.ID, Title: o.Title, Description: o.Description, Entrance: o.Entrance, Severity: string(o.Severity)}
+	if o.Category == domain.CategoryWaterHeat {
+		r.Riser = o.Riser
+	}
 	if !o.CreatedAt.IsZero() {
 		r.CreatedAt = o.CreatedAt.UTC().Format(time.RFC3339)
 	}
