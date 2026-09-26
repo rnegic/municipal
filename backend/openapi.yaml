@@ -265,6 +265,20 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
+  /api/houses/{houseId}/sticker:
+    get:
+      operationId: houseSticker
+      security: []
+      tags: [stats]
+      summary: Наклейка для подъезда с QR на мини-приложение (публично — открывается и печатается из браузера)
+      parameters: [{ $ref: "#/components/parameters/HouseID" }]
+      responses:
+        "200":
+          description: SVG для печати
+          content:
+            image/svg+xml: { schema: { type: string, format: binary } }
+        "404": { $ref: "#/components/responses/Error" }
+
   /api/incidents:
     post:
       operationId: createIncident

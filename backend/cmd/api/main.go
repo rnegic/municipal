@@ -49,6 +49,9 @@ func main() {
 	go svc.RunOutboxWorker(ctx)
 	go svc.RunUkSyncWorker(ctx)
 	go svc.RunPhotoCleanup(ctx)
+	if botToken != "" {
+		go svc.RunBotUpdates(ctx)
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {

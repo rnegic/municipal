@@ -20,6 +20,8 @@ type InitUser struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	PhotoURL  string `json:"photo_url"`
+
+	StartParam string `json:"-"`
 }
 
 func ValidateInitData(raw, botToken string) (InitUser, error) {
@@ -59,5 +61,6 @@ func ValidateInitData(raw, botToken string) (InitUser, error) {
 	if err := json.Unmarshal([]byte(q.Get("user")), &u); err != nil || u.ID == 0 {
 		return InitUser{}, errors.New("initData: bad user")
 	}
+	u.StartParam = q.Get("start_param")
 	return u, nil
 }
