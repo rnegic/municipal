@@ -32,6 +32,36 @@ def post(url, body):
         return e.code, json.load(e)
 
 
+class BlockingFakeDeduper(FakeDeduper):
+    def __init__(self):
+        self.entered = threading.Event()
+        self.release = threading.Event()
+
+    def match(self, request, candidates, top_k=20):
+        self.entered.set()
+        self.release.wait()
+        return super().match(request, candidates, top_k)
+
+
+def test_serve_caps_concurrent_match_with_503():
+    dep = BlockingFakeDeduper()
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), handler(dep, max_inflight=1))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}"
+    req = {"title": "Нет воды", "description": "с утра"}
+    try:
+        t = threading.Thread(target=post, args=(base + "/match", {"request": req, "candidates": []}))
+        t.start()
+        dep.entered.wait(timeout=5)
+        code, out = post(base + "/match", {"request": req, "candidates": []})
+        assert code == 503 and out == {"error": "busy"}, out
+        dep.release.set()
+        t.join(timeout=5)
+    finally:
+        dep.release.set()
+        srv.shutdown()
+
+
 def test_serve():
     srv = ThreadingHTTPServer(("127.0.0.1", 0), handler(FakeDeduper()))
     threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -51,3 +81,5 @@ def test_serve():
 if __name__ == "__main__":
     test_serve()
     print("ok test_serve")
+    test_serve_caps_concurrent_match_with_503()
+    print("ok test_serve_caps_concurrent_match_with_503")
