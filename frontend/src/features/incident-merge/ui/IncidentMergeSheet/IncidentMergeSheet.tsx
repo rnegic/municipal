@@ -26,7 +26,6 @@ export const IncidentMergeSheet = ({
   open,
   items,
   targetId,
-  affectedCount,
   blocker,
   isPending,
   error,

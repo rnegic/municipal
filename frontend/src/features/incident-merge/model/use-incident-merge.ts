@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react'
 import {
   getMergeBlocker,
   getMergedAffectedCount,
+  isIncidentClosed,
   suggestMergeTargetId,
   useMergeIncidentsMutation,
   type UkQueueItem,
@@ -65,7 +66,7 @@ export const useIncidentMerge = (items: readonly UkQueueItem[]): IncidentMergeMo
 
   const isSelectable = useCallback(
     (item: UkQueueItem) =>
-      item.status !== 'done' &&
+      !isIncidentClosed(item.status) &&
       (selectedItems.length === 0 || selectedItems[0].houseId === item.houseId),
     [selectedItems],
   )
