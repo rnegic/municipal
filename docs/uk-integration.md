@@ -16,7 +16,7 @@
 
 | Операция | Зачем | Требования |
 |---|---|---|
-| `GET /houses/{fiasId}` | при привязке адреса жителем узнать, обслуживаете ли вы дом | `200 { id, address, organization: { id, name } }` или `404` |
+| `GET /houses/{fiasId}?address=<адрес>` | при привязке адреса жителем узнать, обслуживаете ли вы дом | `200 { id, address, organization: { id, name } }` или `404`; `address` — строка из DaData, необязательна |
 | `POST /incidents` | регистрация обращения | идемпотентно по `externalRef` (наш id): повтор → `200` с тем же объектом, первый раз → `201`; неизвестный `houseId` → `404` |
 | `GET /incidents?updatedSince=<RFC3339>` | мы поллим смену статусов (раз в 5 с, `UK_SYNC_INTERVAL`) | вернуть всё с `updatedAt > updatedSince`, по возрастанию `updatedAt`; `updatedAt` менять при каждой смене статуса |
 
@@ -39,7 +39,20 @@
 3. Сообщите ФИАС-id домов, которые обслуживаете, — `GET /houses/{fiasId}`
    должен отвечать `200` именно по `house_fias_id` из ФИАС/DaData.
 
+## Реальная УК дома (ГИС ЖКХ)
+
+При привязке адреса бэкенд ищет дом в открытой части ГИС ЖКХ
+(`POST dom.gosuslugi.ru/homemanagement/api/rest/services/houses/public/searchByAddress`
+по `region_fias_id`, `street_fias_id` и номеру дома из DaData) и берёт
+`managementOrganization` из актуальной (`APPROVED`) карточки с тем же `house_fias_id`.
+Найденная УК сохраняется в `uk` с `external_id = inn-<ИНН>`. Если УК не нашлась
+(нет карточки, дом без улицы, ГИС ЖКХ недоступен), остаётся организация из системы УК.
+ГИС ЖКХ отвечает только российским IP; локально отключается `GISGKH_DISABLED=1`.
+
 ## Демо-дом
+
+mock-uk обслуживает любой адрес: если дома с таким `fiasId` нет, а `address` передан,
+он заводится на лету за `uk-1`. Сид ниже нужен только для демо-заявок.
 
 В сиде `mock/uk/internal/store/seed.sql` (и синхронизированном
 `backend/internal/repository/seed.sql`) один дом (`h-1`, «г Казань, ул Баумана, д 7/10»,

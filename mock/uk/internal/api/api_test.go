@@ -68,6 +68,17 @@ func TestFindHouse(t *testing.T) {
 	}
 }
 
+func TestFindHouseAutoCreates(t *testing.T) {
+	h := testRouter(t)
+	w := do(t, h, "GET", "/houses/fias-auto?address=%D0%9D%D0%BE%D0%B2%D0%B0%D1%8F%201", "", "tok")
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"id":"h-fias-auto"`) || !strings.Contains(w.Body.String(), `"id":"uk-1"`) {
+		t.Fatalf("got %d %s", w.Code, w.Body)
+	}
+	if w := do(t, h, "POST", "/incidents", `{"externalRef":"auto-1","houseId":"h-fias-auto","title":"t","description":"d","severity":"warning"}`, "tok"); w.Code != 201 {
+		t.Fatalf("want 201, got %d %s", w.Code, w.Body)
+	}
+}
+
 func TestIncidentLifecycle(t *testing.T) {
 	h := testRouter(t)
 	body := `{"externalRef":"42","houseId":"h-1","title":"Нет воды","description":"x","severity":"critical"}`

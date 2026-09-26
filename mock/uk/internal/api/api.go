@@ -50,7 +50,7 @@ func toWire(in store.Incident) ukapi.Incident {
 }
 
 func (s *server) FindHouse(ctx context.Context, req ukapi.FindHouseRequestObject) (ukapi.FindHouseResponseObject, error) {
-	h, err := s.st.FindHouseByFias(ctx, req.FiasId)
+	h, err := s.st.FindHouseByFias(ctx, req.FiasId, req.Params.Address)
 	if errors.Is(err, store.ErrNotFound) {
 		return ukapi.FindHouse404JSONResponse{Code: "not_found", Message: "дом не обслуживается"}, nil
 	}

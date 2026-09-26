@@ -31,8 +31,8 @@ func New(baseURL, token string) *Client {
 
 func toDomainStatus(s ukapi.IncidentStatus) domain.IncidentStatus { return domain.IncidentStatus(s) }
 
-func (c *Client) FindHouse(ctx context.Context, fiasID string) (service.UkHouse, error) {
-	resp, err := c.api.FindHouseWithResponse(ctx, fiasID)
+func (c *Client) FindHouse(ctx context.Context, fiasID, address string) (service.UkHouse, error) {
+	resp, err := c.api.FindHouseWithResponse(ctx, fiasID, &ukapi.FindHouseParams{Address: &address})
 	if err != nil {
 		return service.UkHouse{}, err
 	}

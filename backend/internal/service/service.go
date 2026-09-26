@@ -32,6 +32,7 @@ type Service struct {
 	cls       Classifier
 	threshold float64
 	matcher   Matcher
+	orgs      OrgDirectory
 	inflight  chan struct{}
 
 	houseLocks sync.Map

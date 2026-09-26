@@ -20,6 +20,7 @@ paths:
       summary: Какая организация обслуживает дом (по ФИАС-id дома)
       parameters:
         - { name: fiasId, in: path, required: true, schema: { type: string } }
+        - { name: address, in: query, required: false, schema: { type: string } }
       responses:
         "200":
           description: Дом обслуживается
