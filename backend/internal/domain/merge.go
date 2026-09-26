@@ -61,7 +61,7 @@ func PlanMerge(ukID, target int64, sources []int64, found []MergeCandidate) (toM
 			return nil, ErrMergeForeign
 		}
 	}
-	if t.Status == IncidentDone {
+	if t.Status.Closed() {
 		return nil, ErrMergeRuleFails
 	}
 	for _, id := range sources {
@@ -72,7 +72,7 @@ func PlanMerge(ukID, target int64, sources []int64, found []MergeCandidate) (toM
 		if s.MergedIntoID != nil && *s.MergedIntoID == target {
 			continue
 		}
-		if s.MergedIntoID != nil || s.Status == IncidentDone {
+		if s.MergedIntoID != nil || s.Status.Closed() {
 			return nil, ErrMergeRuleFails
 		}
 		toMerge = append(toMerge, id)

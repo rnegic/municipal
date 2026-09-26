@@ -409,7 +409,7 @@ paths:
     patch:
       operationId: setIncidentStatus
       tags: [incidents]
-      summary: Смена статуса диспетчером УК (accepted→in_progress, in_progress→verifying, verifying→done; чужая УК → 404)
+      summary: Смена статуса диспетчером УК (accepted→in_progress, in_progress→verifying, verifying→done; false_alarm недоступен; чужая УК → 404)
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -593,7 +593,10 @@ components:
 
     IncidentStatus:
       type: string
-      enum: [accepted, in_progress, verifying, done]
+      description: |
+        false_alarm — заявку закрыла УК с отметкой «Ложный вызов»; статус финальный,
+        диспетчер его не выставляет (приходит только из УК) и обратно из него не выйти.
+      enum: [accepted, in_progress, verifying, done, false_alarm]
 
     Incident:
       type: object

@@ -35,6 +35,10 @@ const (
 	MaxReportsPerHour          = 10
 )
 
+func (s IncidentStatus) Closed() bool {
+	return s == IncidentDone || s == IncidentFalseAlarm
+}
+
 var sla = map[Severity]time.Duration{SeverityCritical: 4 * time.Hour, SeverityWarning: 24 * time.Hour}
 
 func SLA(sev Severity) time.Duration { return sla[sev] }

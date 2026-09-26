@@ -43,7 +43,7 @@ func (s *Store) ApplyUkStatus(ctx context.Context, externalID string, status dom
 
 	var inc model.Incident
 	upd := Incident.UPDATE(Incident.Status).SET(string(status))
-	if status == domain.IncidentDone || status == domain.IncidentFalseAlarm {
+	if status.Closed() {
 		upd = Incident.UPDATE(Incident.Status, Incident.ResolvedAt).SET(string(status), NOW())
 	}
 	err = upd.WHERE(
