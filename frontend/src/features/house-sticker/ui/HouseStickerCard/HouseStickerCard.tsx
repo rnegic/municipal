@@ -24,7 +24,7 @@ export const HouseStickerCard = ({ className }: HouseStickerCardProps) => {
       <span className={s.icon} aria-hidden="true">
         <IconQrCode size={20} />
       </span>
-      <Button size="small" tone="ghost" onClick={() => openLink(buildHouseStickerUrl(house))}>
+      <Button size="small" tone="secondary" onClick={() => openLink(buildHouseStickerUrl(house))}>
         {texts.action}
       </Button>
     </div>
