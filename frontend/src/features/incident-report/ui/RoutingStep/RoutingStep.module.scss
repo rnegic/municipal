@@ -33,7 +33,6 @@
 
 .override {
   gap: var(--app-space-2);
-  align-items: flex-start;
 }
 
 .overrideButton {
@@ -41,6 +40,8 @@
   --MaxUi-Button_background-active: var(--app-color-manual-surface-active);
   --MaxUi-Button_foreground: var(--app-color-manual-text);
   --MaxUi-Button_foreground-active: var(--app-color-manual-text);
+
+  height: 2.25rem;
 }
 
 .error {
