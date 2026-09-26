@@ -150,6 +150,11 @@ type SetStatusRequest struct {
 // Severity defines model for Severity.
 type Severity string
 
+// FindHouseParams defines parameters for FindHouse.
+type FindHouseParams struct {
+	Address *string `form:"address,omitempty" json:"address,omitempty"`
+}
+
 // ListIncidentUpdatesParams defines parameters for ListIncidentUpdates.
 type ListIncidentUpdatesParams struct {
 	UpdatedSince time.Time `form:"updatedSince" json:"updatedSince"`
@@ -238,7 +243,7 @@ type ClientInterface interface {
 	// FindHouse Какая организация обслуживает дом (по ФИАС-id дома)
 	//
 	// Corresponds with GET /houses/{fiasId} (the `FindHouse` operationId).
-	FindHouse(ctx context.Context, fiasId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	FindHouse(ctx context.Context, fiasId string, params *FindHouseParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListIncidentUpdates Инциденты, изменившиеся после updatedSince (для поллинга)
 	//
@@ -277,8 +282,8 @@ type ClientInterface interface {
 // FindHouse Какая организация обслуживает дом (по ФИАС-id дома)
 //
 // Corresponds with GET /houses/{fiasId} (the `FindHouse` operationId).
-func (c *Client) FindHouse(ctx context.Context, fiasId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewFindHouseRequest(c.Server, fiasId)
+func (c *Client) FindHouse(ctx context.Context, fiasId string, params *FindHouseParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFindHouseRequest(c.Server, fiasId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +378,7 @@ func (c *Client) SetIncidentStatus(ctx context.Context, id string, body SetIncid
 }
 
 // NewFindHouseRequest constructs an http.Request for the FindHouse method
-func NewFindHouseRequest(server string, fiasId string) (*http.Request, error) {
+func NewFindHouseRequest(server string, fiasId string, params *FindHouseParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -396,6 +401,33 @@ func NewFindHouseRequest(server string, fiasId string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Address != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "address", *params.Address, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -592,7 +624,7 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /houses/{fiasId} (the `FindHouse` operationId).
-	FindHouseWithResponse(ctx context.Context, fiasId string, reqEditors ...RequestEditorFn) (*FindHouseResponse, error)
+	FindHouseWithResponse(ctx context.Context, fiasId string, params *FindHouseParams, reqEditors ...RequestEditorFn) (*FindHouseResponse, error)
 
 	// ListIncidentUpdatesWithResponse Инциденты, изменившиеся после updatedSince (для поллинга)
 	//
@@ -876,8 +908,8 @@ func (r SetIncidentStatusResponse) ContentType() string {
 // Returns a wrapper object for the known response body format(s).
 //
 // Corresponds with GET /houses/{fiasId} (the `FindHouse` operationId).
-func (c *ClientWithResponses) FindHouseWithResponse(ctx context.Context, fiasId string, reqEditors ...RequestEditorFn) (*FindHouseResponse, error) {
-	rsp, err := c.FindHouse(ctx, fiasId, reqEditors...)
+func (c *ClientWithResponses) FindHouseWithResponse(ctx context.Context, fiasId string, params *FindHouseParams, reqEditors ...RequestEditorFn) (*FindHouseResponse, error) {
+	rsp, err := c.FindHouse(ctx, fiasId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

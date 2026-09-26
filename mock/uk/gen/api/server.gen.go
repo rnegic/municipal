@@ -148,6 +148,11 @@ type SetStatusRequest struct {
 // Severity defines model for Severity.
 type Severity string
 
+// FindHouseParams defines parameters for FindHouse.
+type FindHouseParams struct {
+	Address *string `form:"address,omitempty" json:"address,omitempty"`
+}
+
 // ListIncidentUpdatesParams defines parameters for ListIncidentUpdates.
 type ListIncidentUpdatesParams struct {
 	UpdatedSince time.Time `form:"updatedSince" json:"updatedSince"`
@@ -163,7 +168,7 @@ type SetIncidentStatusJSONRequestBody = SetStatusRequest
 type ServerInterface interface {
 	// FindHouse Какая организация обслуживает дом (по ФИАС-id дома)
 	// (GET /houses/{fiasId})
-	FindHouse(c *gin.Context, fiasId string)
+	FindHouse(c *gin.Context, fiasId string, params FindHouseParams)
 	// ListIncidentUpdates Инциденты, изменившиеся после updatedSince (для поллинга)
 	// (GET /incidents)
 	ListIncidentUpdates(c *gin.Context, params ListIncidentUpdatesParams)
@@ -199,6 +204,17 @@ func (siw *ServerInterfaceWrapper) FindHouse(c *gin.Context) {
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params FindHouseParams
+
+	// ------------- Optional query parameter "address" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "address", c.Request.URL.Query(), &params.Address, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter address: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -206,7 +222,7 @@ func (siw *ServerInterfaceWrapper) FindHouse(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.FindHouse(c, fiasId)
+	siw.Handler.FindHouse(c, fiasId, params)
 }
 
 // ListIncidentUpdates operation middleware
@@ -309,6 +325,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 
 type FindHouseRequestObject struct {
 	FiasId string `json:"fiasId"`
+	Params FindHouseParams
 }
 
 type FindHouseResponseObject interface {
@@ -624,10 +641,11 @@ type strictHandler struct {
 }
 
 // FindHouse operation middleware
-func (sh *strictHandler) FindHouse(ctx *gin.Context, fiasId string) {
+func (sh *strictHandler) FindHouse(ctx *gin.Context, fiasId string, params FindHouseParams) {
 	var request FindHouseRequestObject
 
 	request.FiasId = fiasId
+	request.Params = params
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.FindHouse(ctx, request.(FindHouseRequestObject))

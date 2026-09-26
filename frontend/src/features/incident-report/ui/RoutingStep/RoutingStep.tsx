@@ -92,6 +92,7 @@ export const RoutingStep = ({
             type="button"
             size="small"
             tone="secondary"
+            stretched
             onClick={onManualOverride}
           >
             {texts.routingStep.overrideAction}

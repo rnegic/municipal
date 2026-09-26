@@ -14,7 +14,7 @@ export const incidentReportTexts = {
     placeholder: 'Например: нет горячей воды, сломан лифт, течёт крыша',
     hint: (min: number, max: number) => `От ${min} до ${max} символов`,
     counter: (current: number, max: number) => `${current} / ${max}`,
-    submit: 'Определить автоматически',
+    submit: 'Выбрать автоматически',
     manualSubmit: 'Выбрать вручную',
     analyzingTitle: 'Определяем ответственного',
     analyzingDescription: 'Анализируем описание, это занимает несколько секунд',

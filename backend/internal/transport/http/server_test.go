@@ -66,7 +66,7 @@ type fakeUk struct {
 	setStatus  []string
 }
 
-func (f *fakeUk) FindHouse(_ context.Context, fias string) (service.UkHouse, error) {
+func (f *fakeUk) FindHouse(_ context.Context, fias, _ string) (service.UkHouse, error) {
 	if fias == "unknown" {
 		return service.UkHouse{}, service.ErrUkHouseNotFound
 	}

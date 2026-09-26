@@ -26,8 +26,11 @@ func NewClient(token string) *Client {
 }
 
 type Suggestion struct {
-	Value       string
-	HouseFiasID string
+	Value        string
+	HouseFiasID  string
+	RegionFiasID string
+	StreetFiasID string
+	House        string
 }
 
 func (c *Client) Suggest(ctx context.Context, q string, count int) ([]Suggestion, error) {
@@ -53,7 +56,10 @@ func (c *Client) Suggest(ctx context.Context, q string, count int) ([]Suggestion
 		Suggestions []struct {
 			Value string `json:"value"`
 			Data  struct {
-				HouseFiasID *string `json:"house_fias_id"`
+				HouseFiasID  *string `json:"house_fias_id"`
+				RegionFiasID *string `json:"region_fias_id"`
+				StreetFiasID *string `json:"street_fias_id"`
+				House        *string `json:"house"`
 			} `json:"data"`
 		} `json:"suggestions"`
 	}
@@ -65,7 +71,17 @@ func (c *Client) Suggest(ctx context.Context, q string, count int) ([]Suggestion
 		if s.Data.HouseFiasID == nil {
 			continue
 		}
-		res = append(res, Suggestion{Value: s.Value, HouseFiasID: *s.Data.HouseFiasID})
+		res = append(res, Suggestion{
+			Value: s.Value, HouseFiasID: *s.Data.HouseFiasID,
+			RegionFiasID: deref(s.Data.RegionFiasID), StreetFiasID: deref(s.Data.StreetFiasID), House: deref(s.Data.House),
+		})
 	}
 	return res, nil
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

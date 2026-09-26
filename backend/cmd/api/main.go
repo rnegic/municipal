@@ -10,6 +10,7 @@ import (
 
 	"ukapp/internal/dadata"
 	"ukapp/internal/dedupclient"
+	"ukapp/internal/gisgkh"
 	"ukapp/internal/layaclient"
 	"ukapp/internal/maxclient"
 	"ukapp/internal/repository"
@@ -45,6 +46,9 @@ func main() {
 	svc.WithClassifier(cls, envFloat("LAYA_CATEGORY_THRESHOLD", 0.7))
 	if u := os.Getenv("DEDUP_URL"); u != "" {
 		svc.WithMatcher(dedupclient.New(u, envDuration("DEDUP_TIMEOUT", 5*time.Second)))
+	}
+	if os.Getenv("GISGKH_DISABLED") == "" {
+		svc.WithOrgDirectory(gisgkh.New())
 	}
 	go svc.RunOutboxWorker(ctx)
 	go svc.RunUkSyncWorker(ctx)

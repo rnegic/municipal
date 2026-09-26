@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"ukapp/internal/domain"
 	"ukapp/internal/repository"
@@ -28,12 +29,22 @@ func (s *Service) BindHouse(ctx context.Context, userID int64, rawAddress string
 		return 0, "", ErrAddressNotResolved
 	}
 	best := sugs[0]
-	h, err := s.uk.FindHouse(ctx, best.HouseFiasID)
+	h, err := s.uk.FindHouse(ctx, best.HouseFiasID, best.Value)
 	if errors.Is(err, ErrUkHouseNotFound) {
 		return 0, "", ErrHouseNotServed
 	}
 	if err != nil {
 		return 0, "", err
+	}
+	if s.orgs != nil {
+		org, err := s.orgs.FindOrg(ctx, HouseAddress{
+			HouseFiasID: best.HouseFiasID, RegionFiasID: best.RegionFiasID, StreetFiasID: best.StreetFiasID, House: best.House,
+		})
+		if err != nil {
+			slog.Warn("gisgkh find org", "fias", best.HouseFiasID, "err", err)
+		} else if org != nil {
+			h.Org = *org
+		}
 	}
 	ukID, err := s.repo.UpsertUk(ctx, h.Org.ExternalID, h.Org.Name, repository.UkContacts{
 		Phone: h.Org.Phone, EmergencyPhone: h.Org.EmergencyPhone, Email: h.Org.Email,

@@ -13,7 +13,7 @@ import (
 )
 
 type UkProvider interface {
-	FindHouse(ctx context.Context, fiasID string) (UkHouse, error)
+	FindHouse(ctx context.Context, fiasID, address string) (UkHouse, error)
 	RegisterIncident(ctx context.Context, in UkIncident) (id string, status domain.IncidentStatus, err error)
 	IncidentUpdates(ctx context.Context, since time.Time) ([]UkIncidentUpdate, error)
 	SetStatus(ctx context.Context, id string, status domain.IncidentStatus) error
@@ -26,6 +26,14 @@ type UkOrg struct {
 	ExternalID, Name                      string
 	Phone, EmergencyPhone, Email, Website *string
 	OfficeAddress, WorkingHours           *string
+}
+
+type HouseAddress struct {
+	HouseFiasID, RegionFiasID, StreetFiasID, House string
+}
+
+type OrgDirectory interface {
+	FindOrg(ctx context.Context, a HouseAddress) (*UkOrg, error)
 }
 
 type UkHouse struct {

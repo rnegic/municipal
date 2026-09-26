@@ -62,7 +62,14 @@ func (s *Store) Close() { _ = s.db.Close() }
 // DB exposes the handle for test setup.
 func (s *Store) DB() *sql.DB { return s.db }
 
-func (s *Store) FindHouseByFias(ctx context.Context, fias string) (House, error) {
+func (s *Store) FindHouseByFias(ctx context.Context, fias string, address *string) (House, error) {
+	if address != nil && *address != "" {
+		if _, err := s.db.ExecContext(ctx,
+			`INSERT INTO house (id, fias_id, address, organization_id) VALUES ('h-' || $1, $1, $2, 'uk-1')
+			 ON CONFLICT (fias_id) DO NOTHING`, fias, *address); err != nil {
+			return House{}, err
+		}
+	}
 	var h House
 	err := s.db.QueryRowContext(ctx,
 		`SELECT h.id, h.fias_id, h.address, o.id, o.name,

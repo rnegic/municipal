@@ -25,6 +25,18 @@ export interface DescriptionStepProps {
   validationError: string | null
 }
 
+const TwoLineLabel = ({ text }: { text: string }) => {
+  const [first, ...rest] = text.split(' ')
+
+  return (
+    <span className={s.actionLabel}>
+      {first}
+      <br />
+      {rest.join(' ')}
+    </span>
+  )
+}
+
 export const DescriptionStep = ({
   title,
   value,
@@ -132,11 +144,17 @@ export const DescriptionStep = ({
       ) : null}
 
       <div className={s.actions}>
-        <Button type="submit" stretched>
-          {texts.descriptionStep.submit}
+        <Button className={s.actionButton} type="submit" stretched>
+          <TwoLineLabel text={texts.descriptionStep.submit} />
         </Button>
-        <Button type="button" tone="secondary" stretched onClick={onManual}>
-          {texts.descriptionStep.manualSubmit}
+        <Button
+          className={s.actionButton}
+          type="button"
+          tone="secondary"
+          stretched
+          onClick={onManual}
+        >
+          <TwoLineLabel text={texts.descriptionStep.manualSubmit} />
         </Button>
       </div>
     </form>
