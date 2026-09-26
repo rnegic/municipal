@@ -1,0 +1,21 @@
+.root {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.item {
+  border-radius: var(--app-radius-round);
+  box-shadow: 0 0 0 2px var(--app-color-surface-card);
+}
+
+.item + .item {
+  margin-left: -0.8rem;
+}
+
+.rest {
+  background: var(--app-color-surface-muted);
+  color: var(--app-color-text-secondary);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}

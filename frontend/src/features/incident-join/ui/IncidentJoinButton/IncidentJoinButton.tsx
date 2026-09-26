@@ -1,15 +1,24 @@
-import { Avatar, Typography } from '@maxhub/max-ui'
+import { Typography } from '@maxhub/max-ui'
+import { useMemo } from 'react'
 
-import { incidentTexts, useJoinIncidentMutation } from '@/entities/incident'
+import {
+  INCIDENT_SUPPORTERS_PREVIEW_COUNT,
+  incidentTexts,
+  useJoinIncidentMutation,
+  type IncidentSupporter,
+} from '@/entities/incident'
 import { IconCheckCircle, IconPlus } from '@/shared/assets/icons'
 import { describeApiError } from '@/shared/lib/api-error'
 import { cn } from '@/shared/lib/cn'
+import { AvatarStack } from '@/shared/ui/avatar-stack'
 import { Button } from '@/shared/ui/button'
+import { buildSupporterAvatars } from '../../lib/supporter-avatars'
 import s from './IncidentJoinButton.module.scss'
 
 export interface IncidentJoinButtonProps {
   incidentId: string
   affectedCount: number
+  supporters?: readonly IncidentSupporter[]
   alreadyJoined?: boolean
   className?: string
 }
@@ -17,27 +26,28 @@ export interface IncidentJoinButtonProps {
 export const IncidentJoinButton = ({
   incidentId,
   affectedCount,
+  supporters = [],
   alreadyJoined = false,
   className,
 }: IncidentJoinButtonProps) => {
   const joinMutation = useJoinIncidentMutation()
   const joined = alreadyJoined || joinMutation.isSuccess
 
+  const avatars = useMemo(
+    () => buildSupporterAvatars({ incidentId, affectedCount, supporters, joined }),
+    [affectedCount, incidentId, joined, supporters],
+  )
+
   return (
     <div className={cn(s.root, className)}>
       {affectedCount > 0 ? (
         <div className={s.confirmations}>
-          <div className={s.avatars} aria-hidden="true">
-            <Avatar.Container size={32}>
-              <Avatar.Text gradient="blue">АМ</Avatar.Text>
-            </Avatar.Container>
-            <Avatar.Container size={32}>
-              <Avatar.Text gradient="green">ИК</Avatar.Text>
-            </Avatar.Container>
-            <Avatar.Container size={32}>
-              <Avatar.Text gradient="purple">ОР</Avatar.Text>
-            </Avatar.Container>
-          </div>
+          <AvatarStack
+            items={avatars}
+            total={affectedCount}
+            max={INCIDENT_SUPPORTERS_PREVIEW_COUNT}
+            label={incidentTexts.a11y.supporters}
+          />
           <Typography.Text variant="note" color="secondary">
             {incidentTexts.focus.affectedCount(affectedCount)}
           </Typography.Text>

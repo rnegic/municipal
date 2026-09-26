@@ -69,7 +69,21 @@
 
 .boardToolbar {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-4);
+}
+
+.sortHint {
+  min-width: 0;
+}
+
+.toolbarActions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--app-space-5);
 }
 
 .archiveToggle {
@@ -78,6 +92,11 @@
   gap: var(--app-space-2);
   zoom: 0.85;
   cursor: pointer;
+}
+
+.archiveSwitch {
+  /* stylelint-disable-next-line custom-property-pattern */
+  --MaxUi-Switch__toggle_background: var(--app-color-surface-card);
 }
 
 .column {
@@ -139,6 +158,8 @@
 }
 
 .card {
+  flex-direction: row;
+  align-items: center;
   gap: var(--app-space-4);
   border: 1px solid var(--app-color-border-card);
   background: transparent;
@@ -146,8 +167,76 @@
   cursor: grab;
 }
 
+.categoryIcon {
+  align-self: center;
+  flex: none;
+}
+
+.content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--app-space-4);
+  min-width: 0;
+}
+
+.cardTitleRow {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--app-space-2);
+  min-width: 0;
+}
+
 .card:active {
   cursor: grabbing;
+}
+
+.cardSelecting,
+.cardSelecting:active {
+  cursor: pointer;
+  user-select: none;
+}
+
+.cardPriority {
+  border-color: color-mix(in srgb, var(--app-color-danger) 40%, transparent);
+}
+
+.cardSelected {
+  border-color: var(--app-color-progress);
+  background: var(--app-color-progress-surface);
+}
+
+.cardDimmed {
+  opacity: 0.45;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-2);
+}
+
+.priority,
+.merged {
+  padding: var(--app-space-1) var(--app-space-2);
+  border-radius: var(--app-radius-semi-round);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.priority {
+  color: var(--app-color-danger);
+  background: var(--app-color-danger-surface);
+}
+
+.merged {
+  color: var(--app-color-text-accent);
+  background: var(--app-color-progress-surface);
+}
+
+.signatories {
+  color: var(--app-color-danger);
 }
 
 .actions {
@@ -175,6 +264,10 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--app-space-3);
+}
+
+.cardTitle {
+  min-width: 0;
 }
 
 .critical,
@@ -246,6 +339,11 @@
 
 @media (width <= 720px) {
   .headerTitle {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .boardToolbar {
     align-items: flex-start;
     flex-direction: column;
   }

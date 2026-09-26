@@ -307,3 +307,108 @@ func TestUnbindHouse(t *testing.T) {
 		t.Fatalf("cors: %q", w.Header().Get("Access-Control-Allow-Methods"))
 	}
 }
+
+func TestMergeIncidents(t *testing.T) {
+	s := testStore(t)
+	srv := newTestServer(t, s)
+	bindUser(t, srv, 1, "f-10")
+	bindUser(t, srv, 2, "f-10")
+	bindUser(t, srv, 4, "f-11")
+	bindUser(t, srv, 3, "f-12")
+	seedDispatcher(t, s, "uk-1", "1655000003", "2099-12-31", true)
+	seedDispatcher(t, s, "uk-2", "7707083893", "2099-12-31", true)
+	if _, err := s.DB().ExecContext(context.Background(),
+		`UPDATE house SET uk_id = (SELECT id FROM uk WHERE external_id = 'uk-2') WHERE house_fias_id = 'f-12'`); err != nil {
+		t.Fatal(err)
+	}
+	target, _ := createIncident(t, srv, 1, `{"description":"нет воды с самого утра","category":"WATER_HEAT","photoUrls":[]}`)
+	dup, _ := createIncident(t, srv, 2, `{"description":"в подъезде не горит свет","category":"ELECTRICITY","photoUrls":[]}`)
+	otherHouse, _ := createIncident(t, srv, 4, `{"description":"в подъезде не горит свет","category":"ELECTRICITY","photoUrls":[]}`)
+	foreign, _ := createIncident(t, srv, 3, `{"description":"в подъезде не горит свет","category":"ELECTRICITY","photoUrls":[]}`)
+	token := dispatcherToken(t, srv, "1655000003")
+	merge := func(target string, sources ...string) *httptest.ResponseRecorder {
+		b, _ := json.Marshal(map[string]any{"targetIncidentId": target, "sourceIncidentIds": sources})
+		return serve(srv, bearerReq("POST", "/api/uk/incidents/merge", string(b), token))
+	}
+
+	for _, c := range []struct {
+		name string
+		w    *httptest.ResponseRecorder
+		want int
+	}{
+		{"empty sources", merge(target.Id), 400},
+		{"source is target", merge(target.Id, target.Id), 400},
+		{"unknown id", merge(target.Id, "inc_999"), 404},
+		{"foreign uk", merge(target.Id, foreign.Id), 403},
+		{"other house", merge(target.Id, otherHouse.Id), 422},
+		{"resident", serve(srv, authedReq(t, "POST", "/api/uk/incidents/merge", `{"targetIncidentId":"`+target.Id+`","sourceIncidentIds":["`+dup.Id+`"]}`, 1, "U")), 403},
+	} {
+		if c.w.Code != c.want {
+			t.Errorf("%s: want %d got %d %s", c.name, c.want, c.w.Code, c.w.Body)
+		}
+	}
+
+	for i := 0; i < 2; i++ {
+		w := merge(target.Id, dup.Id)
+		var out struct {
+			TargetIncidentId  string
+			MergedIncidentIds []string
+			AffectedCount     int
+		}
+		_ = json.Unmarshal(w.Body.Bytes(), &out)
+		if w.Code != 200 || out.AffectedCount != 2 || len(out.MergedIncidentIds) != 1 || out.MergedIncidentIds[0] != dup.Id {
+			t.Fatalf("merge #%d: %d %s", i, w.Code, w.Body)
+		}
+	}
+	if w := merge(dup.Id, target.Id); w.Code != 422 {
+		t.Fatalf("merged source as target: want 422 got %d", w.Code)
+	}
+
+	dupID, _ := parseID("inc_", dup.Id)
+	targetID, _ := parseID("inc_", target.Id)
+	var mergedInto int64
+	var status string
+	var outbox, reports int
+	db := s.DB()
+	ctx := context.Background()
+	if err := db.QueryRowContext(ctx, `SELECT status, merged_into_id FROM incident WHERE id = $1`, dupID).Scan(&status, &mergedInto); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM outbox_message WHERE kind = 'incident_merged' AND target_max_user_id = 2 AND payload->>'text' LIKE $1`, "%startapp=inc_"+itoa(targetID)).Scan(&outbox); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM incident_report WHERE incident_id = $1 AND outcome = 'merged_manual' AND dedup_version = 'manual-uk'`, targetID).Scan(&reports); err != nil {
+		t.Fatal(err)
+	}
+	if status != "done" || mergedInto != targetID || outbox != 1 || reports != 1 {
+		t.Fatalf("after merge: status=%s into=%d outbox=%d reports=%d", status, mergedInto, outbox, reports)
+	}
+
+	var card struct {
+		AffectedCount, MergedCount int
+		Supporters                 []struct {
+			Id        string
+			Name      *string
+			AvatarUrl *string
+		}
+	}
+	if c := getJSON(t, srv, "/api/incidents/"+target.Id, 1, &card); c != 200 || card.AffectedCount != 2 || card.MergedCount != 1 ||
+		len(card.Supporters) != 2 || card.Supporters[0].Name == nil || *card.Supporters[0].Name != "U T." {
+		t.Fatalf("target card: %d %+v", c, card)
+	}
+
+	var q struct {
+		Items []struct {
+			Id            string
+			MergedCount   int
+			AffectedCount int
+			Category      *string
+		}
+	}
+	w := serve(srv, bearerReq("GET", "/api/uk/queue", "", token))
+	_ = json.Unmarshal(w.Body.Bytes(), &q)
+	if len(q.Items) != 3 || q.Items[0].Id != target.Id || q.Items[0].MergedCount != 1 || q.Items[0].AffectedCount != 2 ||
+		q.Items[0].Category == nil || *q.Items[0].Category != "WATER_HEAT" {
+		t.Fatalf("queue must put most-subscribed first: %s", w.Body)
+	}
+}

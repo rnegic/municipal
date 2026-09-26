@@ -30,4 +30,6 @@ type Incident struct {
 	RoutingSource     *string
 	CategoryPredicted *string
 	RoutingConfidence *float32
+	MergedIntoID      *int64
+	MergedCount       int32
 }

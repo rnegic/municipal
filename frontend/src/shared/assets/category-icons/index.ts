@@ -1,0 +1,7 @@
+export { default as WaterCategoryIcon } from './Water'
+export { default as ElectricityCategoryIcon } from './Electricity'
+export { default as ElevatorCategoryIcon } from './Elevator'
+export { default as CleaningYardCategoryIcon } from './CleaningYard'
+export { default as BuildingStructureCategoryIcon } from './BuildingStructure'
+export { default as CityTerritoryCategoryIcon } from './CityTerritory'
+export { default as DefaultCategoryIcon } from './Default'

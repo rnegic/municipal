@@ -76,12 +76,14 @@ type UkQueueRow struct {
 	HouseAddress   string
 	Title          string
 	Description    string
+	Category       *string
 	Severity       string
 	Status         string
 	CreatedAt      time.Time
 	DueAt          *time.Time
 	AffectedCount  int
 	ConfirmedCount int
+	MergedCount    int
 	ReporterName   string
 	PhotoIDs       []int64
 }
@@ -94,15 +96,16 @@ func (s *Store) UkQueue(ctx context.Context, ukID, offset, limit int64) ([]UkQue
 		return nil, 0, err
 	}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT i.id, i.house_id, h.address_raw, i.title, i.description, i.severity, i.status, i.created_at, i.due_at,
-		       (SELECT count(*) FROM incident_subscription s WHERE s.incident_id = i.id),
+		SELECT i.id, i.house_id, h.address_raw, i.title, i.description, i.category, i.severity, i.status, i.created_at, i.due_at,
+		       a.affected_count,
 		       (SELECT count(*) FROM incident_confirmation c WHERE c.incident_id = i.id),
-		       u.full_name
+		       i.merged_count, u.full_name
 		FROM incident i
 		JOIN house h ON h.id = i.house_id
 		JOIN app_user u ON u.id = i.reporter_id
+		LEFT JOIN LATERAL (SELECT count(*) AS affected_count FROM incident_subscription s WHERE s.incident_id = i.id) a ON true
 		WHERE h.uk_id = $1
-		ORDER BY i.created_at DESC, i.id DESC
+		ORDER BY a.affected_count DESC, (i.severity = 'critical') DESC, i.due_at ASC NULLS LAST, i.created_at ASC, i.id ASC
 		OFFSET $2 LIMIT $3`, ukID, offset, limit)
 	if err != nil {
 		return nil, 0, err
@@ -111,8 +114,8 @@ func (s *Store) UkQueue(ctx context.Context, ukID, offset, limit int64) ([]UkQue
 	var out []UkQueueRow
 	for rows.Next() {
 		var r UkQueueRow
-		if err := rows.Scan(&r.ID, &r.HouseID, &r.HouseAddress, &r.Title, &r.Description, &r.Severity, &r.Status,
-			&r.CreatedAt, &r.DueAt, &r.AffectedCount, &r.ConfirmedCount, &r.ReporterName); err != nil {
+		if err := rows.Scan(&r.ID, &r.HouseID, &r.HouseAddress, &r.Title, &r.Description, &r.Category, &r.Severity, &r.Status,
+			&r.CreatedAt, &r.DueAt, &r.AffectedCount, &r.ConfirmedCount, &r.MergedCount, &r.ReporterName); err != nil {
 			return nil, 0, err
 		}
 		out = append(out, r)

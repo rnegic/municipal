@@ -19,6 +19,7 @@ type InitUser struct {
 	ID        int64  `json:"id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
+	PhotoURL  string `json:"photo_url"`
 }
 
 func ValidateInitData(raw, botToken string) (InitUser, error) {

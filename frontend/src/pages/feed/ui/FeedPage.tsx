@@ -55,7 +55,8 @@ export const FeedPage = () => {
     )
   }
 
-  const incident = incidentsQuery.data?.items[0] ?? null
+  const incidents = incidentsQuery.data.items
+  const incident = incidents[0] ?? null
 
   return (
     <PageLayout
@@ -71,7 +72,11 @@ export const FeedPage = () => {
               }
             />
             <EventBulletin houseId={houseQuery.data.id} tone="inverse" />
-            <IncidentFocus incident={incident} tone="inverse" />
+            <IncidentFocus
+              incidents={incidents}
+              tone="inverse"
+              allIncidentsHref={ROUTES.houseIncidents}
+            />
           </div>
         </div>
       }

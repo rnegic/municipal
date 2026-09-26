@@ -104,7 +104,7 @@ paths:
     get:
       operationId: listUkQueue
       tags: [uk]
-      summary: Очередь заявок домов своей УК (createdAt desc)
+      summary: Очередь заявок домов своей УК (affectedCount desc, critical, dueAt asc, createdAt asc)
       parameters:
         - name: offset
           in: query
@@ -120,6 +120,31 @@ paths:
               schema: { $ref: "#/components/schemas/PaginatedUkQueue" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+
+  /api/uk/incidents/merge:
+    post:
+      operationId: mergeIncidents
+      tags: [uk]
+      summary: Ручная склейка заявок одного дома диспетчером; источники закрываются, подписчики/фото/подтверждения переносятся на главную
+      description: |
+        Повторная склейка уже склеенных в эту же главную заявок идемпотентна (200).
+        Чужая УК → 403, заявки разных домов или закрытые → 422, несуществующий id → 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MergeIncidentsRequest" }
+      responses:
+        "200":
+          description: Заявки склеены
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MergeIncidentsResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
 
   /api/uk/events:
     post:
@@ -558,7 +583,7 @@ components:
     Incident:
       type: object
       required: [id, houseId, title, description, category, entrance, riser, severity, status, affectedCount,
-                 createdAt, dueAt, joinedByMe, confirmedByMe, photos]
+                 createdAt, dueAt, joinedByMe, confirmedByMe, photos, supporters, mergedCount]
       properties:
         id: { type: string, example: inc_01H }
         houseId: { type: string, example: h_123 }
@@ -580,6 +605,20 @@ components:
         photos:
           type: array
           items: { $ref: "#/components/schemas/Photo" }
+        supporters:
+          type: array
+          maxItems: 5
+          description: Превью подписантов для аватарок, отсортировано по времени подписки
+          items: { $ref: "#/components/schemas/Supporter" }
+        mergedCount: { type: integer, minimum: 0, description: "Сколько заявок склеено в эту (с учётом склеенных в них)" }
+
+    Supporter:
+      type: object
+      required: [id, name, avatarUrl]
+      properties:
+        id: { type: string, example: u_123 }
+        name: { type: string, nullable: true, description: "Имя и первая буква фамилии: «Анна М.»" }
+        avatarUrl: { type: string, nullable: true, description: photo_url из initData MAX }
 
     Photo:
       type: object
@@ -646,11 +685,15 @@ components:
     ResidentRequest:
       type: object
       description: Заявка в «Моих заявках» — это тот же инцидент, id общий (inc_…) и годится для /confirm.
-      required: [id, title, status, createdAt, dueAt, confirmedByMe]
+      required: [id, title, status, category, createdAt, dueAt, confirmedByMe]
       properties:
         id: { type: string, example: inc_01H }
         title: { type: string }
         status: { $ref: "#/components/schemas/IncidentStatus" }
+        category:
+          nullable: true
+          description: null у заявок, созданных до умного роутинга
+          allOf: [{ $ref: "#/components/schemas/IncidentCategory" }]
         createdAt: { type: string, format: date-time }
         dueAt: { type: string, format: date-time, nullable: true }
         confirmedByMe: { type: boolean }
@@ -704,24 +747,49 @@ components:
 
     UkQueueItem:
       type: object
-      required: [id, houseId, houseAddress, title, description, severity, status, createdAt, dueAt,
-                 affectedCount, confirmedCount, reporterName, photos]
+      required: [id, houseId, houseAddress, title, description, category, severity, status, createdAt, dueAt,
+                 affectedCount, confirmedCount, mergedCount, reporterName, photos]
       properties:
         id: { type: string }
         houseId: { type: string }
         houseAddress: { type: string }
         title: { type: string }
         description: { type: string }
+        category:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/IncidentCategory" }]
         severity: { $ref: "#/components/schemas/Severity" }
         status: { $ref: "#/components/schemas/IncidentStatus" }
         createdAt: { type: string, format: date-time }
         dueAt: { type: string, format: date-time, nullable: true }
         affectedCount: { type: integer, minimum: 0 }
         confirmedCount: { type: integer, minimum: 0 }
+        mergedCount: { type: integer, minimum: 0 }
         reporterName: { type: string }
         photos:
           type: array
           items: { $ref: "#/components/schemas/Photo" }
+
+    MergeIncidentsRequest:
+      type: object
+      required: [targetIncidentId, sourceIncidentIds]
+      properties:
+        targetIncidentId: { type: string, example: inc_01H, description: "Заявка, которая остаётся открытой" }
+        sourceIncidentIds:
+          type: array
+          minItems: 1
+          description: Заявки-дубликаты; не должны содержать targetIncidentId
+          items: { type: string }
+
+    MergeIncidentsResponse:
+      type: object
+      required: [targetIncidentId, mergedIncidentIds, affectedCount]
+      properties:
+        targetIncidentId: { type: string }
+        mergedIncidentIds:
+          type: array
+          items: { type: string }
+        affectedCount: { type: integer, minimum: 0, description: Подписанты главной заявки после склейки }
 
     PaginatedUkQueue:
       type: object

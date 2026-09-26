@@ -34,7 +34,7 @@ export const IncidentPage = () => {
       ) : incidentQuery.isError ? (
         <ApiErrorState error={incidentQuery.error} onRetry={() => incidentQuery.refetch()} />
       ) : (
-        <IncidentFocus incident={incidentQuery.data} />
+        <IncidentFocus incidents={[incidentQuery.data]} />
       )}
     </PageLayout>
   )

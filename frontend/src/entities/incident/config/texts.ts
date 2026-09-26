@@ -5,6 +5,16 @@ const affectedForms: Partial<Record<Intl.LDMLPluralRule, string>> = {
   few: 'жителя подтвердили',
 }
 
+const requestForms: Partial<Record<Intl.LDMLPluralRule, string>> = {
+  one: 'заявку',
+  few: 'заявки',
+}
+
+const duplicateForms: Partial<Record<Intl.LDMLPluralRule, string>> = {
+  one: 'дубликат',
+  few: 'дубликата',
+}
+
 export const incidentTexts = {
   focus: {
     sectionTitle: 'Аварии в вашем доме',
@@ -16,6 +26,44 @@ export const incidentTexts = {
     joinedAction: 'Вы подписались',
     affectedCount: (count: number) =>
       `+${count} ${affectedForms[ruPlural.select(count)] ?? 'жителей подтвердили'}`,
+    viewAllAction: (count: number) => `Все заявки · ${count}`,
+  },
+  houseIncidents: {
+    title: 'Текущие заявки дома',
+    subtitle: 'Все активные обращения по вашему адресу',
+    emptyTitle: 'Активных заявок нет',
+    emptyDescription: 'Как только в доме появится авария, она окажется здесь',
+  },
+  merge: {
+    startAction: 'Объединить заявки',
+    cancelAction: 'Отменить выбор',
+    submitAction: (count: number) =>
+      `Объединить ${count} ${requestForms[ruPlural.select(count)] ?? 'заявок'}`,
+    selectionHint: 'Отметьте дубликаты одной проблемы — минимум две заявки одного дома',
+    selectedCount: (count: number) => `Выбрано: ${count}`,
+    sheetTitle: 'Объединение заявок',
+    sheetDescription: 'Выберите главную заявку — в неё перейдут подписанты и фото остальных',
+    targetLegend: 'Главная заявка',
+    targetHint: 'Остаётся открытой, срок SLA берётся от неё',
+    resultAffected: (count: number) => `Подписантов после объединения: ${count}`,
+    resultDuplicates: (count: number) =>
+      `${count} ${requestForms[ruPlural.select(count)] ?? 'заявок'} станут дубликатами и закроются`,
+    duplicatesBadge: (count: number) =>
+      `${count} ${duplicateForms[ruPlural.select(count)] ?? 'дубликатов'}`,
+    blockers: {
+      tooFew: 'Отметьте минимум две заявки',
+      closed: 'Закрытые заявки объединять нельзя',
+      differentHouses: 'Объединять можно только заявки одного дома',
+    },
+  },
+  queue: {
+    priorityBadge: 'Приоритет',
+    signatories: 'Подписантов',
+    reporter: 'Заявитель',
+    due: 'Срок',
+    createdAt: 'Создано',
+    sortHint: 'Сначала заявки с наибольшим числом подписантов',
+    selectCard: 'Выбрать заявку для объединения',
   },
   severity: {
     critical: 'Авария',
@@ -74,5 +122,6 @@ export const incidentTexts = {
   a11y: {
     status: 'Текущий статус заявки',
     severityIcon: 'Признак аварии',
+    supporters: 'Жители, подтвердившие проблему',
   },
 } as const

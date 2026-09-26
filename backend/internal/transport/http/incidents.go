@@ -21,8 +21,16 @@ func toIncident(r service.IncidentRow) oapi.Incident {
 		Title: r.Title, Description: r.Description, Category: (*oapi.IncidentCategory)(r.Category), Entrance: r.Entrance, Riser: r.Riser, Severity: oapi.Severity(r.Severity),
 		Status: oapi.IncidentStatus(r.Status), AffectedCount: r.AffectedCount,
 		CreatedAt: r.CreatedAt, DueAt: r.DueAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
-		Photos: toPhotos(r.PhotoIDs),
+		Photos: toPhotos(r.PhotoIDs), MergedCount: r.MergedCount, Supporters: toSupporters(r.Supporters),
 	}
+}
+
+func toSupporters(ss []service.Supporter) []oapi.Supporter {
+	out := make([]oapi.Supporter, len(ss))
+	for i, sp := range ss {
+		out[i] = oapi.Supporter{Id: formatUserID(sp.UserID), Name: domain.ShortName(sp.FullName), AvatarUrl: sp.AvatarURL}
+	}
+	return out
 }
 
 func toPhoto(id int64) oapi.Photo {
@@ -202,6 +210,7 @@ func (s *server) ListHouseRequests(ctx context.Context, req oapi.ListHouseReques
 	for i, r := range rows {
 		items[i] = oapi.ResidentRequest{
 			Id: formatIncidentID(r.ID), Title: r.Title, Status: oapi.IncidentStatus(r.Status),
+			Category: (*oapi.IncidentCategory)(r.Category),
 			CreatedAt: r.CreatedAt, DueAt: r.DueAt, ConfirmedByMe: r.ConfirmedByMe,
 		}
 	}

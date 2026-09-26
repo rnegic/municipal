@@ -3,6 +3,7 @@ export const ROUTES = {
   feed: '/',
   incident: (id = ':id') => `/incidents/${id}`,
   incidentCreate: '/incidents/new',
+  houseIncidents: '/house/incidents',
   event: (id = ':id') => `/events/${id}`,
   dispatcher: '/uk-admin',
   dispatcherEventCreate: '/uk-admin/events/new',

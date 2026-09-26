@@ -1,6 +1,11 @@
 import { Typography } from '@maxhub/max-ui'
 
-import { IncidentStatusBadge, incidentTexts, type ResidentRequest } from '@/entities/incident'
+import {
+  CategoryIcon,
+  IncidentStatusBadge,
+  incidentTexts,
+  type ResidentRequest,
+} from '@/entities/incident'
 import { NoIncidentsIllustration } from '@/shared/assets/illustrations'
 import { cn } from '@/shared/lib/cn'
 import { formatDate, formatDateTime } from '@/shared/lib/date'
@@ -26,22 +31,25 @@ export const MyRequests = ({ requests, className }: MyRequestsProps) => (
       <ul className={s.list}>
         {requests.map((request) => (
           <li key={request.id}>
-            <Card padding="compact">
-              <div className={s.head}>
-                <Typography.Text className={s.title} variant="body-strong">
-                  {request.title}
-                </Typography.Text>
-                <IncidentStatusBadge status={request.status} />
-              </div>
-              <div className={s.meta}>
-                <Typography.Text variant="note" color="tertiary">
-                  {incidentTexts.requests.createdAt(formatDateTime(request.createdAt))}
-                </Typography.Text>
-                {request.dueAt ? (
-                  <Typography.Text variant="note" color="tertiary">
-                    {incidentTexts.requests.dueAt(formatDate(request.dueAt))}
+            <Card padding="compact" className={s.card}>
+              <CategoryIcon category={request.category} size={35} />
+              <div className={s.content}>
+                <div className={s.head}>
+                  <Typography.Text className={s.title} variant="body-strong">
+                    {request.title}
                   </Typography.Text>
-                ) : null}
+                  <IncidentStatusBadge status={request.status} />
+                </div>
+                <div className={s.meta}>
+                  <Typography.Text variant="note" color="tertiary">
+                    {incidentTexts.requests.createdAt(formatDateTime(request.createdAt))}
+                  </Typography.Text>
+                  {request.dueAt ? (
+                    <Typography.Text variant="note" color="tertiary">
+                      {incidentTexts.requests.dueAt(formatDate(request.dueAt))}
+                    </Typography.Text>
+                  ) : null}
+                </div>
               </div>
             </Card>
           </li>

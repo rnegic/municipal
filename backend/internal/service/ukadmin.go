@@ -185,3 +185,25 @@ func (s *Service) ListEvents(ctx context.Context, u model.AppUser, houseID int64
 	}
 	return s.repo.ListHouseEvents(ctx, houseID, time.Now())
 }
+
+func (s *Service) MergeIncidents(ctx context.Context, u model.AppUser, target int64, sources []int64) (repository.MergeResult, error) {
+	sources, err := domain.MergeIDs(target, sources)
+	if err != nil {
+		return repository.MergeResult{}, err
+	}
+	notify := repository.OutboxPayload{Text: "Вашу заявку объединили с такой же от соседей. Следите за ней здесь: " + s.deepLink(target)}
+	res, err := s.repo.MergeIncidents(ctx, *u.UkID, target, sources, notify)
+	if err != nil {
+		return repository.MergeResult{}, err
+	}
+	for _, ext := range res.ExternalIDs {
+		if ext == "" {
+			continue
+		}
+		if err := s.uk.SetStatus(ctx, ext, domain.IncidentDone); err != nil {
+			slog.Warn("uk: merged incident done not synced", "external_id", ext, "err", err)
+		}
+	}
+	slog.Info("incidents merged", "uk", *u.UkID, "by", u.ID, "target", target, "merged", res.Merged)
+	return res, nil
+}
