@@ -49,14 +49,16 @@ func TestFindDuplicate_ExactlyTwoHoursIsStillDuplicate(t *testing.T) {
 	}
 }
 
-func TestFindDuplicate_NoRiserVsRiser(t *testing.T) {
+func TestFindDuplicate_RiserFuzzy(t *testing.T) {
 	now := time.Now()
-	open := []OpenIncident{{ID: 8, HouseID: 1, Category: CategoryElevator, Riser: nil, Status: IncidentAccepted, CreatedAt: now}}
-	if got := FindDuplicate(1, CategoryElevator, ptr("1"), now, open); got != 0 {
-		t.Fatalf("nil riser must not match a set one, got %d", got)
+	open := []OpenIncident{{ID: 8, HouseID: 1, Category: CategoryElevator, Riser: ptr("  3 Этаж "), Status: IncidentAccepted, CreatedAt: now}}
+	for _, r := range []*string{nil, ptr(""), ptr("3  этаж")} {
+		if got := FindDuplicate(1, CategoryElevator, r, now, open); got != 8 {
+			t.Fatalf("riser %v must match, got %d", r, got)
+		}
 	}
-	if got := FindDuplicate(1, CategoryElevator, nil, now, open); got != 8 {
-		t.Fatalf("nil riser must match nil riser, got %d", got)
+	if got := FindDuplicate(1, CategoryElevator, ptr("5 этаж"), now, open); got != 0 {
+		t.Fatalf("different riser must not match, got %d", got)
 	}
 }
 
@@ -105,14 +107,13 @@ func TestDedupCandidatesLimit(t *testing.T) {
 	}
 }
 
-func TestDedupCandidates_SkipsSubscribed(t *testing.T) {
+func TestDedupCandidates_IncludesSubscribed(t *testing.T) {
 	now := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
 	open := []OpenIncident{
 		{ID: 1, Status: IncidentAccepted, CreatedAt: now.Add(-time.Hour), Subscribed: true},
 		{ID: 2, Status: IncidentAccepted, CreatedAt: now.Add(-time.Minute)},
 	}
-	got := DedupCandidates(open, now)
-	if len(got) != 1 || got[0].ID != 2 {
-		t.Fatalf("subscribed incident must be excluded: %+v", got)
+	if got := DedupCandidates(open, now); len(got) != 2 {
+		t.Fatalf("own incidents must reach the model: %+v", got)
 	}
 }

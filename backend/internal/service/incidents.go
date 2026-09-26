@@ -132,6 +132,7 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	if in.Category.PhotoRequired() && len(in.PhotoIDs) == 0 {
 		return IncidentRow{}, false, ErrPhotoRequired
 	}
+	defer s.lockHouse(houseID)()
 	falseAlarms, recent, err := s.repo.ReporterStats(ctx, reporterID, time.Hour)
 	if err != nil {
 		return IncidentRow{}, false, err

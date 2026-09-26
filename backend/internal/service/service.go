@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"ukapp/internal/dadata"
@@ -32,6 +33,8 @@ type Service struct {
 	threshold float64
 	matcher   Matcher
 	inflight  chan struct{}
+
+	houseLocks sync.Map
 }
 
 func New(repo *repository.Store, maxc *maxclient.Client, dd *dadata.Client, uk UkProvider, botName string) *Service {
@@ -40,4 +43,11 @@ func New(repo *repository.Store, maxc *maxclient.Client, dd *dadata.Client, uk U
 		panic(err)
 	}
 	return &Service{repo: repo, maxc: maxc, dd: dd, uk: uk, botName: botName, tokens: tokens, inflight: make(chan struct{}, 2)}
+}
+
+func (s *Service) lockHouse(houseID int64) (unlock func()) {
+	m, _ := s.houseLocks.LoadOrStore(houseID, &sync.Mutex{})
+	mu := m.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
 }

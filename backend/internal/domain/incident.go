@@ -2,6 +2,7 @@ package domain
 
 import (
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -46,7 +47,7 @@ func SLA(sev Severity) time.Duration { return sla[sev] }
 const DedupWindow = 2 * time.Hour
 
 const (
-	DedupVersion  = "exact-category-floorzone-v1"
+	DedupVersion  = "exact-category-floorzone-v2"
 	ReportCreated = "created"
 	ReportJoined  = "joined"
 )
@@ -111,10 +112,15 @@ func CanDispatcherMove(from, to IncidentStatus) bool {
 }
 
 func sameRiser(a, b *string) bool {
-	if a == nil || b == nil {
-		return a == b
+	x, y := normRiser(a), normRiser(b)
+	return x == "" || y == "" || strings.EqualFold(x, y)
+}
+
+func normRiser(s *string) string {
+	if s == nil {
+		return ""
 	}
-	return *a == *b
+	return strings.Join(strings.Fields(*s), " ")
 }
 
 const (
@@ -131,7 +137,7 @@ type DedupMatch struct {
 func DedupCandidates(open []OpenIncident, now time.Time) []OpenIncident {
 	var out []OpenIncident
 	for _, inc := range open {
-		if !inc.Subscribed && (inc.Status == IncidentAccepted || inc.Status == IncidentInProgress) && now.Sub(inc.CreatedAt) <= DedupCandidateWindow {
+		if (inc.Status == IncidentAccepted || inc.Status == IncidentInProgress) && now.Sub(inc.CreatedAt) <= DedupCandidateWindow {
 			out = append(out, inc)
 		}
 	}
