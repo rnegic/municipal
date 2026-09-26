@@ -26,6 +26,8 @@ export const commonTexts = {
     validationDescription: 'Заполните поля и попробуйте снова',
     businessTitle: 'Не получилось выполнить действие',
     businessDescription: 'Попробуйте ещё раз или обратитесь в УК',
+    rateLimitTitle: 'Слишком много заявок',
+    rateLimitDescription: 'Попробуйте позже',
   },
   underConstruction: {
     title: 'Экран в разработке'

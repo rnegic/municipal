@@ -9,6 +9,7 @@ export {
   getWebApp,
   isInsideMax,
   normalizeLaunchHash,
+  openLink,
   openMaxLink,
   ready,
   shareMaxContent,

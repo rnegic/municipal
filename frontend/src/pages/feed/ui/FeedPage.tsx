@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom'
 
 import { incidentTexts, useActiveIncidentsQuery, useMyRequestsQuery } from '@/entities/incident'
 import { useCurrentHouseQuery } from '@/entities/user'
+import { HouseStickerCard } from '@/features/house-sticker'
 import { IncidentReportFab } from '@/features/incident-report'
 import { ROUTES } from '@/shared/config/routes'
 import { ApiErrorState } from '@/shared/ui/api-error-state'
@@ -93,6 +94,7 @@ export const FeedPage = () => {
       ) : (
         <MyRequests requests={requestsQuery.data.items} />
       )}
+      <HouseStickerCard />
     </PageLayout>
   )
 }

@@ -34,5 +34,6 @@ export interface MaxWebAppApi {
   ready?: () => void
   expand?: () => void
   openMaxLink?: (url: string) => void
+  openLink?: (url: string) => void
   shareMaxContent?: (params: MaxWebAppShareContentParams) => void | Promise<unknown>
 }

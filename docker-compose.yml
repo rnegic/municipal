@@ -20,6 +20,7 @@ services:
     environment:
       DATABASE_URL: postgres://ukapp:${POSTGRES_PASSWORD}@db:5432/ukapp?sslmode=disable
       MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}
+      MAX_BOT_NAME: ${MAX_BOT_NAME:-t117_hakaton_max_bot}
       DADATA_TOKEN: ${DADATA_TOKEN:-}
       UK_BASE_URL: http://mock-uk:8080
       UK_API_TOKEN: ${UK_API_TOKEN:-demo-uk-token}

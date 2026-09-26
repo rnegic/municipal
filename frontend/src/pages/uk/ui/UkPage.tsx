@@ -4,7 +4,10 @@ import { useState, type ReactNode } from 'react'
 import {
   CategoryIcon,
   IncidentPhotos,
+  IncidentStatusBadge,
   incidentTexts,
+  isIncidentClosed,
+  isIncidentFalseAlarm,
   isPriorityQueueItem,
   sortUkQueueByPriority,
   type IncidentStatus,
@@ -153,6 +156,7 @@ const QueueCard = ({
   const nextStatus = getNextStatus(incident.status)
   const prevStatus = getPrevStatus(incident.status)
   const isPriority = isPriorityQueueItem(incident)
+  const isFalseAlarm = isIncidentFalseAlarm(incident.status)
   const isDimmed = selection.isActive && !selection.isSelectable && !selection.isSelected
   const canToggle = selection.isActive && (selection.isSelectable || selection.isSelected)
 
@@ -197,8 +201,9 @@ const QueueCard = ({
             {incidentTexts.severity[incident.severity]}
           </span>
         </div>
-        {isPriority || incident.mergedCount > 0 ? (
+        {isFalseAlarm || isPriority || incident.mergedCount > 0 ? (
           <div className={s.badges}>
+            {isFalseAlarm ? <IncidentStatusBadge status={incident.status} /> : null}
             {isPriority ? (
               <span className={s.priority}>
                 {incidentTexts.queue.priorityBadge} · {incident.affectedCount}
@@ -411,8 +416,8 @@ export const UkPage = () => {
   }
 
   const items = queueQuery.data.items
-  const activeItems = items.filter((item) => item.status !== 'done')
-  const closedItems = sortUkQueueByPriority(items.filter((item) => item.status === 'done'))
+  const activeItems = items.filter((item) => !isIncidentClosed(item.status))
+  const closedItems = sortUkQueueByPriority(items.filter((item) => isIncidentClosed(item.status)))
   const houses = Array.from(
     new Map(
       items.map((item) => [item.houseId, { id: item.houseId, address: item.houseAddress }] as const),

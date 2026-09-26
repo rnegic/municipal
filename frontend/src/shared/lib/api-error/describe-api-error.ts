@@ -33,6 +33,8 @@ export const describeApiError = (error: unknown): ApiErrorDescription => {
       return { title: errors.notFoundTitle, description: errors.notFoundDescription }
     case 422:
       return withServerMessage(errors.businessTitle, errors.businessDescription, error)
+    case 429:
+      return withServerMessage(errors.rateLimitTitle, errors.rateLimitDescription, error)
     default:
       return { title: errors.unexpectedTitle, description: errors.unexpectedDescription }
   }

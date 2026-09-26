@@ -71,6 +71,18 @@ export const shareMaxContent = (params: MaxWebAppShareContentParams): boolean =>
   return true
 }
 
+/** Внешний браузер: печать наклейки возможна только снаружи MAX */
+export const openLink = (url: string): void => {
+  const webApp = getWebApp()
+
+  if (webApp?.openLink) {
+    webApp.openLink(url)
+    return
+  }
+
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
 const START_PARAM_PATTERN = /^[A-Za-z0-9_-]{1,512}$/
 
 /** Диплинк мини-приложения: https://max.ru/{botName}?startapp={payload} */
