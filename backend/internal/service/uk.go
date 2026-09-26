@@ -28,6 +28,7 @@ type UkHouse struct {
 type UkIncident struct {
 	ExternalRef, HouseID, Title, Description, Severity string
 	Entrance, Riser                                    *string
+	Suspicious                                         bool
 }
 
 type UkIncidentUpdate struct {

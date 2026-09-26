@@ -1,5 +1,8 @@
 import argparse
 import json
+import signal
+import sys
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from dedup.onnx_infer import OnnxDeduper
@@ -11,7 +14,9 @@ def valid(r):
     return isinstance(r, dict) and all(isinstance(r.get(k), str) and r[k].strip() for k in REQUIRED)
 
 
-def handler(deduper):
+def handler(deduper, max_inflight=2):
+    inflight = threading.BoundedSemaphore(max_inflight)
+
     class H(BaseHTTPRequestHandler):
         def _send(self, code, body):
             data = json.dumps(body, ensure_ascii=False).encode()
@@ -35,12 +40,22 @@ def handler(deduper):
                 a, b = body.get("request_a"), body.get("request_b")
                 if not (valid(a) and valid(b)):
                     return self._send(400, {"error": "request_a and request_b need non-empty title and description"})
-                return self._send(200, deduper.score(a, b))
+                if not inflight.acquire(blocking=False):
+                    return self._send(503, {"error": "busy"})
+                try:
+                    return self._send(200, deduper.score(a, b))
+                finally:
+                    inflight.release()
             if self.path == "/match":
                 req, cands = body.get("request"), body.get("candidates", [])
                 if not valid(req) or not isinstance(cands, list) or not all(valid(c) for c in cands):
                     return self._send(400, {"error": "request and candidates need non-empty title and description"})
-                return self._send(200, deduper.match(req, cands, int(body.get("top_k", 20))))
+                if not inflight.acquire(blocking=False):
+                    return self._send(503, {"error": "busy"})
+                try:
+                    return self._send(200, deduper.match(req, cands, int(body.get("top_k", 20))))
+                finally:
+                    inflight.release()
             self._send(404, {"error": "not found"})
 
         def log_message(self, *args):
@@ -52,12 +67,14 @@ def handler(deduper):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bundle", required=True)
+    ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8090)
     ap.add_argument("--threads", type=int, default=2)
     args = ap.parse_args()
     d = OnnxDeduper(args.bundle, threads=args.threads)
-    print(f"serving {d.model_version} threshold={d.threshold} on :{args.port}", flush=True)
-    ThreadingHTTPServer(("127.0.0.1", args.port), handler(d)).serve_forever()
+    print(f"serving {d.model_version} threshold={d.threshold} on {args.host}:{args.port}", flush=True)
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    ThreadingHTTPServer((args.host, args.port), handler(d)).serve_forever()
 
 
 if __name__ == "__main__":

@@ -19,10 +19,17 @@ func toIncident(r service.IncidentRow) oapi.Incident {
 	return oapi.Incident{
 		Id: formatIncidentID(r.ID), HouseId: formatHouseID(r.HouseID),
 		Title: r.Title, Description: r.Description, Category: (*oapi.IncidentCategory)(r.Category), Entrance: r.Entrance, Riser: r.Riser, Severity: oapi.Severity(r.Severity),
-		Status: oapi.IncidentStatus(r.Status), AffectedCount: r.AffectedCount,
+		Status: publicStatus(r.Status), AffectedCount: r.AffectedCount,
 		CreatedAt: r.CreatedAt, DueAt: r.DueAt, JoinedByMe: r.JoinedByMe, ConfirmedByMe: r.ConfirmedByMe,
 		Photos: toPhotos(r.PhotoIDs), MergedCount: r.MergedCount, Supporters: toSupporters(r.Supporters),
 	}
+}
+
+func publicStatus(s string) oapi.IncidentStatus {
+	if s == string(domain.IncidentFalseAlarm) {
+		return oapi.IncidentStatusDone
+	}
+	return oapi.IncidentStatus(s)
 }
 
 func toSupporters(ss []service.Supporter) []oapi.Supporter {
@@ -87,6 +94,8 @@ func (s *server) CreateIncident(ctx context.Context, req oapi.CreateIncidentRequ
 	case errors.As(err, &notUK):
 		return oapi.CreateIncident422JSONResponse(apiErr("business_rule_failed",
 			"Эту проблему решает не управляющая компания, а "+notUK.Authority.Name()+". Обратитесь туда напрямую или через Госуслуги.")), nil
+	case errors.Is(err, service.ErrRateLimited):
+		return oapi.CreateIncident429JSONResponse(apiErr("rate_limited", "не больше 10 заявок в час")), nil
 	case errors.Is(err, service.ErrPhotoRequired):
 		return oapi.CreateIncident422JSONResponse(apiErr("business_rule_failed", "для этой категории нужно приложить хотя бы одно фото")), nil
 	case errors.Is(err, service.ErrPhotoNotOwned):
@@ -209,7 +218,7 @@ func (s *server) ListHouseRequests(ctx context.Context, req oapi.ListHouseReques
 	items := make([]oapi.ResidentRequest, len(rows))
 	for i, r := range rows {
 		items[i] = oapi.ResidentRequest{
-			Id: formatIncidentID(r.ID), Title: r.Title, Status: oapi.IncidentStatus(r.Status),
+			Id: formatIncidentID(r.ID), Title: r.Title, Status: publicStatus(r.Status),
 			Category: (*oapi.IncidentCategory)(r.Category),
 			CreatedAt: r.CreatedAt, DueAt: r.DueAt, ConfirmedByMe: r.ConfirmedByMe,
 		}

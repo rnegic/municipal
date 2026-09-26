@@ -19,7 +19,7 @@ type ctxKey struct{}
 
 type maxUserKey struct{}
 
-var publicOps = map[string]bool{"Health": true, "GetPhoto": true}
+var publicOps = map[string]bool{"Health": true, "GetPhoto": true, "HouseSticker": true}
 
 var dispatcherOps = map[string]bool{"ListUkQueue": true, "CreateUkEvent": true, "SetIncidentStatus": true, "MergeIncidents": true}
 
@@ -81,7 +81,14 @@ func authenticate(c *gin.Context, svc *service.Service, botToken string) (model.
 	if err != nil {
 		return model.AppUser{}, errUnauthorized
 	}
-	return svc.UpsertUser(c.Request.Context(), iu)
+	u, err := svc.UpsertUser(c.Request.Context(), iu)
+	if err != nil {
+		return u, err
+	}
+	if houseID, ok := parseID("h_", iu.StartParam); ok {
+		return svc.BindHouseFromSticker(c.Request.Context(), u, houseID)
+	}
+	return u, nil
 }
 
 func userFromCtx(ctx context.Context) model.AppUser { return ctx.Value(ctxKey{}).(model.AppUser) }

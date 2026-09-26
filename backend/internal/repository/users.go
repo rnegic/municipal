@@ -60,6 +60,18 @@ func (s *Store) BindHouse(ctx context.Context, userID int64, addressRaw, houseFi
 	return h.ID, err
 }
 
+func (s *Store) SetUserHouse(ctx context.Context, userID, houseID int64) (bool, error) {
+	res, err := AppUser.UPDATE(AppUser.HouseID).SET(Int64(houseID)).
+		WHERE(AppUser.ID.EQ(Int64(userID)).AND(AppUser.HouseID.IS_NULL()).
+			AND(EXISTS(SELECT(House.ID).FROM(House).WHERE(House.ID.EQ(Int64(houseID)))))).
+		ExecContext(ctx, s.db)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n == 1, err
+}
+
 func (s *Store) FindHouse(ctx context.Context, id int64) (model.House, error) {
 	var h model.House
 	err := SELECT(House.ID, House.AddressRaw, House.UkID).FROM(House).WHERE(House.ID.EQ(Int64(id))).QueryContext(ctx, s.db, &h)

@@ -162,6 +162,8 @@ linters:
             - "ukapp/internal/maxclient"
             - "ukapp/internal/dadata"
             - "ukapp/internal/ukclient"
+            - "ukapp/internal/layaclient"
+            - "ukapp/internal/dedupclient"
           deny:
             - pkg: "ukapp/internal/domain"
               desc: "cmd только собирает зависимости; доменная логика — через service"

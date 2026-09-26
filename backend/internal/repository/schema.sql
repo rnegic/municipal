@@ -86,6 +86,11 @@ CREATE INDEX IF NOT EXISTS incident_house_category ON incident(house_id, categor
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS merged_into_id BIGINT REFERENCES incident(id);
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS merged_count INT NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS incident_merged_into ON incident(merged_into_id) WHERE merged_into_id IS NOT NULL;
+ALTER TABLE incident DROP CONSTRAINT IF EXISTS incident_status_check;
+ALTER TABLE incident ADD CONSTRAINT incident_status_check
+  CHECK (status IN ('accepted','in_progress','verifying','done','false_alarm'));
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS suspicious BOOLEAN NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS incident_reporter_false_alarm ON incident(reporter_id) WHERE status = 'false_alarm';
 
 CREATE TABLE IF NOT EXISTS incident_subscription (
   incident_id BIGINT NOT NULL REFERENCES incident(id),
@@ -93,6 +98,7 @@ CREATE TABLE IF NOT EXISTS incident_subscription (
   joined_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (incident_id, user_id)
 );
+CREATE INDEX IF NOT EXISTS incident_subscription_user ON incident_subscription(user_id, joined_at);
 
 -- Одно подтверждение «починили» от жителя = 1 строка (идемпотентно, см. confirm-эндпоинт).
 CREATE TABLE IF NOT EXISTS incident_confirmation (

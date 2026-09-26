@@ -27,7 +27,7 @@ func (s *Service) syncUnregistered(ctx context.Context) error {
 		id, _, err := s.uk.RegisterIncident(ctx, UkIncident{
 			ExternalRef: strconv.FormatInt(r.ID, 10), HouseID: *r.HouseExternalID,
 			Title: r.Title, Description: r.Description, Severity: r.Severity,
-			Entrance: r.Entrance, Riser: r.Riser,
+			Entrance: r.Entrance, Riser: r.Riser, Suspicious: r.Suspicious,
 		})
 		if err != nil {
 			return fmt.Errorf("register incident %d: %w", r.ID, err)
@@ -45,6 +45,7 @@ var ukStatusText = map[domain.IncidentStatus]string{
 	domain.IncidentInProgress: "Проблема взята в работу управляющей компанией.",
 	domain.IncidentVerifying:  "УК сообщает, что проблема решена. Подтвердите, пожалуйста, в приложении.",
 	domain.IncidentDone:       "Проблема закрыта управляющей компанией.",
+	domain.IncidentFalseAlarm: "Управляющая компания закрыла заявку с отметкой «Ложный вызов».",
 }
 
 func (s *Service) RunUkSyncWorker(ctx context.Context) {

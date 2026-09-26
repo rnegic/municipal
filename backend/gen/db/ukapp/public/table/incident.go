@@ -37,6 +37,7 @@ type incidentTable struct {
 	RoutingConfidence postgres.ColumnFloat
 	MergedIntoID      postgres.ColumnInteger
 	MergedCount       postgres.ColumnInteger
+	Suspicious        postgres.ColumnBool
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -98,9 +99,10 @@ func newIncidentTableImpl(schemaName, tableName, alias string) incidentTable {
 		RoutingConfidenceColumn = postgres.FloatColumn("routing_confidence")
 		MergedIntoIDColumn      = postgres.IntegerColumn("merged_into_id")
 		MergedCountColumn       = postgres.IntegerColumn("merged_count")
-		allColumns              = postgres.ColumnList{IDColumn, HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn, CategoryColumn, AuthorityColumn, RoutingSourceColumn, CategoryPredictedColumn, RoutingConfidenceColumn, MergedIntoIDColumn, MergedCountColumn}
-		mutableColumns          = postgres.ColumnList{HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn, CategoryColumn, AuthorityColumn, RoutingSourceColumn, CategoryPredictedColumn, RoutingConfidenceColumn, MergedIntoIDColumn, MergedCountColumn}
-		defaultColumns          = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn, MergedCountColumn}
+		SuspiciousColumn        = postgres.BoolColumn("suspicious")
+		allColumns              = postgres.ColumnList{IDColumn, HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn, CategoryColumn, AuthorityColumn, RoutingSourceColumn, CategoryPredictedColumn, RoutingConfidenceColumn, MergedIntoIDColumn, MergedCountColumn, SuspiciousColumn}
+		mutableColumns          = postgres.ColumnList{HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn, CategoryColumn, AuthorityColumn, RoutingSourceColumn, CategoryPredictedColumn, RoutingConfidenceColumn, MergedIntoIDColumn, MergedCountColumn, SuspiciousColumn}
+		defaultColumns          = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn, MergedCountColumn, SuspiciousColumn}
 	)
 
 	return incidentTable{
@@ -127,6 +129,7 @@ func newIncidentTableImpl(schemaName, tableName, alias string) incidentTable {
 		RoutingConfidence: RoutingConfidenceColumn,
 		MergedIntoID:      MergedIntoIDColumn,
 		MergedCount:       MergedCountColumn,
+		Suspicious:        SuspiciousColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

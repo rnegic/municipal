@@ -132,18 +132,30 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	if in.Category.PhotoRequired() && len(in.PhotoIDs) == 0 {
 		return IncidentRow{}, false, ErrPhotoRequired
 	}
+	falseAlarms, recent, err := s.repo.ReporterStats(ctx, reporterID, time.Hour)
+	if err != nil {
+		return IncidentRow{}, false, err
+	}
+	if recent >= domain.MaxReportsPerHour {
+		return IncidentRow{}, false, ErrRateLimited
+	}
 	routing := s.route(ctx, d, in.Category)
 	slog.Info("incident routed", "house", houseID, "category", in.Category, "routing_source", routing.Source)
-	open, err := s.repo.OpenIncidents(ctx, houseID)
+	open, err := s.repo.OpenIncidents(ctx, houseID, reporterID)
 	if err != nil {
 		return IncidentRow{}, false, err
 	}
 	sev := in.Category.Severity()
+	req := domain.OpenIncident{
+		HouseID: houseID, Category: in.Category, Title: title, Description: d,
+		Entrance: in.Entrance, Riser: in.FloorZone, Severity: sev,
+	}
+	dup, dedupVersion := s.findDuplicate(ctx, req, open)
 	report := repository.ReportInput{
 		ReporterID: reporterID, HouseID: houseID, Title: title, Description: d,
-		Severity: sev, Entrance: in.Entrance, Riser: in.FloorZone, DedupVersion: domain.DedupVersion,
+		Severity: sev, Entrance: in.Entrance, Riser: in.FloorZone, DedupVersion: dedupVersion,
 	}
-	if dup := domain.FindDuplicate(houseID, in.Category, in.FloorZone, time.Now(), open); dup != 0 {
+	if dup != 0 {
 		if err := s.repo.JoinWithPhotos(ctx, dup, reporterID, in.PhotoIDs); err != nil {
 			return IncidentRow{}, false, err
 		}
@@ -155,7 +167,7 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	id, err := s.repo.CreateIncident(ctx, repository.NewIncident{
 		HouseID: houseID, ReporterID: reporterID, Title: title, Description: d, Severity: sev,
 		Entrance: in.Entrance, Riser: in.FloorZone, Category: in.Category, Routing: routing, SLA: domain.SLA(sev),
-		PhotoIDs: in.PhotoIDs,
+		PhotoIDs: in.PhotoIDs, Suspicious: falseAlarms >= domain.SuspiciousAfterFalseAlarms,
 	})
 	if err != nil {
 		return IncidentRow{}, false, err

@@ -70,7 +70,7 @@ func (s *server) ListUkQueue(ctx context.Context, req oapi.ListUkQueueRequestObj
 	for i, r := range rows {
 		items[i] = oapi.UkQueueItem{
 			Id: formatIncidentID(r.ID), HouseId: formatHouseID(r.HouseID), HouseAddress: r.HouseAddress,
-			Title: r.Title, Description: r.Description, Severity: oapi.Severity(r.Severity), Status: oapi.IncidentStatus(r.Status),
+			Title: r.Title, Description: r.Description, Severity: oapi.Severity(r.Severity), Status: publicStatus(r.Status),
 			CreatedAt: r.CreatedAt, DueAt: r.DueAt, AffectedCount: r.AffectedCount, ConfirmedCount: r.ConfirmedCount,
 			ReporterName: r.ReporterName, Photos: toPhotos(r.PhotoIDs),
 			Category: (*oapi.IncidentCategory)(r.Category), MergedCount: r.MergedCount,

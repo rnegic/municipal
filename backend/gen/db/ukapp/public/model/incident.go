@@ -32,4 +32,5 @@ type Incident struct {
 	RoutingConfidence *float32
 	MergedIntoID      *int64
 	MergedCount       int32
+	Suspicious        bool
 }

@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"ukapp/internal/dadata"
+	"ukapp/internal/dedupclient"
 	"ukapp/internal/layaclient"
 	"ukapp/internal/maxclient"
 	"ukapp/internal/repository"
@@ -41,9 +43,15 @@ func main() {
 		cls = layaclient.New(u)
 	}
 	svc.WithClassifier(cls, envFloat("LAYA_CATEGORY_THRESHOLD", 0.7))
+	if u := os.Getenv("DEDUP_URL"); u != "" {
+		svc.WithMatcher(dedupclient.New(u, envDuration("DEDUP_TIMEOUT", 5*time.Second)))
+	}
 	go svc.RunOutboxWorker(ctx)
 	go svc.RunUkSyncWorker(ctx)
 	go svc.RunPhotoCleanup(ctx)
+	if botToken != "" {
+		go svc.RunBotUpdates(ctx)
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -68,4 +76,17 @@ func envFloat(name string, def float64) float64 {
 		return def
 	}
 	return f
+}
+
+func envDuration(name string, def time.Duration) time.Duration {
+	raw := os.Getenv(name)
+	if raw == "" {
+		return def
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		slog.Warn("invalid env value, using default", "name", name, "value", raw, "default", def)
+		return def
+	}
+	return d
 }

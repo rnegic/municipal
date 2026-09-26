@@ -1,0 +1,7 @@
+*
+!serve.py
+!requirements-serve.txt
+!bundle.tar.gz
+!dedup/__init__.py
+!dedup/data.py
+!dedup/onnx_infer.py

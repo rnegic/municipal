@@ -19,6 +19,8 @@ env:
   WWW: /var/www/municipal
   SITE: https://nerionapp.ru
   REGISTRY: ghcr.io/rnegic/municipal
+  DEDUP_RELEASE: dedup-ftM2-berta-s16
+  DEDUP_SHA256: 9ade90a570595aad76b48587a4355f11075bdb5b79657f1202c3afc1e1afe33c
 
 jobs:
   deploy:
@@ -42,7 +44,7 @@ jobs:
           last=$(ssh "root@$HOST" "cat $DIR/.deployed 2>/dev/null" || true)
           if [ -n "$last" ] && git cat-file -e "$last" 2>/dev/null; then
             git diff --quiet "$last" HEAD -- frontend || echo frontend=true >> "$GITHUB_OUTPUT"
-            git diff --quiet "$last" HEAD -- backend mock docker-compose.yml || echo backend=true >> "$GITHUB_OUTPUT"
+            git diff --quiet "$last" HEAD -- backend mock docker-compose.yml .github/workflows/deploy.yml ml/dedup/serve.py ml/dedup/dedup ml/dedup/Dockerfile ml/dedup/.dockerignore ml/dedup/requirements-serve.txt || echo backend=true >> "$GITHUB_OUTPUT"
           else
             printf 'frontend=true\nbackend=true\n' >> "$GITHUB_OUTPUT"
           fi
@@ -102,6 +104,23 @@ jobs:
           tags: ${{ env.REGISTRY }}-laya:latest
           cache-from: type=gha,scope=laya
           cache-to: type=gha,mode=max,scope=laya
+
+      - name: Download dedup bundle
+        if: steps.changes.outputs.backend
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release download "$DEDUP_RELEASE" -p bundle.tar.gz -D ml/dedup
+
+      - name: Build and push dedup image
+        if: steps.changes.outputs.backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ml/dedup
+          push: true
+          tags: ${{ env.REGISTRY }}-dedup:latest
+          build-args: BUNDLE_SHA256=${{ env.DEDUP_SHA256 }}
+          cache-from: type=gha,scope=dedup
+          cache-to: type=gha,mode=max,scope=dedup
 
       - name: Deploy backend
         if: steps.changes.outputs.backend
