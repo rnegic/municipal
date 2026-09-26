@@ -132,10 +132,16 @@ export const DescriptionStep = ({
       ) : null}
 
       <div className={s.actions}>
-        <Button type="submit" stretched>
+        <Button className={s.actionButton} type="submit" stretched>
           {texts.descriptionStep.submit}
         </Button>
-        <Button type="button" tone="secondary" stretched onClick={onManual}>
+        <Button
+          className={s.actionButton}
+          type="button"
+          tone="secondary"
+          stretched
+          onClick={onManual}
+        >
           {texts.descriptionStep.manualSubmit}
         </Button>
       </div>
