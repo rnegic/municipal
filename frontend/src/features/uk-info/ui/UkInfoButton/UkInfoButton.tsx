@@ -34,11 +34,11 @@ const PhoneBlock = ({ label, phone }: PhoneBlockProps) => (
       className={s.callButton}
       size="small"
       tone="secondary"
+      iconBefore={<IconPhone size={16} />}
       onClick={() => {
         window.location.href = `tel:${phone.replace(/[^\d+]/g, '')}`
       }}
     >
-      <IconPhone size={16} />
       {texts.call}
     </Button>
   </section>

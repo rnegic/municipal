@@ -42,7 +42,9 @@ type WizardAction =
   | { type: 'setManualCategory'; value: IncidentCategory }
   | { type: 'reject'; message: string }
   | { type: 'resolveRouting'; decision: IncidentRoutingDecision }
+  | { type: 'startManualRouting' }
   | { type: 'fallbackRouting' }
+  | { type: 'manualOverride' }
   | { type: 'goToDescription' }
   | { type: 'goToRouting' }
   | { type: 'goToPhoto' }
@@ -87,12 +89,24 @@ const wizardReducer = (state: WizardState, action: WizardAction): WizardState =>
         isManualRouting: false,
         validationError: null,
       }
+    case 'startManualRouting':
     case 'fallbackRouting':
       return {
         ...state,
         step: 'routing',
         autoDecision: null,
         isManualRouting: true,
+        manualAuthority: '',
+        manualCategory: '',
+        validationError: null,
+      }
+    case 'manualOverride':
+      return {
+        ...state,
+        autoDecision: null,
+        isManualRouting: true,
+        manualAuthority: '',
+        manualCategory: '',
         validationError: null,
       }
     case 'goToDescription':
@@ -142,7 +156,7 @@ export const useIncidentReportWizard = ({ onSuccess }: UseIncidentReportWizardOp
       ? toManualDecision(state.manualAuthority, state.manualCategory)
       : null)
 
-  const analyze = () => {
+  const validateDescription = () => {
     const title = state.title.trim()
     const description = state.description.trim()
 
@@ -151,7 +165,7 @@ export const useIncidentReportWizard = ({ onSuccess }: UseIncidentReportWizardOp
         type: 'reject',
         message: texts.errors.titleTooShort(INCIDENT_TITLE_MIN_LENGTH),
       })
-      return
+      return false
     }
 
     if (title.length > INCIDENT_TITLE_MAX_LENGTH) {
@@ -159,7 +173,7 @@ export const useIncidentReportWizard = ({ onSuccess }: UseIncidentReportWizardOp
         type: 'reject',
         message: texts.errors.titleTooLong(INCIDENT_TITLE_MAX_LENGTH),
       })
-      return
+      return false
     }
 
     if (description.length < INCIDENT_DESCRIPTION_MIN_LENGTH) {
@@ -167,7 +181,7 @@ export const useIncidentReportWizard = ({ onSuccess }: UseIncidentReportWizardOp
         type: 'reject',
         message: texts.errors.descriptionTooShort(INCIDENT_DESCRIPTION_MIN_LENGTH),
       })
-      return
+      return false
     }
 
     if (description.length > INCIDENT_DESCRIPTION_MAX_LENGTH) {
@@ -175,11 +189,19 @@ export const useIncidentReportWizard = ({ onSuccess }: UseIncidentReportWizardOp
         type: 'reject',
         message: texts.errors.descriptionTooLong(INCIDENT_DESCRIPTION_MAX_LENGTH),
       })
+      return false
+    }
+
+    return true
+  }
+
+  const analyze = () => {
+    if (!validateDescription()) {
       return
     }
 
     analyzeMutation.mutate(
-      { description },
+      { description: state.description.trim() },
       {
         onSuccess: (result) =>
           dispatch(
@@ -190,6 +212,14 @@ export const useIncidentReportWizard = ({ onSuccess }: UseIncidentReportWizardOp
         onError: () => dispatch({ type: 'fallbackRouting' }),
       },
     )
+  }
+
+  const startManualRouting = () => {
+    if (!validateDescription()) {
+      return
+    }
+
+    dispatch({ type: 'startManualRouting' })
   }
 
   const goToPhoto = () => {
@@ -252,6 +282,8 @@ export const useIncidentReportWizard = ({ onSuccess }: UseIncidentReportWizardOp
       dispatch({ type: 'setManualAuthority', value }),
     setManualCategory: (value: IncidentCategory) => dispatch({ type: 'setManualCategory', value }),
     analyze,
+    startManualRouting,
+    switchToManualRouting: () => dispatch({ type: 'manualOverride' }),
     goToPhoto,
     goToDescription: () => dispatch({ type: 'goToDescription' }),
     goToRouting: () => dispatch({ type: 'goToRouting' }),

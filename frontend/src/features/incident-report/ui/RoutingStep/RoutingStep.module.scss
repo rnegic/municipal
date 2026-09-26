@@ -1,7 +1,8 @@
 .form,
 .details,
 .field,
-.actions {
+.actions,
+.override {
   display: flex;
   flex-direction: column;
 }
@@ -28,6 +29,18 @@
 
 .actions {
   gap: var(--app-space-3);
+}
+
+.override {
+  gap: var(--app-space-2);
+  align-items: flex-start;
+}
+
+.overrideButton {
+  --MaxUi-Button_background: var(--app-color-manual-surface);
+  --MaxUi-Button_background-active: var(--app-color-manual-surface-active);
+  --MaxUi-Button_foreground: var(--app-color-manual-text);
+  --MaxUi-Button_foreground-active: var(--app-color-manual-text);
 }
 
 .error {
