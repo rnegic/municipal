@@ -98,11 +98,26 @@ type IncidentUpdates struct {
 
 // Organization defines model for Organization.
 type Organization struct {
+	Email *string `json:"email,omitempty"`
+
+	// EmergencyPhone аварийная служба (круглосуточно)
+	EmergencyPhone *string `json:"emergencyPhone,omitempty"`
+
 	// Id Example: uk-1
 	Id string `json:"id"`
 
 	// Name Example: УК Наш Дом
 	Name string `json:"name"`
+
+	// OfficeAddress адрес офиса УК
+	OfficeAddress *string `json:"officeAddress,omitempty"`
+
+	// Phone телефон приёмной/диспетчерской УК
+	Phone   *string `json:"phone,omitempty"`
+	Website *string `json:"website,omitempty"`
+
+	// WorkingHours Example: Пн–Пт 8:00–17:00
+	WorkingHours *string `json:"workingHours,omitempty"`
 }
 
 // RegisterIncidentRequest defines model for RegisterIncidentRequest.

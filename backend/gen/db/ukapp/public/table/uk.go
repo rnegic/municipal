@@ -25,6 +25,12 @@ type ukTable struct {
 	Ogrn              postgres.ColumnString
 	LicenseNumber     postgres.ColumnString
 	LicenseValidUntil postgres.ColumnDate
+	Phone             postgres.ColumnString
+	EmergencyPhone    postgres.ColumnString
+	Email             postgres.ColumnString
+	Website           postgres.ColumnString
+	OfficeAddress     postgres.ColumnString
+	WorkingHours      postgres.ColumnString
 
 	AllColumns     postgres.ColumnList
 	MutableColumns postgres.ColumnList
@@ -74,8 +80,14 @@ func newUkTableImpl(schemaName, tableName, alias string) ukTable {
 		OgrnColumn              = postgres.StringColumn("ogrn")
 		LicenseNumberColumn     = postgres.StringColumn("license_number")
 		LicenseValidUntilColumn = postgres.DateColumn("license_valid_until")
-		allColumns              = postgres.ColumnList{IDColumn, ExternalIDColumn, NameColumn, RatingColumn, InnColumn, OgrnColumn, LicenseNumberColumn, LicenseValidUntilColumn}
-		mutableColumns          = postgres.ColumnList{ExternalIDColumn, NameColumn, RatingColumn, InnColumn, OgrnColumn, LicenseNumberColumn, LicenseValidUntilColumn}
+		PhoneColumn             = postgres.StringColumn("phone")
+		EmergencyPhoneColumn    = postgres.StringColumn("emergency_phone")
+		EmailColumn             = postgres.StringColumn("email")
+		WebsiteColumn           = postgres.StringColumn("website")
+		OfficeAddressColumn     = postgres.StringColumn("office_address")
+		WorkingHoursColumn      = postgres.StringColumn("working_hours")
+		allColumns              = postgres.ColumnList{IDColumn, ExternalIDColumn, NameColumn, RatingColumn, InnColumn, OgrnColumn, LicenseNumberColumn, LicenseValidUntilColumn, PhoneColumn, EmergencyPhoneColumn, EmailColumn, WebsiteColumn, OfficeAddressColumn, WorkingHoursColumn}
+		mutableColumns          = postgres.ColumnList{ExternalIDColumn, NameColumn, RatingColumn, InnColumn, OgrnColumn, LicenseNumberColumn, LicenseValidUntilColumn, PhoneColumn, EmergencyPhoneColumn, EmailColumn, WebsiteColumn, OfficeAddressColumn, WorkingHoursColumn}
 		defaultColumns          = postgres.ColumnList{IDColumn, RatingColumn}
 	)
 
@@ -91,6 +103,12 @@ func newUkTableImpl(schemaName, tableName, alias string) ukTable {
 		Ogrn:              OgrnColumn,
 		LicenseNumber:     LicenseNumberColumn,
 		LicenseValidUntil: LicenseValidUntilColumn,
+		Phone:             PhoneColumn,
+		EmergencyPhone:    EmergencyPhoneColumn,
+		Email:             EmailColumn,
+		Website:           WebsiteColumn,
+		OfficeAddress:     OfficeAddressColumn,
+		WorkingHours:      WorkingHoursColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

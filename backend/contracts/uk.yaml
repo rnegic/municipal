@@ -116,6 +116,12 @@ components:
       properties:
         id: { type: string, example: uk-1 }
         name: { type: string, example: "УК Наш Дом" }
+        phone: { type: string, nullable: true, description: "телефон приёмной/диспетчерской УК" }
+        emergencyPhone: { type: string, nullable: true, description: "аварийная служба (круглосуточно)" }
+        email: { type: string, nullable: true }
+        website: { type: string, nullable: true }
+        officeAddress: { type: string, nullable: true, description: "адрес офиса УК" }
+        workingHours: { type: string, nullable: true, example: "Пн–Пт 8:00–17:00" }
     House:
       type: object
       required: [id, address, organization]

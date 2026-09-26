@@ -32,7 +32,8 @@ func fakeUkServer(t *testing.T) *httptest.Server {
 			_, _ = w.Write([]byte(`{"code":"not_found","message":"no house"}`))
 			return
 		}
-		_, _ = w.Write([]byte(`{"id":"h-1","address":"Казань, Баумана 10","organization":{"id":"uk-1","name":"УК Наш Дом"}}`))
+		_, _ = w.Write([]byte(`{"id":"h-1","address":"Казань, Баумана 10","organization":{` +
+			`"id":"uk-1","name":"УК Наш Дом","phone":"+7 843","emergencyPhone":null,"email":null,"website":null,"officeAddress":null,"workingHours":null}}`))
 	}))
 	mux.HandleFunc("POST /incidents", auth(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
@@ -72,8 +73,11 @@ func fakeUkServer(t *testing.T) *httptest.Server {
 func TestFindHouse(t *testing.T) {
 	c := New(fakeUkServer(t).URL, "tok")
 	h, err := c.FindHouse(context.Background(), "f-1")
-	if err != nil || h.ID != "h-1" || h.OrgID != "uk-1" || h.OrgName != "УК Наш Дом" {
+	if err != nil || h.ID != "h-1" || h.Org.ExternalID != "uk-1" || h.Org.Name != "УК Наш Дом" {
 		t.Fatalf("got %+v err %v", h, err)
+	}
+	if h.Org.Phone == nil || *h.Org.Phone != "+7 843" || h.Org.EmergencyPhone != nil {
+		t.Fatalf("org contacts not mapped: %+v", h.Org)
 	}
 	_, err = c.FindHouse(context.Background(), "nope")
 	if !errors.Is(err, service.ErrUkHouseNotFound) {

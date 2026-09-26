@@ -1,11 +1,17 @@
 -- Демо-дом и мок-заявки для дефолтного адреса (см. docs/uk-integration.md «Демо-дом»).
 -- house_fias_id взят из DaData suggest для "Казань, ул. Баумана, д. 7/10" — держите его в
 -- синхроне с тем же id в mock/uk/internal/store/seed.sql.
-INSERT INTO uk (external_id, name, inn, ogrn, license_number, license_valid_until)
-  VALUES ('uk-1', 'УК Наш Дом', '1655000003', '1021602000000', '16-000123', '2030-12-31')
+INSERT INTO uk (external_id, name, inn, ogrn, license_number, license_valid_until,
+                phone, emergency_phone, email, website, office_address, working_hours)
+  VALUES ('uk-1', 'УК Наш Дом', '1655000003', '1021602000000', '16-000123', '2030-12-31',
+          '+7 (843) 200-00-00', '+7 (843) 200-01-01', 'info@uk-nash-dom.ru', 'https://uk-nash-dom.ru',
+          'г Казань, ул Баумана, д 7/10, офис 101', 'Пн–Пт 8:00–17:00, обед 12:00–13:00')
   ON CONFLICT (external_id) DO UPDATE SET
     inn = EXCLUDED.inn, ogrn = EXCLUDED.ogrn,
-    license_number = EXCLUDED.license_number, license_valid_until = EXCLUDED.license_valid_until;
+    license_number = EXCLUDED.license_number, license_valid_until = EXCLUDED.license_valid_until,
+    phone = COALESCE(EXCLUDED.phone, uk.phone), emergency_phone = COALESCE(EXCLUDED.emergency_phone, uk.emergency_phone),
+    email = COALESCE(EXCLUDED.email, uk.email), website = COALESCE(EXCLUDED.website, uk.website),
+    office_address = COALESCE(EXCLUDED.office_address, uk.office_address), working_hours = COALESCE(EXCLUDED.working_hours, uk.working_hours);
 
 INSERT INTO app_user (full_name, role, uk_id, position, password_hash, ads_authority)
   SELECT 'Ильдар Хайруллин', 'uk_dispatcher', uk.id, 'Диспетчер АДС',

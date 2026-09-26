@@ -70,7 +70,12 @@ func (f *fakeUk) FindHouse(_ context.Context, fias string) (service.UkHouse, err
 	if fias == "unknown" {
 		return service.UkHouse{}, service.ErrUkHouseNotFound
 	}
-	return service.UkHouse{ID: "h-" + fias, Address: fias, OrgID: "uk-1", OrgName: "Демо УК"}, nil
+	phone := "+7 (843) 200-00-00"
+	emergency := "+7 (843) 200-01-01"
+	return service.UkHouse{
+		ID: "h-" + fias, Address: fias,
+		Org: service.UkOrg{ExternalID: "uk-1", Name: "Демо УК", Phone: &phone, EmergencyPhone: &emergency},
+	}, nil
 }
 
 func (f *fakeUk) RegisterIncident(_ context.Context, in service.UkIncident) (string, domain.IncidentStatus, error) {

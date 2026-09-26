@@ -22,7 +22,7 @@ type fakeUk struct {
 }
 
 func (f *fakeUk) FindHouse(_ context.Context, fias string) (UkHouse, error) {
-	return UkHouse{ID: "h-" + fias, Address: fias, OrgID: "uk-1", OrgName: "Демо УК"}, nil
+	return UkHouse{ID: "h-" + fias, Address: fias, Org: UkOrg{ExternalID: "uk-1", Name: "Демо УК"}}, nil
 }
 
 func (f *fakeUk) RegisterIncident(_ context.Context, in UkIncident) (string, domain.IncidentStatus, error) {
@@ -59,7 +59,7 @@ func seedResidentWithIncident(t *testing.T, s *repository.Store, maxID int64) (i
 	if err != nil {
 		t.Fatal(err)
 	}
-	ukID, err := s.UpsertUk(ctx, "uk-1", "Демо УК")
+	ukID, err := s.UpsertUk(ctx, "uk-1", "Демо УК", repository.UkContacts{})
 	if err != nil {
 		t.Fatal(err)
 	}

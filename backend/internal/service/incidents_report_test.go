@@ -16,7 +16,7 @@ func seedHouse(t *testing.T, s *repository.Store) (houseID, userID int64) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ukID, err := s.UpsertUk(ctx, "uk-1", "Демо УК")
+	ukID, err := s.UpsertUk(ctx, "uk-1", "Демо УК", repository.UkContacts{})
 	if err != nil {
 		t.Fatal(err)
 	}

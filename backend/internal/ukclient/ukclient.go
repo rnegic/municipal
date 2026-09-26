@@ -42,7 +42,15 @@ func (c *Client) FindHouse(ctx context.Context, fiasID string) (service.UkHouse,
 		if h == nil {
 			return service.UkHouse{}, fmt.Errorf("uk: find house: status %d without JSON body", resp.StatusCode())
 		}
-		return service.UkHouse{ID: h.Id, Address: h.Address, OrgID: h.Organization.Id, OrgName: h.Organization.Name}, nil
+		org := h.Organization
+		return service.UkHouse{
+			ID: h.Id, Address: h.Address,
+			Org: service.UkOrg{
+				ExternalID: org.Id, Name: org.Name,
+				Phone: org.Phone, EmergencyPhone: org.EmergencyPhone, Email: org.Email,
+				Website: org.Website, OfficeAddress: org.OfficeAddress, WorkingHours: org.WorkingHours,
+			},
+		}, nil
 	case http.StatusNotFound:
 		return service.UkHouse{}, service.ErrUkHouseNotFound
 	default:

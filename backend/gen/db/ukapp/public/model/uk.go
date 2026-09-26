@@ -20,4 +20,10 @@ type Uk struct {
 	Ogrn              *string
 	LicenseNumber     *string
 	LicenseValidUntil *time.Time
+	Phone             *string
+	EmergencyPhone    *string
+	Email             *string
+	Website           *string
+	OfficeAddress     *string
+	WorkingHours      *string
 }

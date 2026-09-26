@@ -21,8 +21,16 @@ type UkProvider interface {
 
 var ErrUkHouseNotFound = errors.New("house not served by uk")
 
+// UkOrg — организация из системы УК; nil-контакты = система УК их не передала.
+type UkOrg struct {
+	ExternalID, Name                      string
+	Phone, EmergencyPhone, Email, Website *string
+	OfficeAddress, WorkingHours           *string
+}
+
 type UkHouse struct {
-	ID, Address, OrgID, OrgName string
+	ID, Address string
+	Org         UkOrg
 }
 
 type UkIncident struct {

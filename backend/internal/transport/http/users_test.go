@@ -16,6 +16,11 @@ type meResponse struct {
 	House *struct {
 		Id      string
 		Address string
+		Uk      struct {
+			Name           *string
+			Phone          *string
+			EmergencyPhone *string
+		}
 	}
 }
 
@@ -73,6 +78,11 @@ func TestBindHouse(t *testing.T) {
 	_ = json.Unmarshal(w.Body.Bytes(), &me)
 	if me.House == nil || me.House.Id != h1 {
 		t.Fatalf("house not bound in profile: %+v", me)
+	}
+	if me.House.Uk.Name == nil || *me.House.Uk.Name != "Демо УК" ||
+		me.House.Uk.Phone == nil || *me.House.Uk.Phone != "+7 (843) 200-00-00" ||
+		me.House.Uk.EmergencyPhone == nil || *me.House.Uk.EmergencyPhone != "+7 (843) 200-01-01" {
+		t.Fatalf("house uk contacts missing in profile: %+v", me.House.Uk)
 	}
 
 	h2 := bindUser(t, srv, 502, "abc-123")

@@ -14,6 +14,13 @@ func toUser(u model.AppUser) oapi.User {
 	return oapi.User{Id: formatUserID(u.ID), FullName: u.FullName, Role: oapi.Role(u.Role)}
 }
 
+func toHouseUk(uk model.Uk) oapi.HouseUk {
+	return oapi.HouseUk{
+		Name: uk.Name, Phone: uk.Phone, EmergencyPhone: uk.EmergencyPhone, Email: uk.Email,
+		Website: uk.Website, OfficeAddress: uk.OfficeAddress, WorkingHours: uk.WorkingHours,
+	}
+}
+
 func (s *server) GetMe(ctx context.Context, _ oapi.GetMeRequestObject) (oapi.GetMeResponseObject, error) {
 	u := userFromCtx(ctx)
 	resp := oapi.GetMe200JSONResponse{User: toUser(u)}
@@ -22,7 +29,11 @@ func (s *server) GetMe(ctx context.Context, _ oapi.GetMeRequestObject) (oapi.Get
 		if err != nil {
 			return nil, err
 		}
-		resp.House = &oapi.House{Id: formatHouseID(*u.HouseID), Address: addr}
+		uk, err := s.svc.HouseUk(ctx, *u.HouseID)
+		if err != nil {
+			return nil, err
+		}
+		resp.House = &oapi.House{Id: formatHouseID(*u.HouseID), Address: addr, Uk: toHouseUk(uk)}
 	}
 	return resp, nil
 }
@@ -41,7 +52,13 @@ func (s *server) BindHouse(ctx context.Context, req oapi.BindHouseRequestObject)
 	if err != nil {
 		return nil, err
 	}
-	return oapi.BindHouse200JSONResponse{Id: formatHouseID(houseID), Address: address}, nil
+	uk, err := s.svc.HouseUk(ctx, houseID)
+	if err != nil {
+		return nil, err
+	}
+	return oapi.BindHouse200JSONResponse{
+		Id: formatHouseID(houseID), Address: address, Uk: toHouseUk(uk),
+	}, nil
 }
 
 func (s *server) SuggestAddresses(ctx context.Context, req oapi.SuggestAddressesRequestObject) (oapi.SuggestAddressesResponseObject, error) {

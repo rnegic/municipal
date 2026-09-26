@@ -14,7 +14,7 @@ func seedIncident(t *testing.T, s *Store) (houseID, userID, incidentID int64) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ukID, err := s.UpsertUk(ctx, "uk-1", "Демо УК")
+	ukID, err := s.UpsertUk(ctx, "uk-1", "Демо УК", UkContacts{})
 	if err != nil {
 		t.Fatal(err)
 	}

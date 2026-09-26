@@ -32,14 +32,28 @@ func (s *Store) UpsertUser(ctx context.Context, iu domain.InitUser) (model.AppUs
 	return u, err
 }
 
-func (s *Store) UpsertUk(ctx context.Context, externalID, name string) (int64, error) {
-	var u model.Uk
-	err := Uk.INSERT(Uk.ExternalID, Uk.Name).
-		VALUES(externalID, name).
-		ON_CONFLICT(Uk.ExternalID).DO_UPDATE(SET(Uk.Name.SET(Uk.EXCLUDED.Name))).
-		RETURNING(Uk.ID).
-		QueryContext(ctx, s.db, &u)
-	return u.ID, err
+// UkContacts — контакты УК из системы УК (nil = не переданы; сохранённое значение не затирается).
+type UkContacts struct {
+	Phone, EmergencyPhone, Email, Website, OfficeAddress, WorkingHours *string
+}
+
+func (s *Store) UpsertUk(ctx context.Context, externalID, name string, contacts UkContacts) (int64, error) {
+	var id int64
+	err := s.db.QueryRowContext(ctx, `
+		INSERT INTO uk (external_id, name, phone, emergency_phone, email, website, office_address, working_hours)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (external_id) DO UPDATE SET
+			name = EXCLUDED.name,
+			phone = COALESCE(EXCLUDED.phone, uk.phone),
+			emergency_phone = COALESCE(EXCLUDED.emergency_phone, uk.emergency_phone),
+			email = COALESCE(EXCLUDED.email, uk.email),
+			website = COALESCE(EXCLUDED.website, uk.website),
+			office_address = COALESCE(EXCLUDED.office_address, uk.office_address),
+			working_hours = COALESCE(EXCLUDED.working_hours, uk.working_hours)
+		RETURNING id`,
+		externalID, name, contacts.Phone, contacts.EmergencyPhone, contacts.Email,
+		contacts.Website, contacts.OfficeAddress, contacts.WorkingHours).Scan(&id)
+	return id, err
 }
 
 func (s *Store) BindHouse(ctx context.Context, userID int64, addressRaw, houseFiasID string, ukID int64, houseExternalID string) (int64, error) {
@@ -79,4 +93,14 @@ func (s *Store) FindHouse(ctx context.Context, id int64) (model.House, error) {
 		return model.House{}, ErrNotFound
 	}
 	return h, err
+}
+
+// HouseUk — организация, обслуживающая дом (контакты для жителя).
+func (s *Store) HouseUk(ctx context.Context, houseID int64) (model.Uk, error) {
+	var u model.Uk
+	err := SELECT(Uk.AllColumns).
+		FROM(Uk.INNER_JOIN(House, House.UkID.EQ(Uk.ID))).
+		WHERE(House.ID.EQ(Int64(houseID))).
+		QueryContext(ctx, s.db, &u)
+	return u, notFound(err)
 }

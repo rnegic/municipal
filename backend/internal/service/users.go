@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"ukapp/internal/domain"
+	"ukapp/internal/repository"
 
 	"ukapp/gen/db/ukapp/public/model"
 )
@@ -34,7 +35,10 @@ func (s *Service) BindHouse(ctx context.Context, userID int64, rawAddress string
 	if err != nil {
 		return 0, "", err
 	}
-	ukID, err := s.repo.UpsertUk(ctx, h.OrgID, h.OrgName)
+	ukID, err := s.repo.UpsertUk(ctx, h.Org.ExternalID, h.Org.Name, repository.UkContacts{
+		Phone: h.Org.Phone, EmergencyPhone: h.Org.EmergencyPhone, Email: h.Org.Email,
+		Website: h.Org.Website, OfficeAddress: h.Org.OfficeAddress, WorkingHours: h.Org.WorkingHours,
+	})
 	if err != nil {
 		return 0, "", err
 	}
@@ -45,4 +49,9 @@ func (s *Service) BindHouse(ctx context.Context, userID int64, rawAddress string
 func (s *Service) HouseAddress(ctx context.Context, houseID int64) (string, error) {
 	h, err := s.repo.FindHouse(ctx, houseID)
 	return h.AddressRaw, err
+}
+
+// HouseUk — контакты УК, обслуживающей дом (для шапки-подсказки на фронте).
+func (s *Service) HouseUk(ctx context.Context, houseID int64) (model.Uk, error) {
+	return s.repo.HouseUk(ctx, houseID)
 }
