@@ -18,6 +18,7 @@ type fakeUk struct {
 	updatesErr error
 	setStatus  []string
 	fail       bool
+	suspicious []bool
 }
 
 func (f *fakeUk) FindHouse(_ context.Context, fias string) (UkHouse, error) {
@@ -31,6 +32,7 @@ func (f *fakeUk) RegisterIncident(_ context.Context, in UkIncident) (string, dom
 		return "", "", context.DeadlineExceeded
 	}
 	f.registered++
+	f.suspicious = append(f.suspicious, in.Suspicious)
 	return "INC-" + in.ExternalRef, domain.IncidentAccepted, nil
 }
 

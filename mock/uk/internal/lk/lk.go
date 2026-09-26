@@ -105,7 +105,15 @@ func (l *lk) index(c *gin.Context) {
 		_ = c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	l.render(c, http.StatusOK, "index.html", gin.H{"Login": d.Login, "OrgName": d.OrgID, "Incidents": items})
+	var visible, hidden []store.Incident
+	for _, in := range items {
+		if in.Suspicious && in.Status != "done" && in.Status != "false_alarm" {
+			hidden = append(hidden, in)
+		} else {
+			visible = append(visible, in)
+		}
+	}
+	l.render(c, http.StatusOK, "index.html", gin.H{"Login": d.Login, "OrgName": d.OrgID, "Incidents": visible, "Hidden": hidden})
 }
 
 func (l *lk) setStatus(c *gin.Context) {
@@ -113,7 +121,7 @@ func (l *lk) setStatus(c *gin.Context) {
 		return
 	}
 	switch c.PostForm("status") {
-	case "accepted", "in_progress", "verifying", "done":
+	case "accepted", "in_progress", "verifying", "done", "false_alarm":
 	default:
 		c.String(http.StatusBadRequest, "неизвестный статус")
 		return

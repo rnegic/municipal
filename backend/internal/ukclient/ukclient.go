@@ -53,7 +53,7 @@ func (c *Client) FindHouse(ctx context.Context, fiasID string) (service.UkHouse,
 func (c *Client) RegisterIncident(ctx context.Context, in service.UkIncident) (string, domain.IncidentStatus, error) {
 	resp, err := c.api.RegisterIncidentWithResponse(ctx, ukapi.RegisterIncidentJSONRequestBody{
 		ExternalRef: in.ExternalRef, HouseId: in.HouseID, Title: in.Title, Description: in.Description,
-		Severity: ukapi.Severity(in.Severity), Entrance: in.Entrance, Riser: in.Riser,
+		Severity: ukapi.Severity(in.Severity), Entrance: in.Entrance, Riser: in.Riser, Suspicious: &in.Suspicious,
 	})
 	if err != nil {
 		return "", "", err

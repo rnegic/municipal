@@ -19,6 +19,18 @@ var activeStatuses = []Expression{
 	String(string(domain.IncidentAccepted)), String(string(domain.IncidentInProgress)), String(string(domain.IncidentVerifying)),
 }
 
+func visibleTo(userID int64) BoolExpression {
+	return Incident.Suspicious.IS_FALSE().OR(Incident.ReporterID.EQ(Int64(userID)))
+}
+
+func (s *Store) ReporterStats(ctx context.Context, userID int64, window time.Duration) (falseAlarms, recentReports int, err error) {
+	err = s.db.QueryRowContext(ctx, `
+		SELECT (SELECT count(*) FROM incident WHERE reporter_id = $1 AND status = 'false_alarm'),
+		       (SELECT count(*) FROM incident_subscription WHERE user_id = $1 AND joined_at > now() - $2::interval)`,
+		userID, window.String()).Scan(&falseAlarms, &recentReports)
+	return falseAlarms, recentReports, err
+}
+
 type OpenIncidentRow struct {
 	model.Incident
 	Subscribed bool
@@ -33,6 +45,7 @@ func (s *Store) OpenIncidents(ctx context.Context, houseID, reporterID int64) ([
 			AS("open_incident_row.subscribed")).
 		FROM(Incident).
 		WHERE(Incident.HouseID.EQ(Int64(houseID)).
+			AND(visibleTo(reporterID)).
 			AND(Incident.Status.IN(openStatuses...)).
 			AND(Incident.CreatedAt.GT_EQ(TimestampzT(time.Now().Add(-domain.DedupCandidateWindow))))).
 		QueryContext(ctx, s.db, &rows)
@@ -70,6 +83,7 @@ type NewIncident struct {
 	Routing             Routing
 	SLA                 time.Duration
 	PhotoIDs            []int64
+	Suspicious          bool
 }
 
 func (s *Store) CreateIncident(ctx context.Context, in NewIncident) (int64, error) {
@@ -81,10 +95,10 @@ func (s *Store) CreateIncident(ctx context.Context, in NewIncident) (int64, erro
 	var inc model.Incident
 	err = Incident.INSERT(Incident.HouseID, Incident.Title, Incident.Severity, Incident.ReporterID, Incident.Description,
 		Incident.Entrance, Incident.Riser, Incident.DueAt, Incident.Category, Incident.Authority, Incident.RoutingSource,
-		Incident.CategoryPredicted, Incident.RoutingConfidence).
+		Incident.CategoryPredicted, Incident.RoutingConfidence, Incident.Suspicious).
 		VALUES(in.HouseID, in.Title, string(in.Severity), in.ReporterID, in.Description, in.Entrance, in.Riser,
 			NOW().ADD(INTERVALd(in.SLA)), string(in.Category), string(in.Category.Authority()), in.Routing.Source,
-			in.Routing.CategoryPredicted, in.Routing.Confidence).
+			in.Routing.CategoryPredicted, in.Routing.Confidence, in.Suspicious).
 		RETURNING(Incident.ID).
 		QueryContext(ctx, tx, &inc)
 	if err != nil {
@@ -164,7 +178,7 @@ func (s *Store) GetIncident(ctx context.Context, id, userID int64) (IncidentRow,
 func (s *Store) ListActiveIncidents(ctx context.Context, houseID, userID int64) ([]IncidentRow, error) {
 	var rows []IncidentRow
 	err := incidentSelect(userID).
-		WHERE(Incident.HouseID.EQ(Int64(houseID)).AND(Incident.Status.IN(activeStatuses...))).
+		WHERE(Incident.HouseID.EQ(Int64(houseID)).AND(visibleTo(userID)).AND(Incident.Status.IN(activeStatuses...))).
 		ORDER_BY(Incident.Severity.EQ(String(string(domain.SeverityCritical))).DESC(), Incident.CreatedAt.DESC()).
 		QueryContext(ctx, s.db, &rows)
 	return rows, err

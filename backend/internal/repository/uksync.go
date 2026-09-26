@@ -43,13 +43,13 @@ func (s *Store) ApplyUkStatus(ctx context.Context, externalID string, status dom
 
 	var inc model.Incident
 	upd := Incident.UPDATE(Incident.Status).SET(string(status))
-	if status == domain.IncidentDone {
+	if status == domain.IncidentDone || status == domain.IncidentFalseAlarm {
 		upd = Incident.UPDATE(Incident.Status, Incident.ResolvedAt).SET(string(status), NOW())
 	}
 	err = upd.WHERE(
 		Incident.ExternalID.EQ(String(externalID)).
 			AND(Incident.Status.NOT_EQ(String(string(status)))).
-			AND(Incident.Status.NOT_EQ(String(string(domain.IncidentDone)))),
+			AND(Incident.Status.NOT_IN(String(string(domain.IncidentDone)), String(string(domain.IncidentFalseAlarm)))),
 	).RETURNING(Incident.ID).QueryContext(ctx, tx, &inc)
 	if errors.Is(err, qrm.ErrNoRows) {
 		return false, nil

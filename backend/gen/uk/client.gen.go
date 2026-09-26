@@ -21,6 +21,7 @@ import (
 const (
 	Accepted   IncidentStatus = "accepted"
 	Done       IncidentStatus = "done"
+	FalseAlarm IncidentStatus = "false_alarm"
 	InProgress IncidentStatus = "in_progress"
 	Verifying  IncidentStatus = "verifying"
 )
@@ -31,6 +32,8 @@ func (e IncidentStatus) Valid() bool {
 	case Accepted:
 		return true
 	case Done:
+		return true
+	case FalseAlarm:
 		return true
 	case InProgress:
 		return true
@@ -112,7 +115,10 @@ type RegisterIncidentRequest struct {
 	HouseId     string   `json:"houseId"`
 	Riser       *string  `json:"riser,omitempty"`
 	Severity    Severity `json:"severity"`
-	Title       string   `json:"title"`
+
+	// Suspicious автор ранее ≥3 раз получал false_alarm; УК показывает такие обращения отдельно
+	Suspicious *bool  `json:"suspicious,omitempty"`
+	Title      string `json:"title"`
 }
 
 // SetStatusRequest defines model for SetStatusRequest.

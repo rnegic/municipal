@@ -27,6 +27,12 @@ const (
 	IncidentInProgress IncidentStatus = "in_progress"
 	IncidentVerifying  IncidentStatus = "verifying"
 	IncidentDone       IncidentStatus = "done"
+	IncidentFalseAlarm IncidentStatus = "false_alarm"
+)
+
+const (
+	SuspiciousAfterFalseAlarms = 3
+	MaxReportsPerHour          = 10
 )
 
 var sla = map[Severity]time.Duration{SeverityCritical: 4 * time.Hour, SeverityWarning: 24 * time.Hour}

@@ -91,7 +91,7 @@ paths:
           description: Нет такого инцидента
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
         "409":
-          description: Переход из done запрещён
+          description: Переход из done/false_alarm запрещён
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
 
 components:
@@ -106,7 +106,7 @@ components:
         message: { type: string }
     IncidentStatus:
       type: string
-      enum: [accepted, in_progress, verifying, done]
+      enum: [accepted, in_progress, verifying, done, false_alarm]
     Severity:
       type: string
       enum: [critical, warning]
@@ -134,6 +134,7 @@ components:
         severity: { $ref: "#/components/schemas/Severity" }
         entrance: { type: string }
         riser: { type: string }
+        suspicious: { type: boolean, description: "автор ранее ≥3 раз получал false_alarm; УК показывает такие обращения отдельно" }
     Incident:
       type: object
       required: [id, externalRef, status, updatedAt]

@@ -31,6 +31,7 @@ type House struct{ ID, FiasID, Address, OrgID, OrgName string }
 type Incident struct {
 	ID, ExternalRef, HouseID, Title, Description, Severity, Status string
 	Entrance, Riser                                                *string
+	Suspicious                                                     bool
 	CreatedAt, UpdatedAt                                           time.Time
 	Address                                                        string // house.address, для ЛК
 }
@@ -68,11 +69,11 @@ func (s *Store) FindHouseByFias(ctx context.Context, fias string) (House, error)
 	return h, err
 }
 
-const incidentCols = `i.id, i.external_ref, i.house_id, i.title, i.description, i.severity, i.entrance, i.riser, i.status, i.created_at, i.updated_at, h.address`
+const incidentCols = `i.id, i.external_ref, i.house_id, i.title, i.description, i.severity, i.entrance, i.riser, i.status, i.suspicious, i.created_at, i.updated_at, h.address`
 
 func scanIncident(row interface{ Scan(...any) error }) (Incident, error) {
 	var in Incident
-	err := row.Scan(&in.ID, &in.ExternalRef, &in.HouseID, &in.Title, &in.Description, &in.Severity, &in.Entrance, &in.Riser, &in.Status, &in.CreatedAt, &in.UpdatedAt, &in.Address)
+	err := row.Scan(&in.ID, &in.ExternalRef, &in.HouseID, &in.Title, &in.Description, &in.Severity, &in.Entrance, &in.Riser, &in.Status, &in.Suspicious, &in.CreatedAt, &in.UpdatedAt, &in.Address)
 	return in, err
 }
 
@@ -101,9 +102,9 @@ func (s *Store) CreateIncident(ctx context.Context, in Incident) (Incident, bool
 	}
 	var id string
 	err := s.db.QueryRowContext(ctx,
-		`INSERT INTO incident (external_ref, house_id, title, description, severity, entrance, riser)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-		in.ExternalRef, in.HouseID, in.Title, in.Description, in.Severity, in.Entrance, in.Riser).Scan(&id)
+		`INSERT INTO incident (external_ref, house_id, title, description, severity, entrance, riser, suspicious)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		in.ExternalRef, in.HouseID, in.Title, in.Description, in.Severity, in.Entrance, in.Riser, in.Suspicious).Scan(&id)
 	if err != nil {
 		return Incident{}, false, err
 	}
@@ -136,13 +137,13 @@ func (s *Store) list(ctx context.Context, whereOrder string, arg any) ([]Inciden
 	return out, rows.Err()
 }
 
-// SetStatus: ErrNotFound for unknown id, ErrConflict when leaving done.
+// SetStatus: ErrNotFound for unknown id, ErrConflict when leaving done or false_alarm.
 func (s *Store) SetStatus(ctx context.Context, id, status string) (Incident, error) {
 	cur, err := s.get(ctx, `i.id = $1`, id)
 	if err != nil {
 		return Incident{}, err
 	}
-	if cur.Status == "done" && status != "done" {
+	if (cur.Status == "done" || cur.Status == "false_alarm") && status != cur.Status {
 		return Incident{}, ErrConflict
 	}
 	if _, err := s.db.ExecContext(ctx, `UPDATE incident SET status = $2, updated_at = now() WHERE id = $1 AND status <> $2`, id, status); err != nil {

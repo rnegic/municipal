@@ -18,7 +18,7 @@ type server struct{ st *store.Store }
 
 func validStatus(s ukapi.IncidentStatus) bool {
 	switch s {
-	case ukapi.Accepted, ukapi.InProgress, ukapi.Verifying, ukapi.Done:
+	case ukapi.Accepted, ukapi.InProgress, ukapi.Verifying, ukapi.Done, ukapi.FalseAlarm:
 		return true
 	default:
 		return false
@@ -67,7 +67,7 @@ func (s *server) RegisterIncident(ctx context.Context, req ukapi.RegisterInciden
 	}
 	inc, created, err := s.st.CreateIncident(ctx, store.Incident{
 		ExternalRef: b.ExternalRef, HouseID: b.HouseId, Title: b.Title, Description: b.Description,
-		Severity: string(b.Severity), Entrance: b.Entrance, Riser: b.Riser,
+		Severity: string(b.Severity), Entrance: b.Entrance, Riser: b.Riser, Suspicious: b.Suspicious != nil && *b.Suspicious,
 	})
 	if errors.Is(err, store.ErrNotFound) {
 		return ukapi.RegisterIncident404JSONResponse{Code: "not_found", Message: "unknown houseId"}, nil
@@ -102,7 +102,7 @@ func (s *server) SetIncidentStatus(ctx context.Context, req ukapi.SetIncidentSta
 	case errors.Is(err, store.ErrNotFound):
 		return ukapi.SetIncidentStatus404JSONResponse{Code: "not_found", Message: "no such incident"}, nil
 	case errors.Is(err, store.ErrConflict):
-		return ukapi.SetIncidentStatus409JSONResponse{Code: "conflict", Message: "incident is done"}, nil
+		return ukapi.SetIncidentStatus409JSONResponse{Code: "conflict", Message: "incident is closed"}, nil
 	case err != nil:
 		return nil, err
 	}
