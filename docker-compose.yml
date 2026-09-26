@@ -22,6 +22,7 @@ services:
       MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:-}
       MAX_BOT_NAME: ${MAX_BOT_NAME:-t117_hakaton_max_bot}
       DADATA_TOKEN: ${DADATA_TOKEN:-}
+      GISGKH_DISABLED: ${GISGKH_DISABLED:-}
       UK_BASE_URL: http://mock-uk:8080
       UK_API_TOKEN: ${UK_API_TOKEN:-demo-uk-token}
       UK_SYNC_INTERVAL: 5s

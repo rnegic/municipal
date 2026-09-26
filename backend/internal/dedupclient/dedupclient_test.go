@@ -14,8 +14,8 @@ import (
 func riser(s string) *string { return &s }
 
 var (
-	req   = domain.OpenIncident{Title: "Нет горячей воды", Description: "с утра", Severity: domain.SeverityCritical}
-	cands = []domain.OpenIncident{{ID: 7, Title: "Горячей нет", Description: "стояк 3", Riser: riser("3"), Severity: domain.SeverityCritical, CreatedAt: time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC)}}
+	req   = domain.OpenIncident{Title: "Нет горячей воды", Description: "с утра", Category: domain.CategoryBuildingStructure, Riser: riser("5 этаж"), Severity: domain.SeverityCritical}
+	cands = []domain.OpenIncident{{ID: 7, Title: "Горячей нет", Description: "стояк 3", Category: domain.CategoryWaterHeat, Riser: riser("3"), Severity: domain.SeverityCritical, CreatedAt: time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC)}}
 )
 
 func TestMatch(t *testing.T) {
@@ -33,7 +33,7 @@ func TestMatch(t *testing.T) {
 		}
 		c := body.Candidates[0]
 		if body.TopK != 1 || c["id"] != float64(7) || c["riser"] != "3" || c["entrance"] != nil || c["severity"] != "critical" ||
-			body.Request["title"] != "Нет горячей воды" || c["created_at"] != "2026-09-25T10:00:00Z" {
+			body.Request["title"] != "Нет горячей воды" || body.Request["riser"] != nil || c["created_at"] != "2026-09-25T10:00:00Z" {
 			t.Errorf("body %+v", body)
 		}
 		_, _ = w.Write([]byte(`{"match":7,"duplicate_probability":0.97,"model_version":"m@1","threshold":0.9,"scores":[]}`))

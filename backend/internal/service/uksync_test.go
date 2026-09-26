@@ -22,7 +22,7 @@ type fakeUk struct {
 	suspicious []bool
 }
 
-func (f *fakeUk) FindHouse(_ context.Context, fias string) (UkHouse, error) {
+func (f *fakeUk) FindHouse(_ context.Context, fias, _ string) (UkHouse, error) {
 	return UkHouse{ID: "h-" + fias, Address: fias, Org: UkOrg{ExternalID: "uk-1", Name: "Демо УК"}}, nil
 }
 

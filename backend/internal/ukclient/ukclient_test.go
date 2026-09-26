@@ -72,14 +72,14 @@ func fakeUkServer(t *testing.T) *httptest.Server {
 
 func TestFindHouse(t *testing.T) {
 	c := New(fakeUkServer(t).URL, "tok")
-	h, err := c.FindHouse(context.Background(), "f-1")
+	h, err := c.FindHouse(context.Background(), "f-1", "")
 	if err != nil || h.ID != "h-1" || h.Org.ExternalID != "uk-1" || h.Org.Name != "УК Наш Дом" {
 		t.Fatalf("got %+v err %v", h, err)
 	}
 	if h.Org.Phone == nil || *h.Org.Phone != "+7 843" || h.Org.EmergencyPhone != nil {
 		t.Fatalf("org contacts not mapped: %+v", h.Org)
 	}
-	_, err = c.FindHouse(context.Background(), "nope")
+	_, err = c.FindHouse(context.Background(), "nope", "")
 	if !errors.Is(err, service.ErrUkHouseNotFound) {
 		t.Fatalf("want ErrUkHouseNotFound, got %v", err)
 	}
@@ -96,7 +96,7 @@ func TestFindHouse_200WithoutJSONBody(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	c := New(srv.URL, "tok")
-	_, err := c.FindHouse(context.Background(), "f-1")
+	_, err := c.FindHouse(context.Background(), "f-1", "")
 	if err == nil {
 		t.Fatal("want error on 200 without JSON content-type, got nil")
 	}
@@ -104,7 +104,7 @@ func TestFindHouse_200WithoutJSONBody(t *testing.T) {
 
 func TestFindHouse_Unauthorized(t *testing.T) {
 	c := New(fakeUkServer(t).URL, "wrong")
-	if _, err := c.FindHouse(context.Background(), "f-1"); err == nil {
+	if _, err := c.FindHouse(context.Background(), "f-1", ""); err == nil {
 		t.Fatal("want error on 401")
 	}
 }

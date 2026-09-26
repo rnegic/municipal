@@ -18,6 +18,11 @@ func (s *Service) WithMatcher(m Matcher) *Service {
 	return s
 }
 
+func (s *Service) WithOrgDirectory(d OrgDirectory) *Service {
+	s.orgs = d
+	return s
+}
+
 func (s *Service) findDuplicate(ctx context.Context, req domain.OpenIncident, open []domain.OpenIncident) (int64, string) {
 	now := time.Now()
 	rule := domain.FindDuplicate(req.HouseID, req.Category, req.Riser, now, open)
