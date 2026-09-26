@@ -4,6 +4,7 @@ import { formatHouseAddress, type House } from '@/entities/house'
 import { ChangeAddressButton } from '@/features/address-bind'
 import { SignOutButton } from '@/features/sign-out'
 import { ThemeToggle } from '@/features/theme-switch'
+import { UkInfoButton } from '@/features/uk-info'
 import { IconLocation } from '@/shared/assets/icons'
 import { cn } from '@/shared/lib/cn'
 import { Card } from '@/shared/ui/card'
@@ -32,6 +33,7 @@ export const AppHeader = ({ house, status, className }: AppHeaderProps) => (
       </div>
       <div className={s.actions}>
         <ThemeToggle />
+        <UkInfoButton house={house} />
         <ChangeAddressButton />
         <SignOutButton />
       </div>

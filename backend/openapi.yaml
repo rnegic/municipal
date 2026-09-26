@@ -528,10 +528,24 @@ components:
 
     House:
       type: object
-      required: [id, address]
+      required: [id, address, uk]
       properties:
         id: { type: string, example: h_123 }
         address: { type: string, example: "Казань, ул. Баумана, д. 10" }
+        uk: { $ref: "#/components/schemas/HouseUk" }
+
+    HouseUk:
+      type: object
+      description: Управляющая компания, обслуживающая дом; null-контакты — УК их не передала.
+      required: [name, phone, emergencyPhone, email, website, officeAddress, workingHours]
+      properties:
+        name: { type: string, example: "УК Наш Дом" }
+        phone: { type: string, nullable: true, example: "+7 (843) 200-00-00", description: "приёмная/диспетчерская" }
+        emergencyPhone: { type: string, nullable: true, description: "аварийная служба (круглосуточно)" }
+        email: { type: string, nullable: true }
+        website: { type: string, nullable: true }
+        officeAddress: { type: string, nullable: true, description: "адрес офиса УК" }
+        workingHours: { type: string, nullable: true, example: "Пн–Пт 8:00–17:00" }
 
     MeResponse:
       type: object
