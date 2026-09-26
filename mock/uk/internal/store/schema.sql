@@ -1,6 +1,12 @@
 CREATE TABLE IF NOT EXISTS organization (
-  id   TEXT PRIMARY KEY,
-  name TEXT NOT NULL
+  id              TEXT PRIMARY KEY,
+  name            TEXT NOT NULL,
+  phone           TEXT,
+  emergency_phone TEXT,
+  email           TEXT,
+  website         TEXT,
+  office_address  TEXT,
+  working_hours   TEXT
 );
 
 CREATE TABLE IF NOT EXISTS house (

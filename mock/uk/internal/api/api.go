@@ -57,7 +57,14 @@ func (s *server) FindHouse(ctx context.Context, req ukapi.FindHouseRequestObject
 	if err != nil {
 		return nil, err
 	}
-	return ukapi.FindHouse200JSONResponse{Id: h.ID, Address: h.Address, Organization: ukapi.Organization{Id: h.OrgID, Name: h.OrgName}}, nil
+	return ukapi.FindHouse200JSONResponse{
+		Id: h.ID, Address: h.Address,
+		Organization: ukapi.Organization{
+			Id: h.OrgID, Name: h.OrgName,
+			Phone: h.OrgPhone, EmergencyPhone: h.OrgEmergencyPhone, Email: h.OrgEmail,
+			Website: h.OrgWebsite, OfficeAddress: h.OrgOfficeAddress, WorkingHours: h.OrgWorkingHours,
+		},
+	}, nil
 }
 
 func (s *server) RegisterIncident(ctx context.Context, req ukapi.RegisterIncidentRequestObject) (ukapi.RegisterIncidentResponseObject, error) {

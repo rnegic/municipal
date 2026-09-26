@@ -26,7 +26,11 @@ var (
 
 type Store struct{ db *sql.DB }
 
-type House struct{ ID, FiasID, Address, OrgID, OrgName string }
+type House struct {
+	ID, FiasID, Address, OrgID, OrgName               string
+	OrgPhone, OrgEmergencyPhone, OrgEmail, OrgWebsite *string
+	OrgOfficeAddress, OrgWorkingHours                 *string
+}
 
 type Incident struct {
 	ID, ExternalRef, HouseID, Title, Description, Severity, Status string
@@ -61,8 +65,11 @@ func (s *Store) DB() *sql.DB { return s.db }
 func (s *Store) FindHouseByFias(ctx context.Context, fias string) (House, error) {
 	var h House
 	err := s.db.QueryRowContext(ctx,
-		`SELECT h.id, h.fias_id, h.address, o.id, o.name FROM house h JOIN organization o ON o.id = h.organization_id WHERE h.fias_id = $1`, fias).
-		Scan(&h.ID, &h.FiasID, &h.Address, &h.OrgID, &h.OrgName)
+		`SELECT h.id, h.fias_id, h.address, o.id, o.name,
+		        o.phone, o.emergency_phone, o.email, o.website, o.office_address, o.working_hours
+		 FROM house h JOIN organization o ON o.id = h.organization_id WHERE h.fias_id = $1`, fias).
+		Scan(&h.ID, &h.FiasID, &h.Address, &h.OrgID, &h.OrgName,
+			&h.OrgPhone, &h.OrgEmergencyPhone, &h.OrgEmail, &h.OrgWebsite, &h.OrgOfficeAddress, &h.OrgWorkingHours)
 	if errors.Is(err, sql.ErrNoRows) {
 		return House{}, ErrNotFound
 	}
