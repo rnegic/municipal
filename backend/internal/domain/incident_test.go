@@ -100,7 +100,19 @@ func TestDedupCandidatesLimit(t *testing.T) {
 		open = append(open, OpenIncident{ID: int64(i + 1), Status: IncidentAccepted, CreatedAt: now.Add(-time.Duration(i) * time.Minute)})
 	}
 	got := DedupCandidates(open, now)
-	if len(got) != MaxDedupCandidates || got[0].ID != 1 || got[19].ID != 20 {
+	if len(got) != MaxDedupCandidates || got[0].ID != 1 || got[9].ID != 10 {
 		t.Fatalf("len=%d first=%d last=%d", len(got), got[0].ID, got[len(got)-1].ID)
+	}
+}
+
+func TestDedupCandidates_SkipsSubscribed(t *testing.T) {
+	now := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
+	open := []OpenIncident{
+		{ID: 1, Status: IncidentAccepted, CreatedAt: now.Add(-time.Hour), Subscribed: true},
+		{ID: 2, Status: IncidentAccepted, CreatedAt: now.Add(-time.Minute)},
+	}
+	got := DedupCandidates(open, now)
+	if len(got) != 1 || got[0].ID != 2 {
+		t.Fatalf("subscribed incident must be excluded: %+v", got)
 	}
 }

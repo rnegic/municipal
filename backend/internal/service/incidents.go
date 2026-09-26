@@ -124,7 +124,7 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	}
 	routing := s.route(ctx, d, in.Category)
 	slog.Info("incident routed", "house", houseID, "category", in.Category, "routing_source", routing.Source)
-	open, err := s.repo.OpenIncidents(ctx, houseID)
+	open, err := s.repo.OpenIncidents(ctx, houseID, reporterID)
 	if err != nil {
 		return IncidentRow{}, false, err
 	}

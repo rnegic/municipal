@@ -52,6 +52,7 @@ type OpenIncident struct {
 	Severity    Severity
 	Status      IncidentStatus
 	CreatedAt   time.Time
+	Subscribed  bool
 }
 
 func FindDuplicate(houseID int64, category Category, riser *string, now time.Time, open []OpenIncident) int64 {
@@ -108,7 +109,7 @@ func sameRiser(a, b *string) bool {
 
 const (
 	DedupCandidateWindow = 7 * 24 * time.Hour
-	MaxDedupCandidates   = 20
+	MaxDedupCandidates   = 10
 )
 
 type DedupMatch struct {
@@ -120,7 +121,7 @@ type DedupMatch struct {
 func DedupCandidates(open []OpenIncident, now time.Time) []OpenIncident {
 	var out []OpenIncident
 	for _, inc := range open {
-		if (inc.Status == IncidentAccepted || inc.Status == IncidentInProgress) && now.Sub(inc.CreatedAt) <= DedupCandidateWindow {
+		if !inc.Subscribed && (inc.Status == IncidentAccepted || inc.Status == IncidentInProgress) && now.Sub(inc.CreatedAt) <= DedupCandidateWindow {
 			out = append(out, inc)
 		}
 	}

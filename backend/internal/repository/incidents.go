@@ -19,10 +19,18 @@ var activeStatuses = []Expression{
 	String(string(domain.IncidentAccepted)), String(string(domain.IncidentInProgress)), String(string(domain.IncidentVerifying)),
 }
 
-func (s *Store) OpenIncidents(ctx context.Context, houseID int64) ([]domain.OpenIncident, error) {
-	var rows []model.Incident
+type OpenIncidentRow struct {
+	model.Incident
+	Subscribed bool
+}
+
+func (s *Store) OpenIncidents(ctx context.Context, houseID, reporterID int64) ([]domain.OpenIncident, error) {
+	var rows []OpenIncidentRow
 	err := SELECT(Incident.ID, Incident.HouseID, Incident.Category, Incident.Title, Incident.Description,
-		Incident.Entrance, Incident.Riser, Incident.Severity, Incident.Status, Incident.CreatedAt).
+		Incident.Entrance, Incident.Riser, Incident.Severity, Incident.Status, Incident.CreatedAt,
+		EXISTS(SELECT(IncidentSubscription.UserID).FROM(IncidentSubscription).
+			WHERE(IncidentSubscription.IncidentID.EQ(Incident.ID).AND(IncidentSubscription.UserID.EQ(Int64(reporterID))))).
+			AS("open_incident_row.subscribed")).
 		FROM(Incident).
 		WHERE(Incident.HouseID.EQ(Int64(houseID)).
 			AND(Incident.Status.IN(openStatuses...)).
@@ -36,6 +44,7 @@ func (s *Store) OpenIncidents(ctx context.Context, houseID int64) ([]domain.Open
 		out[i] = domain.OpenIncident{
 			ID: r.ID, HouseID: r.HouseID, Title: r.Title, Description: r.Description, Entrance: r.Entrance, Riser: r.Riser,
 			Severity: domain.Severity(r.Severity), Status: domain.IncidentStatus(r.Status), CreatedAt: r.CreatedAt,
+			Subscribed: r.Subscribed,
 		}
 		if r.Category != nil {
 			out[i].Category = domain.Category(*r.Category)

@@ -78,7 +78,8 @@ func TestCreateIncident_ModelSaysNewOverridesRule(t *testing.T) {
 
 func TestCreateIncident_ModelErrorFallsBackToRule(t *testing.T) {
 	s := testStore(t)
-	svc := New(s, nil, nil, &fakeUk{}, "testbot").WithMatcher(&fakeMatcher{err: errors.New("down")})
+	m := &fakeMatcher{err: errors.New("down")}
+	svc := New(s, nil, nil, &fakeUk{}, "testbot").WithMatcher(m)
 	houseID, userID := seedHouse(t, s)
 	ctx := context.Background()
 	first, _, err := svc.CreateIncident(ctx, houseID, userID, NewIncident{Description: "нет воды с утра", Category: domain.CategoryWaterHeat})
@@ -89,8 +90,35 @@ func TestCreateIncident_ModelErrorFallsBackToRule(t *testing.T) {
 	if err != nil || created || row.ID != first.ID {
 		t.Fatalf("rule must join: id=%d created=%v err=%v", row.ID, created, err)
 	}
+	if m.calls != 1 {
+		t.Fatalf("matcher must be called exactly once: calls=%d", m.calls)
+	}
 	got := serviceReports(t, s)
 	if len(got) != 2 || got[1].dedupVersion != domain.DedupVersion {
+		t.Fatalf("%+v", got)
+	}
+}
+
+func TestCreateIncident_ModelSkipsAlreadySubscribedIncident(t *testing.T) {
+	s := testStore(t)
+	m := &fakeMatcher{}
+	svc := New(s, nil, nil, &fakeUk{}, "testbot").WithMatcher(m)
+	houseID, userID := seedHouse(t, s)
+	ctx := context.Background()
+	first, created, err := svc.CreateIncident(ctx, houseID, userID, NewIncident{Description: "нет горячей воды с утра", Category: domain.CategoryWaterHeat})
+	if err != nil || !created {
+		t.Fatalf("first: created=%v err=%v", created, err)
+	}
+	m.id = first.ID
+	row, created, err := svc.CreateIncident(ctx, houseID, userID, NewIncident{Description: "сломан лифт", Category: domain.CategoryElevator})
+	if err != nil || !created || row.ID == first.ID {
+		t.Fatalf("must not join own subscribed incident: id=%d created=%v err=%v", row.ID, created, err)
+	}
+	if m.calls != 0 || len(m.cands) != 0 {
+		t.Fatalf("matcher must not see already-subscribed incident: calls=%d cands=%+v", m.calls, m.cands)
+	}
+	got := serviceReports(t, s)
+	if len(got) != 2 || got[0].outcome != "created" || got[1].outcome != "created" {
 		t.Fatalf("%+v", got)
 	}
 }
