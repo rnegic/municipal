@@ -8,6 +8,12 @@ CREATE TABLE IF NOT EXISTS organization (
   office_address  TEXT,
   working_hours   TEXT
 );
+ALTER TABLE organization ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE organization ADD COLUMN IF NOT EXISTS emergency_phone TEXT;
+ALTER TABLE organization ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE organization ADD COLUMN IF NOT EXISTS website TEXT;
+ALTER TABLE organization ADD COLUMN IF NOT EXISTS office_address TEXT;
+ALTER TABLE organization ADD COLUMN IF NOT EXISTS working_hours TEXT;
 
 CREATE TABLE IF NOT EXISTS house (
   id              TEXT PRIMARY KEY,
