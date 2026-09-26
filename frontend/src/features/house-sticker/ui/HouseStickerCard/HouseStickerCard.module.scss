@@ -1,40 +1,11 @@
 .root {
-  gap: var(--app-space-4);
-  border: 1px dashed var(--app-color-border-input);
-  background-color: transparent;
-  box-shadow: none;
-}
-
-.head {
   display: flex;
   align-items: center;
-  gap: var(--app-space-6);
+  gap: var(--app-space-2);
 }
 
 .icon {
   display: flex;
   flex: none;
-  align-items: center;
-  justify-content: center;
-  width: var(--app-space-12);
-  height: var(--app-space-12);
-  border-radius: var(--app-radius-paper);
-  color: var(--app-color-icon-accent);
-  background-color: var(--app-color-progress-surface);
-}
-
-.text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--app-space-1);
-  min-width: 0;
-}
-
-.action {
-  margin-top: var(--app-space-2);
-}
-
-.hint {
-  text-align: center;
+  color: var(--app-color-icon-muted);
 }

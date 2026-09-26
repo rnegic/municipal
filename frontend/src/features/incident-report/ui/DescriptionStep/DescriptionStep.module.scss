@@ -14,6 +14,16 @@
   gap: var(--app-space-2);
 }
 
+.actions {
+  display: flex;
+  gap: var(--app-space-3);
+}
+
+.actions > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .titleInput {
   border: 1px solid var(--app-color-border-input);
   background-color: var(--app-color-surface-card);

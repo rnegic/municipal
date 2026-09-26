@@ -14,7 +14,8 @@ export const incidentReportTexts = {
     placeholder: 'Например: нет горячей воды, сломан лифт, течёт крыша',
     hint: (min: number, max: number) => `От ${min} до ${max} символов`,
     counter: (current: number, max: number) => `${current} / ${max}`,
-    submit: 'Далее',
+    submit: 'Определить автоматически',
+    manualSubmit: 'Выбрать вручную',
     analyzingTitle: 'Определяем ответственного',
     analyzingDescription: 'Анализируем описание, это занимает несколько секунд',
   },
@@ -34,6 +35,8 @@ export const incidentReportTexts = {
     floorZonePlaceholder: 'Например, 5 этаж, мусоропровод',
     submit: 'Перейти к фото',
     back: 'Изменить описание',
+    mayBeWrongHint: 'Анализ может ошибаться — проверьте результат',
+    overrideAction: 'Неверно, определить вручную',
   },
   fallback: {
     title: 'Не удалось определить автоматически',

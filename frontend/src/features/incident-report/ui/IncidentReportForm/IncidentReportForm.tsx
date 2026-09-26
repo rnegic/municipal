@@ -33,6 +33,7 @@ export const IncidentReportForm = ({ onSuccess, onCancel, className }: IncidentR
           onTitleChange={wizard.setTitle}
           onChange={wizard.setDescription}
           onSubmit={wizard.analyze}
+          onManual={wizard.startManualRouting}
         />
       ) : null}
 
@@ -51,6 +52,7 @@ export const IncidentReportForm = ({ onSuccess, onCancel, className }: IncidentR
           onFloorZoneChange={wizard.setFloorZone}
           onSubmit={wizard.goToPhoto}
           onBack={wizard.goToDescription}
+          onManualOverride={wizard.switchToManualRouting}
         />
       ) : null}
 

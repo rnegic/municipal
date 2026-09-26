@@ -31,6 +31,7 @@ export interface RoutingStepProps {
   onFloorZoneChange: (value: string) => void
   onSubmit: () => void
   onBack: () => void
+  onManualOverride: () => void
 }
 
 export const RoutingStep = ({
@@ -47,6 +48,7 @@ export const RoutingStep = ({
   onFloorZoneChange,
   onSubmit,
   onBack,
+  onManualOverride,
 }: RoutingStepProps) => {
   const entranceId = useId()
   const floorZoneId = useId()
@@ -79,6 +81,23 @@ export const RoutingStep = ({
       ) : null}
 
       {verdict ? <RoutingVerdict decision={verdict} /> : null}
+
+      {decision && !isManualRouting ? (
+        <div className={s.override}>
+          <Typography.Text variant="note" color="tertiary">
+            {texts.routingStep.mayBeWrongHint}
+          </Typography.Text>
+          <Button
+            className={s.overrideButton}
+            type="button"
+            size="small"
+            tone="secondary"
+            onClick={onManualOverride}
+          >
+            {texts.routingStep.overrideAction}
+          </Button>
+        </div>
+      ) : null}
 
       {isUkFlow ? (
         <fieldset className={s.details}>

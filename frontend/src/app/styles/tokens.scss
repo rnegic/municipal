@@ -30,6 +30,11 @@
   --app-color-warning-dark: #dc8000;
   --app-color-warning-surface: color-mix(in srgb, var(--app-color-warning) 16%, transparent);
 
+  /* Ручной выбор ответственного */
+  --app-color-manual-surface: #ffe2ef;
+  --app-color-manual-surface-active: #ffd0e4;
+  --app-color-manual-text: #a81e5b;
+
   /* Границы и дорожки */
   --app-color-border: var(--divider-secondary);
   --app-color-border-card: color-mix(in srgb, var(--app-color-text-primary) 14%, transparent);

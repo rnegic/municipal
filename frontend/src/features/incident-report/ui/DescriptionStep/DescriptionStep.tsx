@@ -20,6 +20,7 @@ export interface DescriptionStepProps {
   onTitleChange: (value: string) => void
   onChange: (value: string) => void
   onSubmit: () => void
+  onManual: () => void
   isAnalyzing: boolean
   validationError: string | null
 }
@@ -30,6 +31,7 @@ export const DescriptionStep = ({
   onTitleChange,
   onChange,
   onSubmit,
+  onManual,
   isAnalyzing,
   validationError,
 }: DescriptionStepProps) => {
@@ -129,9 +131,14 @@ export const DescriptionStep = ({
         </span>
       ) : null}
 
-      <Button type="submit" stretched>
-        {texts.descriptionStep.submit}
-      </Button>
+      <div className={s.actions}>
+        <Button type="submit" stretched>
+          {texts.descriptionStep.submit}
+        </Button>
+        <Button type="button" tone="secondary" stretched onClick={onManual}>
+          {texts.descriptionStep.manualSubmit}
+        </Button>
+      </div>
     </form>
   )
 }
