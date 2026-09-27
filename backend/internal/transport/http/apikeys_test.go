@@ -33,7 +33,9 @@ func TestApiKeys_IssueUseRevoke(t *testing.T) {
 		t.Fatalf("key: %q", key)
 	}
 
-	var me struct{ User struct{ Role, FullName string } }
+	var me struct {
+		User struct{ Role, FullName string }
+	}
 	w := serve(srv, bearerReq("GET", "/api/me", "", key))
 	_ = json.Unmarshal(w.Body.Bytes(), &me)
 	if w.Code != 200 || me.User.Role != "uk_dispatcher" || me.User.FullName != "1С-интеграция" {

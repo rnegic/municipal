@@ -289,3 +289,34 @@ func TestUkAcceptPublishesPendingIncident(t *testing.T) {
 		t.Fatalf("accepted incident must appear in house feed: %+v", feed)
 	}
 }
+
+func TestSyncUnregistered_SkipsUkWithApiKey(t *testing.T) {
+	s := testStore(t)
+	uk := &fakeUk{}
+	svc := New(s, nil, nil, uk, "testbot")
+	incID, userID := seedResidentWithIncident(t, s, 3)
+	ctx := context.Background()
+	var ukID int64
+	if err := s.DB().QueryRowContext(ctx, `SELECT h.uk_id FROM incident i JOIN house h ON h.id=i.house_id WHERE i.id=$1`, incID).Scan(&ukID); err != nil {
+		t.Fatal(err)
+	}
+	key, err := s.CreateApiKey(ctx, ukID, userID, "1С", "p", []byte("h"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.syncUnregistered(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if uk.registered != 0 || externalID(t, s, incID) != nil {
+		t.Fatalf("uk with api key must not be registered externally, calls=%d", uk.registered)
+	}
+	if err := s.RevokeApiKey(ctx, ukID, key.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.syncUnregistered(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if uk.registered != 1 {
+		t.Fatalf("after revoke the old path resumes, calls=%d", uk.registered)
+	}
+}
