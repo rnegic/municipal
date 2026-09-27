@@ -45,7 +45,7 @@
 (`POST dom.gosuslugi.ru/homemanagement/api/rest/services/houses/public/searchByAddress`
 по `region_fias_id`, `street_fias_id` и номеру дома из DaData) и берёт
 `managementOrganization` из актуальной (`APPROVED`) карточки с тем же `house_fias_id`.
-Найденная УК сохраняется в `uk` с `external_id = inn-<ИНН>`. Если УК не нашлась
+Найденная УК сохраняется в `uk` с `external_id = ogrn-<ОГРН>`. Если УК не нашлась
 (нет карточки, дом без улицы, ГИС ЖКХ недоступен), остаётся организация из системы УК.
 ГИС ЖКХ отвечает только российским IP; локально отключается `GISGKH_DISABLED=1`.
 

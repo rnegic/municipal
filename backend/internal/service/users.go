@@ -36,7 +36,8 @@ func (s *Service) BindHouse(ctx context.Context, userID int64, rawAddress string
 	if err != nil {
 		return 0, "", err
 	}
-	if s.orgs != nil {
+	seededDemoHouse := h.ID != "h-"+best.HouseFiasID
+	if s.orgs != nil && !seededDemoHouse {
 		org, err := s.orgs.FindOrg(ctx, HouseAddress{
 			HouseFiasID: best.HouseFiasID, RegionFiasID: best.RegionFiasID, StreetFiasID: best.StreetFiasID, House: best.House,
 		})

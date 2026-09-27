@@ -11,9 +11,9 @@ import (
 )
 
 const searchResp = `{"total":3,"items":[
-{"status":"CANCELLED","address":{"house":{"houseGuid":"f-1"}},"managementOrganization":{"shortName":"Старая","inn":"1"}},
-{"status":"APPROVED","address":{"house":{"houseGuid":"f-other"}},"managementOrganization":{"shortName":"Соседняя","inn":"2"}},
-{"status":"APPROVED","address":{"house":{"houseGuid":"f-1"}},"managementOrganization":{"fullName":"ООО УК ВАХИТОВСКОГО РАЙОНА","shortName":"ООО \"УК Вахитовского района\"","phone":"78432000000","url":"https://uk.ru","orgAddress":"Казань","inn":"1655000001","ogrn":"1"},"municipalityOrganization":{"shortName":"МКУ","inn":"9"}}
+{"status":"CANCELLED","address":{"house":{"houseGuid":"f-1"}},"managementOrganization":{"shortName":"Старая","ogrn":"1"}},
+{"status":"APPROVED","address":{"house":{"houseGuid":"f-other"}},"managementOrganization":{"shortName":"Соседняя","ogrn":"2"}},
+{"status":"APPROVED","address":{"house":{"houseGuid":"f-1"}},"managementOrganization":{"fullName":"ООО УК ВАХИТОВСКОГО РАЙОНА","shortName":"ООО \"УК Вахитовского района\"","phone":"78432000000","url":"https://uk.ru","orgAddress":"Казань","ogrn":"1161690000001"},"municipalityOrganization":{"shortName":"МКУ","inn":"9"}}
 ]}`
 
 func fake(t *testing.T) *Client {
@@ -38,7 +38,7 @@ func TestFindOrg(t *testing.T) {
 	if err != nil || org == nil {
 		t.Fatalf("org=%v err=%v", org, err)
 	}
-	if org.ExternalID != "inn-1655000001" || org.Name != `ООО "УК Вахитовского района"` || *org.Phone != "78432000000" || *org.Website != "https://uk.ru" {
+	if org.ExternalID != "ogrn-1161690000001" || org.Name != `ООО "УК Вахитовского района"` || *org.Phone != "78432000000" || *org.Website != "https://uk.ru" {
 		t.Fatalf("got %+v", org)
 	}
 }

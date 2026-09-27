@@ -31,7 +31,6 @@ type org struct {
 	OrgAddress *string `json:"orgAddress"`
 	Phone      *string `json:"phone"`
 	URL        *string `json:"url"`
-	INN        string  `json:"inn"`
 	OGRN       string  `json:"ogrn"`
 }
 
@@ -74,7 +73,7 @@ func (c *Client) FindOrg(ctx context.Context, a service.HouseAddress) (*service.
 	}
 	for _, it := range out.Items {
 		o := it.ManagementOrganization
-		if it.Status != "APPROVED" || o == nil || o.INN == "" || it.Address.House.HouseGUID != a.HouseFiasID {
+		if it.Status != "APPROVED" || o == nil || o.OGRN == "" || it.Address.House.HouseGUID != a.HouseFiasID {
 			continue
 		}
 		name := o.ShortName
@@ -82,7 +81,7 @@ func (c *Client) FindOrg(ctx context.Context, a service.HouseAddress) (*service.
 			name = o.FullName
 		}
 		return &service.UkOrg{
-			ExternalID: "inn-" + o.INN, Name: name,
+			ExternalID: "ogrn-" + o.OGRN, Name: name,
 			Phone: o.Phone, Website: o.URL, OfficeAddress: o.OrgAddress,
 		}, nil
 	}
