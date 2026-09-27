@@ -4,10 +4,7 @@ export const ukInfoTexts = {
   description: 'Обслуживает ваш дом',
   call: 'Позвонить',
   phone: 'Телефон УК',
-  emergencyPhone: 'Аварийная служба · 24/7',
-  email: 'Почта',
   website: 'Сайт',
   officeAddress: 'Офис УК',
-  workingHours: 'Часы работы',
   empty: 'Контакты УК пока не заполнены',
 } as const

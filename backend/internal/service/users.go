@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	ErrAddressNotResolved = errors.New("address not resolved")
-	ErrHouseNotServed     = errors.New("house not served by connected uk")
+	ErrAddressNotResolved   = errors.New("address not resolved")
+	ErrHouseNotServed       = errors.New("house not served by connected uk")
+	ErrNotApartmentBuilding = errors.New("house is not an apartment building")
 )
 
 func (s *Service) UpsertUser(ctx context.Context, iu domain.InitUser) (model.AppUser, error) {
@@ -36,10 +37,14 @@ func (s *Service) BindHouse(ctx context.Context, userID int64, rawAddress string
 	if err != nil {
 		return 0, "", err
 	}
-	if s.orgs != nil {
+	seededDemoHouse := h.ID != "h-"+best.HouseFiasID
+	if s.orgs != nil && !seededDemoHouse {
 		org, err := s.orgs.FindOrg(ctx, HouseAddress{
 			HouseFiasID: best.HouseFiasID, RegionFiasID: best.RegionFiasID, StreetFiasID: best.StreetFiasID, House: best.House,
 		})
+		if errors.Is(err, ErrNotApartmentBuilding) {
+			return 0, "", err
+		}
 		if err != nil {
 			slog.Warn("gisgkh find org", "fias", best.HouseFiasID, "err", err)
 		} else if org != nil {

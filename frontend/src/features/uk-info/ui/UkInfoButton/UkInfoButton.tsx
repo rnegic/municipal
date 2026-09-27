@@ -69,15 +69,9 @@ export const UkInfoButton = ({ house, className }: UkInfoButtonProps) => {
     return null
   }
 
-  const { phone, emergencyPhone, email, website, officeAddress, workingHours } = uk
+  const { phone, website, officeAddress } = uk
 
-  const hasContacts =
-    phone !== null ||
-    emergencyPhone !== null ||
-    email !== null ||
-    website !== null ||
-    officeAddress !== null ||
-    workingHours !== null
+  const hasContacts = phone !== null || website !== null || officeAddress !== null
 
   return (
     <>
@@ -93,14 +87,8 @@ export const UkInfoButton = ({ house, className }: UkInfoButtonProps) => {
       <BottomSheet open={open} title={texts.title} description={uk.name} onClose={() => setOpen(false)}>
         <div className={s.content}>
           {phone !== null ? <PhoneBlock label={texts.phone} phone={phone} /> : null}
-          {emergencyPhone !== null ? (
-            <PhoneBlock label={texts.emergencyPhone} phone={emergencyPhone} />
-          ) : null}
           {hasContacts ? (
             <div className={s.rows}>
-              {workingHours !== null ? (
-                <InfoRow label={texts.workingHours} value={workingHours} />
-              ) : null}
               {officeAddress !== null ? (
                 <InfoRow label={texts.officeAddress} value={officeAddress} />
               ) : null}
@@ -109,15 +97,6 @@ export const UkInfoButton = ({ house, className }: UkInfoButtonProps) => {
                   label={texts.website}
                   value={website}
                   onClick={() => openLink(toWebsiteUrl(website))}
-                />
-              ) : null}
-              {email !== null ? (
-                <InfoRow
-                  label={texts.email}
-                  value={email}
-                  onClick={() => {
-                    window.location.href = `mailto:${email}`
-                  }}
                 />
               ) : null}
             </div>

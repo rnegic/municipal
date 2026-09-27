@@ -3,11 +3,8 @@ import { z } from 'zod'
 export const managementCompanySchema = z.object({
   name: z.string().min(1),
   phone: z.string().nullable(),
-  emergencyPhone: z.string().nullable(),
-  email: z.string().nullable(),
   website: z.string().nullable(),
   officeAddress: z.string().nullable(),
-  workingHours: z.string().nullable(),
 })
 
 export const houseSchema = z.object({
