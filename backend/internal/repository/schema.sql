@@ -172,3 +172,34 @@ CREATE TABLE IF NOT EXISTS outbox_message (
   sent_at            TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS outbox_pending ON outbox_message(next_attempt_at) WHERE status = 'pending';
+
+CREATE TABLE IF NOT EXISTS uk_api_key (
+  id           BIGSERIAL PRIMARY KEY,
+  uk_id        BIGINT NOT NULL REFERENCES uk(id),
+  user_id      BIGINT NOT NULL REFERENCES app_user(id),
+  name         TEXT NOT NULL,
+  prefix       TEXT NOT NULL,
+  key_hash     BYTEA NOT NULL UNIQUE,
+  created_by   BIGINT NOT NULL REFERENCES app_user(id),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_used_at TIMESTAMPTZ,
+  revoked_at   TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS uk_api_key_active ON uk_api_key(uk_id) WHERE revoked_at IS NULL;
+
+CREATE SEQUENCE IF NOT EXISTS incident_change_seq;
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS change_seq BIGINT NOT NULL DEFAULT nextval('incident_change_seq');
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+CREATE INDEX IF NOT EXISTS incident_change_seq_idx ON incident(change_seq);
+
+CREATE OR REPLACE FUNCTION incident_touch() RETURNS trigger AS $$
+BEGIN
+  NEW.change_seq := nextval('incident_change_seq');
+  IF NEW.updated_at IS NOT DISTINCT FROM OLD.updated_at THEN
+    NEW.updated_at := now();
+  END IF;
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS incident_touch ON incident;
+CREATE TRIGGER incident_touch BEFORE UPDATE ON incident FOR EACH ROW EXECUTE FUNCTION incident_touch();
