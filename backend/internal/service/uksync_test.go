@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -147,6 +148,13 @@ func TestSyncStatuses_AppliesOnceAndNotifies(t *testing.T) {
 	}
 	if n := outboxCount(t, s, "pending"); n != 1 {
 		t.Fatalf("want 1 push to the reporter, got %d", n)
+	}
+	var text string
+	if err := s.DB().QueryRow(`SELECT payload->>'text' FROM outbox_message`).Scan(&text); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(text, "«Нет воды»") || !strings.Contains(text, "взята в работу") || !strings.Contains(text, "startapp=inc_"+strconv.FormatInt(incID, 10)) {
+		t.Fatalf("push must name the incident, its new status and link: %q", text)
 	}
 
 	if err := svc.syncStatuses(context.Background()); err != nil {

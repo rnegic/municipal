@@ -44,7 +44,7 @@ func (s *Store) ConfirmationCount(ctx context.Context, incidentID int64) (int, e
 	return cnt.Count, err
 }
 
-func (s *Store) TransitionIncident(ctx context.Context, incidentID int64, from, to domain.IncidentStatus, kind string, payload OutboxPayload) (moved bool, err error) {
+func (s *Store) TransitionIncident(ctx context.Context, incidentID int64, from, to domain.IncidentStatus, kind string, notify func(model.Incident) OutboxPayload) (moved bool, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
@@ -55,19 +55,21 @@ func (s *Store) TransitionIncident(ctx context.Context, incidentID int64, from, 
 	if to == domain.IncidentDone {
 		upd = Incident.UPDATE(Incident.Status, Incident.ResolvedAt).SET(string(to), NOW())
 	}
-	res, err := upd.WHERE(Incident.ID.EQ(Int64(incidentID)).AND(Incident.Status.EQ(String(string(from))))).ExecContext(ctx, tx)
+	var inc model.Incident
+	err = upd.WHERE(Incident.ID.EQ(Int64(incidentID)).AND(Incident.Status.EQ(String(string(from))))).
+		RETURNING(Incident.ID, Incident.Title).QueryContext(ctx, tx, &inc)
+	if errors.Is(err, qrm.ErrNoRows) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return false, nil
 	}
 	if kind != "" {
 		targets, err := s.SubscriberMaxIDs(ctx, incidentID)
 		if err != nil {
 			return false, err
 		}
-		if err := s.Enqueue(ctx, tx, targets, kind, payload); err != nil {
+		if err := s.Enqueue(ctx, tx, targets, kind, notify(inc)); err != nil {
 			return false, err
 		}
 	}

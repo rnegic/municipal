@@ -34,7 +34,7 @@ func (s *Store) SetIncidentExternalID(ctx context.Context, id int64, externalID 
 	return err
 }
 
-func (s *Store) ApplyUkStatus(ctx context.Context, externalID string, status domain.IncidentStatus, kind string, payload OutboxPayload) (bool, error) {
+func (s *Store) ApplyUkStatus(ctx context.Context, externalID string, status domain.IncidentStatus, kind string, notify func(model.Incident) OutboxPayload) (bool, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
@@ -50,7 +50,7 @@ func (s *Store) ApplyUkStatus(ctx context.Context, externalID string, status dom
 		Incident.ExternalID.EQ(String(externalID)).
 			AND(Incident.Status.NOT_EQ(String(string(status)))).
 			AND(Incident.Status.NOT_IN(String(string(domain.IncidentDone)), String(string(domain.IncidentFalseAlarm)))),
-	).RETURNING(Incident.ID).QueryContext(ctx, tx, &inc)
+	).RETURNING(Incident.ID, Incident.Title).QueryContext(ctx, tx, &inc)
 	if errors.Is(err, qrm.ErrNoRows) {
 		return false, nil
 	}
@@ -61,7 +61,7 @@ func (s *Store) ApplyUkStatus(ctx context.Context, externalID string, status dom
 	if err != nil {
 		return false, err
 	}
-	if err := s.Enqueue(ctx, tx, targets, kind, payload); err != nil {
+	if err := s.Enqueue(ctx, tx, targets, kind, notify(inc)); err != nil {
 		return false, err
 	}
 	return true, tx.Commit()

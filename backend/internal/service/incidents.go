@@ -228,8 +228,7 @@ func (s *Service) SetIncidentStatus(ctx context.Context, u model.AppUser, incide
 	if !domain.CanDispatcherMove(from, to) {
 		return IncidentRow{}, ErrInvalidStatus
 	}
-	text := ukStatusText[to] + " " + s.deepLink(incidentID)
-	moved, err := s.repo.TransitionIncident(ctx, incidentID, from, to, "incident_"+string(to), repository.OutboxPayload{Text: text})
+	moved, err := s.repo.TransitionIncident(ctx, incidentID, from, to, "incident_"+string(to), s.statusNotice(ukStatusText[to]))
 	if err != nil {
 		return IncidentRow{}, err
 	}

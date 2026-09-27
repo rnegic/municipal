@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"ukapp/gen/db/ukapp/public/model"
 	"ukapp/internal/domain"
 	"ukapp/internal/repository"
 )
@@ -49,6 +50,12 @@ var ukStatusText = map[domain.IncidentStatus]string{
 	domain.IncidentFalseAlarm: "Управляющая компания закрыла заявку с отметкой «Ложный вызов».",
 }
 
+func (s *Service) statusNotice(text string) func(model.Incident) repository.OutboxPayload {
+	return func(inc model.Incident) repository.OutboxPayload {
+		return repository.OutboxPayload{Text: fmt.Sprintf("Статус вашей заявки «%s» изменился: %s\n%s", inc.Title, text, s.deepLink(inc.ID))}
+	}
+}
+
 func (s *Service) RunUkSyncWorker(ctx context.Context) {
 	tick := ukSyncDefaultTick
 	if d, err := time.ParseDuration(os.Getenv("UK_SYNC_INTERVAL")); err == nil && d > 0 {
@@ -86,7 +93,7 @@ func (s *Service) syncStatuses(ctx context.Context) error {
 		if !ok {
 			continue
 		}
-		if _, err := s.repo.ApplyUkStatus(ctx, u.ID, u.Status, "uk_status_"+string(u.Status), repository.OutboxPayload{Text: text}); err != nil {
+		if _, err := s.repo.ApplyUkStatus(ctx, u.ID, u.Status, "uk_status_"+string(u.Status), s.statusNotice(text)); err != nil {
 			return fmt.Errorf("apply status %s for %s: %w", u.Status, u.ID, err)
 		}
 	}

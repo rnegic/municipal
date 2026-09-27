@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"ukapp/internal/domain"
-	"ukapp/internal/repository"
 )
 
 func (s *Service) ConfirmIncident(ctx context.Context, incidentID, userID int64) (domain.IncidentStatus, time.Time, error) {
@@ -32,8 +31,7 @@ func (s *Service) ConfirmIncident(ctx context.Context, incidentID, userID int64)
 	if !domain.ShouldClose(subs, cnt) {
 		return domain.IncidentVerifying, confirmedAt, nil
 	}
-	payload := repository.OutboxPayload{Text: "Ваша проблема закрыта: жители подтвердили, что всё работает."}
-	closed, err := s.repo.TransitionIncident(ctx, incidentID, domain.IncidentVerifying, domain.IncidentDone, "incident_done", payload)
+	closed, err := s.repo.TransitionIncident(ctx, incidentID, domain.IncidentVerifying, domain.IncidentDone, "incident_done", s.statusNotice("Проблема закрыта: жители подтвердили, что всё работает."))
 	if err != nil {
 		return "", time.Time{}, err
 	}
