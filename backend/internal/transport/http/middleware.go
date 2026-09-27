@@ -48,11 +48,7 @@ func authMiddleware(svc *service.Service, botToken string) oapi.StrictMiddleware
 			}
 		}
 		return func(c *gin.Context, req any) (any, error) {
-			if jwtOnlyOps[opID] && strings.HasPrefix(c.GetHeader("Authorization"), "Bearer "+ukauth.APIKeyPrefix) {
-				writeError(c.Writer, http.StatusForbidden, "forbidden", "ключи управляются только из кабинета")
-				return nil, nil
-			}
-			u, err := authenticate(c, svc, botToken)
+			u, viaKey, err := authenticate(c, svc, botToken)
 			if errors.Is(err, errUnauthorized) {
 				writeError(c.Writer, http.StatusUnauthorized, "unauthorized", "unauthorized")
 				return nil, nil
@@ -63,6 +59,10 @@ func authMiddleware(svc *service.Service, botToken string) oapi.StrictMiddleware
 			}
 			if err != nil {
 				return nil, err
+			}
+			if viaKey && jwtOnlyOps[opID] {
+				writeError(c.Writer, http.StatusForbidden, "forbidden", "ключи управляются только из кабинета")
+				return nil, nil
 			}
 			if dispatcherOps[opID] && u.Role != domain.RoleUkDispatcher || residentOps[opID] && u.Role != domain.RoleResident {
 				writeError(c.Writer, http.StatusForbidden, "forbidden", "недостаточно прав")
@@ -76,37 +76,38 @@ func authMiddleware(svc *service.Service, botToken string) oapi.StrictMiddleware
 
 var errUnauthorized = errors.New("unauthorized")
 
-func authenticate(c *gin.Context, svc *service.Service, botToken string) (model.AppUser, error) {
+func authenticate(c *gin.Context, svc *service.Service, botToken string) (model.AppUser, bool, error) {
 	h := c.GetHeader("Authorization")
 	if raw, ok := strings.CutPrefix(h, "Bearer "); ok {
+		viaKey := strings.HasPrefix(raw, ukauth.APIKeyPrefix)
 		var u model.AppUser
 		var err error
-		if strings.HasPrefix(raw, ukauth.APIKeyPrefix) {
+		if viaKey {
 			u, err = svc.AuthenticateApiKey(c.Request.Context(), raw)
 		} else {
 			u, err = svc.AuthenticateUkToken(c.Request.Context(), raw)
 		}
 		if errors.Is(err, service.ErrForbidden) {
-			return u, errUnauthorized
+			return u, viaKey, errUnauthorized
 		}
-		return u, err
+		return u, viaKey, err
 	}
 	raw, ok := strings.CutPrefix(h, "tma ")
 	if !ok {
-		return model.AppUser{}, errUnauthorized
+		return model.AppUser{}, false, errUnauthorized
 	}
 	iu, err := domain.ValidateInitData(raw, botToken)
 	if err != nil {
-		return model.AppUser{}, errUnauthorized
+		return model.AppUser{}, false, errUnauthorized
 	}
 	u, err := svc.UpsertUser(c.Request.Context(), iu)
 	if err != nil {
-		return u, err
+		return u, false, err
 	}
 	if houseID, ok := parseID("h_", iu.StartParam); ok {
-		return svc.BindHouseFromSticker(c.Request.Context(), u, houseID)
+		u, err = svc.BindHouseFromSticker(c.Request.Context(), u, houseID)
 	}
-	return u, nil
+	return u, false, err
 }
 
 func userFromCtx(ctx context.Context) model.AppUser { return ctx.Value(ctxKey{}).(model.AppUser) }

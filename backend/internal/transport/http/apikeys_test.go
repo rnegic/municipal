@@ -93,6 +93,9 @@ func TestApiKeys_ValidationAndLimit(t *testing.T) {
 	if w := serve(srv, bearerReq("GET", "/api/uk/queue", "", "uk_live_nope")); w.Code != 401 {
 		t.Fatalf("unknown key: want 401 got %d", w.Code)
 	}
+	if w := serve(srv, bearerReq("GET", "/api/uk/api-keys", "", "uk_live_nope")); w.Code != 401 {
+		t.Fatalf("unknown key on key management: want 401 got %d", w.Code)
+	}
 }
 
 func TestApiKeys_RateLimited(t *testing.T) {
