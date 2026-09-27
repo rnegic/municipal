@@ -11,6 +11,7 @@ import (
 	oapi "ukapp/gen/api"
 	"ukapp/internal/domain"
 	"ukapp/internal/service"
+	"ukapp/internal/ukauth"
 
 	"ukapp/gen/db/ukapp/public/model"
 )
@@ -21,7 +22,10 @@ type maxUserKey struct{}
 
 var publicOps = map[string]bool{"Health": true, "GetPhoto": true, "HouseSticker": true}
 
-var dispatcherOps = map[string]bool{"ListUkQueue": true, "CreateUkEvent": true, "SetIncidentStatus": true, "MergeIncidents": true}
+var dispatcherOps = map[string]bool{"ListUkQueue": true, "CreateUkEvent": true, "SetIncidentStatus": true, "MergeIncidents": true,
+	"CreateUkApiKey": true, "ListUkApiKeys": true, "RevokeUkApiKey": true}
+
+var jwtOnlyOps = map[string]bool{"CreateUkApiKey": true, "ListUkApiKeys": true, "RevokeUkApiKey": true}
 
 var residentOps = map[string]bool{
 	"BindHouse": true, "UnbindHouse": true, "CreateIncident": true, "JoinIncident": true,
@@ -44,9 +48,17 @@ func authMiddleware(svc *service.Service, botToken string) oapi.StrictMiddleware
 			}
 		}
 		return func(c *gin.Context, req any) (any, error) {
+			if jwtOnlyOps[opID] && strings.HasPrefix(c.GetHeader("Authorization"), "Bearer "+ukauth.APIKeyPrefix) {
+				writeError(c.Writer, http.StatusForbidden, "forbidden", "ключи управляются только из кабинета")
+				return nil, nil
+			}
 			u, err := authenticate(c, svc, botToken)
 			if errors.Is(err, errUnauthorized) {
 				writeError(c.Writer, http.StatusUnauthorized, "unauthorized", "unauthorized")
+				return nil, nil
+			}
+			if errors.Is(err, service.ErrRateLimited) {
+				writeError(c.Writer, http.StatusTooManyRequests, "rate_limited", "не больше 10 запросов в секунду на ключ")
 				return nil, nil
 			}
 			if err != nil {
@@ -67,7 +79,13 @@ var errUnauthorized = errors.New("unauthorized")
 func authenticate(c *gin.Context, svc *service.Service, botToken string) (model.AppUser, error) {
 	h := c.GetHeader("Authorization")
 	if raw, ok := strings.CutPrefix(h, "Bearer "); ok {
-		u, err := svc.AuthenticateUkToken(c.Request.Context(), raw)
+		var u model.AppUser
+		var err error
+		if strings.HasPrefix(raw, ukauth.APIKeyPrefix) {
+			u, err = svc.AuthenticateApiKey(c.Request.Context(), raw)
+		} else {
+			u, err = svc.AuthenticateUkToken(c.Request.Context(), raw)
+		}
 		if errors.Is(err, service.ErrForbidden) {
 			return u, errUnauthorized
 		}
