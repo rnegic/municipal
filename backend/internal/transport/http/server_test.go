@@ -48,14 +48,21 @@ func fakeDadata(t *testing.T) *dadata.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			Query string `json:"query"`
+			Query string  `json:"query"`
+			Lat   float64 `json:"lat"`
+			Lon   float64 `json:"lon"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.Lat != 0 || body.Lon != 0 {
+			_, _ = w.Write([]byte(`{"suggestions":[{"value":"geo-address","data":{"house_fias_id":"geo-1"}}]}`))
+			return
+		}
 		_, _ = w.Write([]byte(`{"suggestions":[{"value":"` + body.Query + `","data":{"house_fias_id":"` + body.Query + `"}}]}`))
 	}))
 	t.Cleanup(srv.Close)
 	c := dadata.NewClient("k")
 	c.BaseURL = srv.URL
+	c.GeolocateURL = srv.URL
 	return c
 }
 

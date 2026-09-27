@@ -27,3 +27,18 @@ export const fetchAddressSuggestions = ({ query, count, signal }: AddressSuggest
     { method: 'GET', query: { query, count }, signal },
     addressSuggestResponseSchema,
   )
+
+export interface AddressByCoordsParams {
+  lat: number
+  lon: number
+  count: number
+  signal?: AbortSignal
+}
+
+/** Ближайший адрес с домом по координатам (обратный геокодинг через бэкенд). */
+export const fetchAddressByCoords = ({ lat, lon, count, signal }: AddressByCoordsParams) =>
+  apiRequest(
+    ADDRESS_SUGGEST_PATH,
+    { method: 'GET', query: { lat, lon, count }, signal },
+    addressSuggestResponseSchema,
+  )

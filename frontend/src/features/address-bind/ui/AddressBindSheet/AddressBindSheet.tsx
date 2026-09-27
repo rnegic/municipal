@@ -1,10 +1,16 @@
 import { useId, useState } from 'react'
 
-import { Input, Typography } from '@maxhub/max-ui'
+import { IconButton, Input, Typography } from '@maxhub/max-ui'
 
 import { saveBoundHouse } from '@/entities/house'
-import { IconLocation } from '@/shared/assets/icons'
+import { IconLocation, IconMyLocation } from '@/shared/assets/icons'
 import { describeApiError } from '@/shared/lib/api-error'
+import { fetchAddressByCoords } from '@/shared/lib/dadata'
+import {
+  GeolocationError,
+  getCurrentPosition,
+  type GeolocationErrorCode,
+} from '@/shared/lib/geolocation'
 import { BottomSheet } from '@/shared/ui/bottom-sheet'
 import { Button } from '@/shared/ui/button'
 import { useAddressSuggestionsQuery, useBindHouseMutation } from '../../api'
@@ -19,6 +25,7 @@ export interface AddressBindSheetProps {
 }
 
 const MIN_ADDRESS_LENGTH = 5
+const GEOCODE_COUNT = 1
 
 export const AddressBindSheet = ({ open, onClose, onSuccess }: AddressBindSheetProps) => {
   const captionId = useId()
@@ -27,23 +34,52 @@ export const AddressBindSheet = ({ open, onClose, onSuccess }: AddressBindSheetP
   const [invalid, setInvalid] = useState(false)
   const [isSuggestOpen, setIsSuggestOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
+  const [isLocating, setIsLocating] = useState(false)
+  const [locationError, setLocationError] = useState<GeolocationErrorCode | 'empty' | null>(null)
   const bindMutation = useBindHouseMutation()
   const { suggestions, isFetching, isSettled } = useAddressSuggestionsQuery(isSuggestOpen ? address : '')
 
   const showSuggestions = isSuggestOpen && suggestions.length > 0
 
-  const selectSuggestion = (value: string) => {
+  const applySuggestion = (value: string) => {
     setAddress(value)
     setInvalid(false)
     setIsSuggestOpen(false)
     setActiveIndex(-1)
+    setLocationError(null)
   }
 
   const handleChange = (value: string) => {
     setAddress(value)
     setInvalid(false)
+    setLocationError(null)
     setIsSuggestOpen(true)
     setActiveIndex(-1)
+  }
+
+  const handleLocate = async () => {
+    if (isLocating) {
+      return
+    }
+
+    setIsLocating(true)
+    setLocationError(null)
+
+    try {
+      const { lat, lon } = await getCurrentPosition()
+      const { suggestions: nearest } = await fetchAddressByCoords({ lat, lon, count: GEOCODE_COUNT })
+
+      if (nearest.length === 0) {
+        setLocationError('empty')
+        return
+      }
+
+      applySuggestion(nearest[0].value)
+    } catch (error) {
+      setLocationError(error instanceof GeolocationError ? error.code : 'unavailable')
+    } finally {
+      setIsLocating(false)
+    }
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -71,7 +107,7 @@ export const AddressBindSheet = ({ open, onClose, onSuccess }: AddressBindSheetP
 
     if (event.key === 'Enter' && activeIndex >= 0) {
       event.preventDefault()
-      selectSuggestion(suggestions[activeIndex].value)
+      applySuggestion(suggestions[activeIndex].value)
     }
   }
 
@@ -141,6 +177,19 @@ export const AddressBindSheet = ({ open, onClose, onSuccess }: AddressBindSheetP
             value={address}
             placeholder={addressBindTexts.placeholder}
             iconBefore={<IconLocation />}
+            iconAfter={
+              <IconButton
+                type="button"
+                variant="ghost"
+                size="small"
+                aria-label={addressBindTexts.locate}
+                loading={isLocating}
+                disabled={isLocating}
+                onClick={handleLocate}
+              >
+                <IconMyLocation size={20} />
+              </IconButton>
+            }
             hint={invalid ? addressBindTexts.validation : undefined}
             onChange={(event) => handleChange(event.target.value)}
             onKeyDown={handleKeyDown}
@@ -152,9 +201,16 @@ export const AddressBindSheet = ({ open, onClose, onSuccess }: AddressBindSheetP
               listId={listId}
               suggestions={suggestions}
               activeIndex={activeIndex}
-              onSelect={selectSuggestion}
+              onSelect={applySuggestion}
               onHighlight={setActiveIndex}
             />
+          ) : null}
+          {locationError ? (
+            <Typography.Text variant="note" color="secondary">
+              {locationError === 'empty'
+                ? addressBindTexts.locationEmpty
+                : addressBindTexts.locationErrors[locationError]}
+            </Typography.Text>
           ) : null}
           {statusText ? (
             <Typography.Text variant="note" color="tertiary">

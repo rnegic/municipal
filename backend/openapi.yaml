@@ -190,12 +190,21 @@ paths:
     get:
       operationId: suggestAddresses
       tags: [profile]
-      summary: Подсказки адреса для автокомплита (прокси к DaData — токен живёт на сервере)
+      summary: Подсказки адреса для автокомплита и по координатам (прокси к DaData — токен живёт на сервере)
+      description: Передайте `query` для автокомплита или `lat`/`lon` для обратного геокодинга.
       parameters:
         - name: query
           in: query
-          required: true
+          required: false
           schema: { type: string, minLength: 1, maxLength: 200 }
+        - name: lat
+          in: query
+          required: false
+          schema: { type: number, format: double, minimum: -90, maximum: 90 }
+        - name: lon
+          in: query
+          required: false
+          schema: { type: number, format: double, minimum: -180, maximum: 180 }
         - name: count
           in: query
           schema: { type: integer, minimum: 1, maximum: 10, default: 5 }

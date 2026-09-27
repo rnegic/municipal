@@ -12,16 +12,18 @@ import (
 const defaultSuggestCount = 5
 
 type Client struct {
-	Token   string
-	BaseURL string
-	HTTP    *http.Client
+	Token        string
+	BaseURL      string
+	GeolocateURL string
+	HTTP         *http.Client
 }
 
 func NewClient(token string) *Client {
 	return &Client{
-		Token:   token,
-		BaseURL: "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address",
-		HTTP:    &http.Client{Timeout: 5 * time.Second},
+		Token:        token,
+		BaseURL:      "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address",
+		GeolocateURL: "https://suggestions.dadata.ru/suggestions/api/4_1/rs/geolocate/address",
+		HTTP:         &http.Client{Timeout: 5 * time.Second},
 	}
 }
 
@@ -34,11 +36,17 @@ type Suggestion struct {
 }
 
 func (c *Client) Suggest(ctx context.Context, q string, count int) ([]Suggestion, error) {
-	if count < 1 {
-		count = defaultSuggestCount
-	}
-	body, _ := json.Marshal(map[string]any{"query": q, "count": count})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL, bytes.NewReader(body))
+	return c.post(ctx, c.BaseURL, map[string]any{"query": q, "count": normalizeCount(count)})
+}
+
+// Geolocate возвращает ближайшие адреса с домом по координатам (reverse geocoding).
+func (c *Client) Geolocate(ctx context.Context, lat, lon float64, count int) ([]Suggestion, error) {
+	return c.post(ctx, c.GeolocateURL, map[string]any{"lat": lat, "lon": lon, "count": normalizeCount(count)})
+}
+
+func (c *Client) post(ctx context.Context, url string, payload map[string]any) ([]Suggestion, error) {
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +85,13 @@ func (c *Client) Suggest(ctx context.Context, q string, count int) ([]Suggestion
 		})
 	}
 	return res, nil
+}
+
+func normalizeCount(count int) int {
+	if count < 1 {
+		return defaultSuggestCount
+	}
+	return count
 }
 
 func deref(s *string) string {

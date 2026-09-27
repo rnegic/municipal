@@ -152,6 +152,36 @@ func TestSuggestAddresses(t *testing.T) {
 	}
 
 	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, authedReq(t, "GET", "/api/houses/suggest?lat=55.75&lon=49.1", "", 900, "Resident"))
+	if w.Code != 200 {
+		t.Fatalf("geolocate: code %d body %s", w.Code, w.Body)
+	}
+	resp = struct {
+		Suggestions []struct {
+			Value       string
+			HouseFiasId string
+		}
+	}{}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Suggestions) != 1 || resp.Suggestions[0].Value != "geo-address" {
+		t.Fatalf("unexpected geolocate suggestions %+v", resp)
+	}
+
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, authedReq(t, "GET", "/api/houses/suggest?lat=200&lon=49.1", "", 900, "Resident"))
+	if w.Code != 400 || !strings.Contains(w.Body.String(), `"code":"validation_failed"`) {
+		t.Fatalf("want 400 validation_failed, got %d %s", w.Code, w.Body)
+	}
+
+	w = httptest.NewRecorder()
+	srv.ServeHTTP(w, authedReq(t, "GET", "/api/houses/suggest", "", 900, "Resident"))
+	if w.Code != 400 || !strings.Contains(w.Body.String(), `"code":"validation_failed"`) {
+		t.Fatalf("want 400 validation_failed, got %d %s", w.Code, w.Body)
+	}
+
+	w = httptest.NewRecorder()
 	srv.ServeHTTP(w, httptest.NewRequest("GET", "/api/houses/suggest?query=f-10", nil))
 	if w.Code != 401 {
 		t.Fatalf("want 401, got %d", w.Code)

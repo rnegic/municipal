@@ -66,9 +66,22 @@ func (s *server) SuggestAddresses(ctx context.Context, req oapi.SuggestAddresses
 	if req.Params.Count != nil {
 		count = *req.Params.Count
 	}
-	sugs, err := s.svc.SuggestAddresses(ctx, req.Params.Query, count)
+
+	var (
+		sugs []service.AddressSuggestion
+		err  error
+	)
+	switch {
+	case req.Params.Lat != nil && req.Params.Lon != nil:
+		sugs, err = s.svc.GeolocateAddresses(ctx, *req.Params.Lat, *req.Params.Lon, count)
+	case req.Params.Query != nil && *req.Params.Query != "":
+		sugs, err = s.svc.SuggestAddresses(ctx, *req.Params.Query, count)
+	default:
+		return oapi.SuggestAddresses400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", "query or lat/lon required"))}, nil
+	}
+
 	if errors.Is(err, service.ErrInvalidInput) {
-		return oapi.SuggestAddresses400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", "query required"))}, nil
+		return oapi.SuggestAddresses400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", "query or lat/lon required"))}, nil
 	}
 	if err != nil {
 		return oapi.SuggestAddresses502JSONResponse(apiErr("upstream_unavailable", "сервис подсказок адреса недоступен")), nil

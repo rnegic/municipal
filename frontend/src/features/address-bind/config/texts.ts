@@ -8,4 +8,12 @@ export const addressBindTexts = {
   suggestionsLabel: 'Подсказки адреса',
   suggestionsLoading: 'Ищем адрес…',
   suggestionsEmpty: 'Ничего не нашли. Уточните улицу и номер дома',
+  locate: 'Определить адрес по геолокации',
+  locationEmpty: 'Рядом не нашли дом. Введите адрес вручную',
+  locationErrors: {
+    unsupported: 'Геолокация недоступна на этом устройстве',
+    denied: 'Разрешите доступ к геолокации',
+    unavailable: 'Не удалось определить местоположение',
+    timeout: 'Не удалось определить местоположение',
+  },
 } as const
