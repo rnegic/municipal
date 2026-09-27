@@ -122,13 +122,21 @@ func (s *Store) JoinWithPhotos(ctx context.Context, incidentID, userID int64, ph
 		return err
 	}
 	defer tx.Rollback() //nolint:errcheck // no-op after Commit
-	_, err = IncidentSubscription.INSERT(IncidentSubscription.IncidentID, IncidentSubscription.UserID).
+	res, err := IncidentSubscription.INSERT(IncidentSubscription.IncidentID, IncidentSubscription.UserID).
 		VALUES(incidentID, userID).ON_CONFLICT().DO_NOTHING().ExecContext(ctx, tx)
 	if err != nil {
 		if isFKViolation(err) {
 			return ErrNotFound
 		}
 		return err
+	}
+	if n, err := res.RowsAffected(); err != nil {
+		return err
+	} else if n > 0 {
+		if _, err := Incident.UPDATE(Incident.MergedCount).SET(Incident.MergedCount.ADD(Int(1))).
+			WHERE(Incident.ID.EQ(Int64(incidentID))).ExecContext(ctx, tx); err != nil {
+			return err
+		}
 	}
 	if err := bindPhotos(ctx, tx, incidentID, userID, photoIDs); err != nil {
 		return err

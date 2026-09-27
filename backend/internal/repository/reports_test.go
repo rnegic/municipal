@@ -163,3 +163,25 @@ func TestOpenIncidentsCarriesTextAndSkipsOld(t *testing.T) {
 		t.Fatalf("old incident must be skipped: %+v %v", got, err)
 	}
 }
+
+func TestJoinWithPhotos_CountsNewReporterAsDuplicate(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	_, reporter, incID := seedIncident(t, s)
+	other, err := s.UpsertUser(ctx, domain.InitUser{ID: 101, FirstName: "S"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, u := range []int64{other.ID, other.ID, reporter} {
+		if err := s.JoinWithPhotos(ctx, incID, u, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var n int
+	if err := s.db.QueryRowContext(ctx, `SELECT merged_count FROM incident WHERE id = $1`, incID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("merged_count = %d, want 1", n)
+	}
+}
