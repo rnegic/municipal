@@ -1,6 +1,11 @@
 import { Navigate } from 'react-router-dom'
 
-import { incidentTexts, useActiveIncidentsQuery, useMyRequestsQuery } from '@/entities/incident'
+import {
+  incidentTexts,
+  sortIncidentsBySupporters,
+  useActiveIncidentsQuery,
+  useMyRequestsQuery,
+} from '@/entities/incident'
 import { useCurrentHouseQuery } from '@/entities/user'
 import { HouseStickerCard } from '@/features/house-sticker'
 import { IncidentReportFab } from '@/features/incident-report'
@@ -56,7 +61,7 @@ export const FeedPage = () => {
     )
   }
 
-  const incidents = incidentsQuery.data.items
+  const incidents = sortIncidentsBySupporters(incidentsQuery.data.items)
   const incident = incidents[0] ?? null
 
   return (

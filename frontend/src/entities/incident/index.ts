@@ -44,7 +44,11 @@ export {
   incidentCategoryOptions,
   type IncidentDomainOption,
 } from './lib/options'
-export { isPriorityQueueItem, sortUkQueueByPriority } from './lib/priority'
+export {
+  isPriorityQueueItem,
+  sortIncidentsBySupporters,
+  sortUkQueueByPriority,
+} from './lib/priority'
 export { isPhotoRequiredForCategory, isUkAuthority } from './lib/routing'
 export { isIncidentClosed, isIncidentFalseAlarm } from './lib/status'
 export type {

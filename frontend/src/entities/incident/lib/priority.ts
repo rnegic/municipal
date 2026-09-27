@@ -1,5 +1,5 @@
 import { UK_QUEUE_PRIORITY_MIN_AFFECTED } from '../config/domain'
-import type { UkQueueItem } from '../model/schema'
+import type { Incident, UkQueueItem } from '../model/schema'
 
 const SEVERITY_WEIGHT = { critical: 0, warning: 1 } as const
 
@@ -17,3 +17,6 @@ export const sortUkQueueByPriority = (items: readonly UkQueueItem[]): UkQueueIte
   
 export const isPriorityQueueItem = (item: UkQueueItem): boolean =>
   item.affectedCount >= UK_QUEUE_PRIORITY_MIN_AFFECTED
+
+export const sortIncidentsBySupporters = (incidents: readonly Incident[]): Incident[] =>
+  [...incidents].sort((a, b) => b.affectedCount - a.affectedCount)
