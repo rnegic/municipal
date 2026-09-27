@@ -156,9 +156,9 @@ func (s *Store) IncidentChanges(ctx context.Context, ukID, cursor, limit int64, 
 		FROM incident i
 		JOIN house h ON h.id = i.house_id
 		JOIN app_user u ON u.id = i.reporter_id
-		WHERE h.uk_id = $1 AND i.change_seq > $2 AND i.updated_at < $3
+		WHERE h.uk_id = $1 AND i.change_seq > $2
 		ORDER BY i.change_seq ASC
-		LIMIT $4`, ukID, cursor, before, limit)
+		LIMIT $3`, ukID, cursor, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -170,6 +170,9 @@ func (s *Store) IncidentChanges(ctx context.Context, ukID, cursor, limit int64, 
 			&r.CreatedAt, &r.DueAt, &r.AffectedCount, &r.ConfirmedCount, &r.MergedCount, &r.ReporterName,
 			&r.MergedIntoID, &r.UpdatedAt, &r.ChangeSeq); err != nil {
 			return nil, err
+		}
+		if !r.UpdatedAt.Before(before) {
+			break
 		}
 		out = append(out, r)
 	}

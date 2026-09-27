@@ -89,3 +89,30 @@ func TestIncidentChanges(t *testing.T) {
 		t.Fatalf("foreign uk must see nothing: %+v", rows)
 	}
 }
+
+func TestIncidentChanges_StopsAtYoungLowerSeq(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	a := seedIncidentRow(t, s)
+	var b, ukID int64
+	err := s.db.QueryRowContext(ctx, `
+		INSERT INTO incident (house_id, title, severity, reporter_id, description, status)
+		SELECT house_id, 'Лифт', 'warning', reporter_id, 'd', 'pending' FROM incident WHERE id = $1
+		RETURNING id, (SELECT uk_id FROM house WHERE id = house_id)`, a).Scan(&b, &ukID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.ExecContext(ctx, `UPDATE incident SET updated_at = now() WHERE id = $1`, a); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.db.ExecContext(ctx, `UPDATE incident SET updated_at = now() - interval '1 hour' WHERE id = $1`, b); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := s.IncidentChanges(ctx, ukID, 0, 100, time.Now().Add(-time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("young lower-seq row must hold the page, got %+v", rows)
+	}
+}

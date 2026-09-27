@@ -75,6 +75,9 @@ func (s *server) ListUkIncidentChanges(ctx context.Context, req oapi.ListUkIncid
 		cursor = c
 	}
 	if req.Params.Limit != nil {
+		if *req.Params.Limit < 1 || *req.Params.Limit > 500 {
+			return oapi.ListUkIncidentChanges400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", "limit — от 1 до 500"))}, nil
+		}
 		limit = int64(*req.Params.Limit)
 	}
 	rows, err := s.svc.UkChanges(ctx, userFromCtx(ctx), cursor, limit)

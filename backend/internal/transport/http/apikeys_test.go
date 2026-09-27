@@ -199,3 +199,18 @@ func TestIncidentChanges_FeedForIntegration(t *testing.T) {
 		t.Fatalf("bad cursor: want 400 got %d", w.Code)
 	}
 }
+
+func TestIncidentChanges_LimitBounds(t *testing.T) {
+	s := testStore(t)
+	srv := newTestServer(t, s)
+	seedDispatcher(t, s, "uk-1", "1655000003", "2099-12-31", true)
+	token := dispatcherToken(t, srv, "1655000003")
+	for _, limit := range []string{"0", "-1", "501"} {
+		if w := serve(srv, bearerReq("GET", "/api/uk/incidents/changes?limit="+limit, "", token)); w.Code != 400 {
+			t.Fatalf("limit=%s: want 400 got %d %s", limit, w.Code, w.Body)
+		}
+	}
+	if w := serve(srv, bearerReq("GET", "/api/uk/incidents/changes?limit=500", "", token)); w.Code != 200 {
+		t.Fatalf("limit=500: want 200 got %d %s", w.Code, w.Body)
+	}
+}
