@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
 
+	"ukapp/internal/domain"
 	"ukapp/internal/ukauth"
 
 	"ukapp/gen/db/ukapp/public/model"
@@ -31,6 +33,7 @@ func (s *Service) CreateApiKey(ctx context.Context, u model.AppUser, name string
 	if err != nil {
 		return CreatedApiKey{}, err
 	}
+	slog.Info("uk api key issued", "uk", *u.UkID, "key", k.ID, "prefix", k.Prefix, "by", u.ID)
 	return CreatedApiKey{Key: k, Plain: plain}, nil
 }
 
@@ -39,7 +42,11 @@ func (s *Service) ListApiKeys(ctx context.Context, u model.AppUser) ([]model.UkA
 }
 
 func (s *Service) RevokeApiKey(ctx context.Context, u model.AppUser, id int64) error {
-	return s.repo.RevokeApiKey(ctx, *u.UkID, id)
+	if err := s.repo.RevokeApiKey(ctx, *u.UkID, id); err != nil {
+		return err
+	}
+	slog.Info("uk api key revoked", "uk", *u.UkID, "key", id, "by", u.ID)
+	return nil
 }
 
 func (s *Service) AuthenticateApiKey(ctx context.Context, raw string) (model.AppUser, error) {
@@ -50,7 +57,14 @@ func (s *Service) AuthenticateApiKey(ctx context.Context, raw string) (model.App
 	if err != nil {
 		return model.AppUser{}, err
 	}
+	org, err := s.repo.UkByID(ctx, k.UkID)
+	if err != nil {
+		return model.AppUser{}, err
+	}
 	now := time.Now()
+	if !domain.LicenseActive(org.LicenseNumber, org.LicenseValidUntil, now) {
+		return model.AppUser{}, ErrForbidden
+	}
 	if !s.keyLimiter.allow(k.ID, now) {
 		return model.AppUser{}, ErrRateLimited
 	}
@@ -62,24 +76,29 @@ func (s *Service) AuthenticateApiKey(ctx context.Context, raw string) (model.App
 	return s.repo.GetUser(ctx, k.UserID)
 }
 
+type keyWindow struct {
+	sec int64
+	n   int
+}
+
 type keyLimiter struct {
-	mu     sync.Mutex
-	rps    int
-	window map[int64]int64
-	count  map[int64]int
+	mu   sync.Mutex
+	rps  int
+	keys map[int64]keyWindow
 }
 
 func newKeyLimiter(rps int) *keyLimiter {
-	return &keyLimiter{rps: rps, window: map[int64]int64{}, count: map[int64]int{}}
+	return &keyLimiter{rps: rps, keys: map[int64]keyWindow{}}
 }
 
 func (l *keyLimiter) allow(id int64, now time.Time) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	sec := now.Unix()
-	if l.window[id] != sec {
-		l.window[id], l.count[id] = sec, 0
+	w := l.keys[id]
+	if sec := now.Unix(); w.sec != sec {
+		w = keyWindow{sec: sec}
 	}
-	l.count[id]++
-	return l.count[id] <= l.rps
+	w.n++
+	l.keys[id] = w
+	return w.n <= l.rps
 }

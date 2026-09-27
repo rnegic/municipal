@@ -34,6 +34,12 @@ func (s *Store) UkByINN(ctx context.Context, inn string) (model.Uk, error) {
 	return u, notFound(err)
 }
 
+func (s *Store) UkByID(ctx context.Context, id int64) (model.Uk, error) {
+	var u model.Uk
+	err := SELECT(Uk.AllColumns).FROM(Uk).WHERE(Uk.ID.EQ(Int64(id))).QueryContext(ctx, s.db, &u)
+	return u, notFound(err)
+}
+
 func (s *Store) UkDispatchers(ctx context.Context, ukID int64) ([]model.AppUser, error) {
 	var us []model.AppUser
 	err := SELECT(AppUser.AllColumns).FROM(AppUser).
