@@ -181,3 +181,94 @@ func TestIncidentChanges_InFlightTransactionNotLost(t *testing.T) {
 		t.Fatalf("change committed after the cursor moved must still arrive: %+v", rows)
 	}
 }
+
+func unstampedCount(t *testing.T, s *Store) int {
+	t.Helper()
+	var n int
+	if err := s.db.QueryRowContext(context.Background(), `SELECT count(*) FROM incident WHERE change_seq IS NULL`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+func TestStampIncidentChanges_Batched(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	a := seedIncidentRow(t, s)
+	if _, err := s.db.ExecContext(ctx, `
+		INSERT INTO incident (house_id, title, severity, reporter_id, description, status)
+		SELECT house_id, 'x', 'warning', reporter_id, 'd', 'pending' FROM incident, generate_series(1, $2)
+		WHERE id = $1`, a, stampBatch); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.StampIncidentChanges(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := unstampedCount(t, s); n != 1 {
+		t.Fatalf("one batch must stamp exactly %d rows, left %d", stampBatch, n)
+	}
+	if err := s.StampIncidentChanges(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if n := unstampedCount(t, s); n != 0 {
+		t.Fatalf("second batch must finish, left %d", n)
+	}
+}
+
+func TestStampIncidentChanges_SkipsWhenBusy(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	seedIncidentRow(t, s)
+	busy, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = busy.Rollback() }()
+	if _, err := busy.ExecContext(ctx, `SELECT pg_advisory_xact_lock($1)`, incidentStampLock); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- s.StampIncidentChanges(ctx) }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("stamp must not wait for a busy stamper")
+	}
+	if n := unstampedCount(t, s); n != 1 {
+		t.Fatalf("busy stamp must leave rows for the next poll, unstamped=%d", n)
+	}
+}
+
+func TestIncidentChildWritesUnstamp(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	id := seedIncidentRow(t, s)
+	var other int64
+	if err := s.db.QueryRowContext(ctx, `INSERT INTO app_user (max_user_id, full_name) VALUES (102, 'Сосед') RETURNING id`).Scan(&other); err != nil {
+		t.Fatal(err)
+	}
+	for name, write := range map[string]func() error{
+		"subscribe": func() error { return s.Subscribe(ctx, id, other) },
+		"confirm": func() error {
+			_, err := s.UpsertConfirmation(ctx, id, other)
+			return err
+		},
+		"photo": func() error {
+			_, err := s.InsertPhoto(ctx, &id, other, "image/jpeg", []byte{0xff, 0xd8})
+			return err
+		},
+	} {
+		if err := s.StampIncidentChanges(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if err := write(); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if seq, _ := changeState(t, s, id); seq != nil {
+			t.Fatalf("%s must put the incident back into the feed", name)
+		}
+	}
+}

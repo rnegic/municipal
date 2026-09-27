@@ -300,6 +300,7 @@ func TestSyncUnregistered_SkipsUkWithApiKey(t *testing.T) {
 	if err := s.DB().QueryRowContext(ctx, `SELECT h.uk_id FROM incident i JOIN house h ON h.id=i.house_id WHERE i.id=$1`, incID).Scan(&ukID); err != nil {
 		t.Fatal(err)
 	}
+	setLicense(t, s, ukID, "2099-12-31")
 	key, err := s.CreateApiKey(ctx, ukID, userID, "1С", "p", []byte("h"))
 	if err != nil {
 		t.Fatal(err)
@@ -318,5 +319,35 @@ func TestSyncUnregistered_SkipsUkWithApiKey(t *testing.T) {
 	}
 	if uk.registered != 1 {
 		t.Fatalf("after revoke the old path resumes, calls=%d", uk.registered)
+	}
+}
+
+func setLicense(t *testing.T, s *repository.Store, ukID int64, validUntil string) {
+	t.Helper()
+	if _, err := s.DB().ExecContext(context.Background(),
+		`UPDATE uk SET license_number = '16-000001', license_valid_until = $2::date WHERE id = $1`, ukID, validUntil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSyncUnregistered_ExpiredLicenseKeyDoesNotBlackhole(t *testing.T) {
+	s := testStore(t)
+	uk := &fakeUk{}
+	svc := New(s, nil, nil, uk, "testbot")
+	incID, userID := seedResidentWithIncident(t, s, 4)
+	ctx := context.Background()
+	var ukID int64
+	if err := s.DB().QueryRowContext(ctx, `SELECT h.uk_id FROM incident i JOIN house h ON h.id=i.house_id WHERE i.id=$1`, incID).Scan(&ukID); err != nil {
+		t.Fatal(err)
+	}
+	setLicense(t, s, ukID, "2020-01-01")
+	if _, err := s.CreateApiKey(ctx, ukID, userID, "1С", "p", []byte("h")); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.syncUnregistered(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if uk.registered != 1 {
+		t.Fatalf("uk whose keys are dead (licence expired) must fall back to external sync, calls=%d", uk.registered)
 	}
 }

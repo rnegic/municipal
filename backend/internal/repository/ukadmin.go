@@ -153,7 +153,10 @@ type UkChangeRow struct {
 	ChangeSeq    int64
 }
 
-const incidentStampLock = 7310001
+const (
+	incidentStampLock = 7310001
+	stampBatch        = 1000
+)
 
 func (s *Store) StampIncidentChanges(ctx context.Context) error {
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -161,12 +164,17 @@ func (s *Store) StampIncidentChanges(ctx context.Context) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock($1)`, incidentStampLock); err != nil {
+	var locked bool
+	if err := tx.QueryRowContext(ctx, `SELECT pg_try_advisory_xact_lock($1)`, incidentStampLock).Scan(&locked); err != nil {
 		return err
 	}
+	if !locked {
+		return nil
+	}
 	if _, err := tx.ExecContext(ctx, `
-		UPDATE incident SET change_seq = nextval('incident_change_seq')
-		WHERE id IN (SELECT id FROM incident WHERE change_seq IS NULL ORDER BY id FOR UPDATE SKIP LOCKED)`); err != nil {
+		WITH c AS MATERIALIZED (
+		  SELECT id FROM incident WHERE change_seq IS NULL ORDER BY id LIMIT $1 FOR NO KEY UPDATE SKIP LOCKED)
+		UPDATE incident i SET change_seq = nextval('incident_change_seq') FROM c WHERE i.id = c.id`, stampBatch); err != nil {
 		return err
 	}
 	return tx.Commit()

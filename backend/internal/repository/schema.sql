@@ -189,11 +189,19 @@ CREATE INDEX IF NOT EXISTS uk_api_key_active ON uk_api_key(uk_id) WHERE revoked_
 
 CREATE SEQUENCE IF NOT EXISTS incident_change_seq;
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS change_seq BIGINT;
-ALTER TABLE incident ALTER COLUMN change_seq DROP DEFAULT;
-ALTER TABLE incident ALTER COLUMN change_seq DROP NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_name = 'incident' AND column_name = 'change_seq'
+               AND (is_nullable = 'NO' OR column_default IS NOT NULL)) THEN
+    ALTER TABLE incident ALTER COLUMN change_seq DROP DEFAULT;
+    ALTER TABLE incident ALTER COLUMN change_seq DROP NOT NULL;
+  END IF;
+END
+$$;
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS incident_change_seq_idx ON incident(change_seq);
-CREATE INDEX IF NOT EXISTS incident_change_unstamped ON incident(id) WHERE change_seq IS NULL;
+DROP INDEX IF EXISTS incident_change_unstamped;
 
 CREATE OR REPLACE FUNCTION incident_touch() RETURNS trigger AS $$
 BEGIN
@@ -208,3 +216,25 @@ END
 $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS incident_touch ON incident;
 CREATE TRIGGER incident_touch BEFORE UPDATE ON incident FOR EACH ROW EXECUTE FUNCTION incident_touch();
+
+CREATE OR REPLACE FUNCTION incident_child_touch() RETURNS trigger AS $$
+BEGIN
+  IF TG_OP IN ('INSERT', 'UPDATE') AND NEW.incident_id IS NOT NULL THEN
+    UPDATE incident SET updated_at = now() WHERE id = NEW.incident_id;
+  END IF;
+  IF TG_OP IN ('UPDATE', 'DELETE') AND OLD.incident_id IS NOT NULL
+     AND (TG_OP = 'DELETE' OR OLD.incident_id IS DISTINCT FROM NEW.incident_id) THEN
+    UPDATE incident SET updated_at = now() WHERE id = OLD.incident_id;
+  END IF;
+  RETURN NULL;
+END
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS incident_subscription_touch ON incident_subscription;
+CREATE TRIGGER incident_subscription_touch AFTER INSERT OR UPDATE OR DELETE ON incident_subscription
+  FOR EACH ROW EXECUTE FUNCTION incident_child_touch();
+DROP TRIGGER IF EXISTS incident_confirmation_touch ON incident_confirmation;
+CREATE TRIGGER incident_confirmation_touch AFTER INSERT OR UPDATE OR DELETE ON incident_confirmation
+  FOR EACH ROW EXECUTE FUNCTION incident_child_touch();
+DROP TRIGGER IF EXISTS incident_photo_touch ON incident_photo;
+CREATE TRIGGER incident_photo_touch AFTER INSERT OR UPDATE OF incident_id OR DELETE ON incident_photo
+  FOR EACH ROW EXECUTE FUNCTION incident_child_touch();
