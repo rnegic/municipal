@@ -127,6 +127,35 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
 
+  /api/uk/incidents/changes:
+    get:
+      operationId: listUkIncidentChanges
+      tags: [uk, integration]
+      security: [{ UkBearer: [] }, { UkApiKey: [] }]
+      summary: Лента изменений заявок своей УК для синхронизации (по возрастанию курсора)
+      description: |
+        Возвращает заявки, созданные или изменённые (статус, склейка) после `cursor`.
+        Свежие изменения (моложе 2 секунд) появляются в следующем опросе.
+        Элементы могут повторяться — обрабатывайте идемпотентно по `id`.
+        Сохраняйте `nextCursor` и передавайте его в следующий запрос; без `cursor` — с начала.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string, pattern: "^[0-9]+$", example: "0" }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+      responses:
+        "200":
+          description: Изменения
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UkChanges" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
   /api/uk/incidents/merge:
     post:
       operationId: mergeIncidents
@@ -936,6 +965,27 @@ components:
         items:
           type: array
           items: { $ref: "#/components/schemas/ApiKey" }
+
+    UkChangeItem:
+      allOf:
+        - { $ref: "#/components/schemas/UkQueueItem" }
+        - type: object
+          required: [mergedIntoId, updatedAt]
+          properties:
+            mergedIntoId:
+              type: string
+              nullable: true
+              description: "если заявку склеили в другую — id главной; такая заявка приходит со status=done"
+            updatedAt: { type: string, format: date-time }
+
+    UkChanges:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/UkChangeItem" }
+        nextCursor: { type: string, example: "1532", description: "передать как cursor в следующий запрос" }
 
     PaginatedUkQueue:
       type: object

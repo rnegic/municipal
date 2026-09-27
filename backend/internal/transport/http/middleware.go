@@ -23,7 +23,7 @@ type maxUserKey struct{}
 var publicOps = map[string]bool{"Health": true, "GetPhoto": true, "HouseSticker": true}
 
 var dispatcherOps = map[string]bool{"ListUkQueue": true, "CreateUkEvent": true, "SetIncidentStatus": true, "MergeIncidents": true,
-	"CreateUkApiKey": true, "ListUkApiKeys": true, "RevokeUkApiKey": true}
+	"CreateUkApiKey": true, "ListUkApiKeys": true, "RevokeUkApiKey": true, "ListUkIncidentChanges": true}
 
 var jwtOnlyOps = map[string]bool{"CreateUkApiKey": true, "ListUkApiKeys": true, "RevokeUkApiKey": true}
 

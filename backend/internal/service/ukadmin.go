@@ -207,3 +207,22 @@ func (s *Service) MergeIncidents(ctx context.Context, u model.AppUser, target in
 	slog.Info("incidents merged", "uk", *u.UkID, "by", u.ID, "target", target, "merged", res.Merged)
 	return res, nil
 }
+
+func (s *Service) UkChanges(ctx context.Context, u model.AppUser, cursor, limit int64) ([]repository.UkChangeRow, error) {
+	rows, err := s.repo.IncidentChanges(ctx, *u.UkID, cursor, limit, time.Now().Add(-domain.UkChangesLag))
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int64, len(rows))
+	for i, r := range rows {
+		ids[i] = r.ID
+	}
+	photos, err := s.repo.PhotoIDsByIncident(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		rows[i].PhotoIDs = photos[rows[i].ID]
+	}
+	return rows, nil
+}

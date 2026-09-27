@@ -1,9 +1,12 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"ukapp/internal/repository"
 )
 
 func issueKey(t *testing.T, srv http.Handler, token, name string) (id, key string) {
@@ -104,5 +107,93 @@ func TestApiKeys_RateLimited(t *testing.T) {
 	}
 	if !got429 {
 		t.Fatal("burst of 30 requests must hit 429")
+	}
+}
+
+func ageIncidents(t *testing.T, s *repository.Store) {
+	t.Helper()
+	if _, err := s.DB().ExecContext(context.Background(), `UPDATE incident SET updated_at = updated_at - interval '1 minute'`); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type changeItem struct {
+	Id, Status   string
+	MergedIntoId *string
+}
+
+type changesResp struct {
+	Items      []changeItem
+	NextCursor string
+}
+
+func getChanges(t *testing.T, srv http.Handler, key, cursor string) changesResp {
+	t.Helper()
+	path := "/api/uk/incidents/changes"
+	if cursor != "" {
+		path += "?cursor=" + cursor
+	}
+	w := serve(srv, bearerReq("GET", path, "", key))
+	if w.Code != 200 {
+		t.Fatalf("changes: %d %s", w.Code, w.Body)
+	}
+	var out changesResp
+	_ = json.Unmarshal(w.Body.Bytes(), &out)
+	return out
+}
+
+func TestIncidentChanges_FeedForIntegration(t *testing.T) {
+	s := testStore(t)
+	srv := newTestServer(t, s)
+	bindUser(t, srv, 1, "f-10")
+	a, _ := createIncident(t, srv, 1, `{"description":"нет воды с самого утра","category":"WATER_HEAT","photoUrls":[]}`)
+	bindUser(t, srv, 2, "f-10")
+	b, _ := createIncident(t, srv, 2, `{"description":"лифт застрял между этажами","category":"ELEVATOR","photoUrls":[]}`)
+	if a.Id == b.Id {
+		t.Fatalf("setup: incidents must differ, got %s", a.Id)
+	}
+	seedDispatcher(t, s, "uk-1", "1655000003", "2099-12-31", true)
+	seedDispatcher(t, s, "uk-2", "7707083893", "2099-12-31", true)
+	_, key := issueKey(t, srv, dispatcherToken(t, srv, "1655000003"), "1С")
+	_, otherKey := issueKey(t, srv, dispatcherToken(t, srv, "7707083893"), "1С")
+	ageIncidents(t, s)
+
+	first := getChanges(t, srv, key, "")
+	if len(first.Items) != 2 || first.Items[0].Id != a.Id || first.Items[0].Status != "pending" {
+		t.Fatalf("initial load: %+v", first)
+	}
+	if foreign := getChanges(t, srv, otherKey, ""); len(foreign.Items) != 0 {
+		t.Fatalf("foreign uk must see nothing: %+v", foreign)
+	}
+	empty := getChanges(t, srv, key, first.NextCursor)
+	if len(empty.Items) != 0 || empty.NextCursor != first.NextCursor {
+		t.Fatalf("empty page keeps cursor: %+v", empty)
+	}
+
+	for _, id := range []string{a.Id, b.Id} {
+		if w := serve(srv, bearerReq("PATCH", "/api/incidents/"+id+"/status", `{"status":"accepted"}`, key)); w.Code != 200 {
+			t.Fatalf("accept %s under key: %d %s", id, w.Code, w.Body)
+		}
+	}
+	if w := serve(srv, bearerReq("POST", "/api/uk/incidents/merge",
+		`{"targetIncidentId":"`+a.Id+`","sourceIncidentIds":["`+b.Id+`"]}`, key)); w.Code != 200 {
+		t.Fatalf("merge under key: %d %s", w.Code, w.Body)
+	}
+	if fresh := getChanges(t, srv, key, first.NextCursor); len(fresh.Items) != 0 {
+		t.Fatalf("changes younger than lag must wait: %+v", fresh)
+	}
+	ageIncidents(t, s)
+	next := getChanges(t, srv, key, first.NextCursor)
+	var merged *changeItem
+	for i := range next.Items {
+		if next.Items[i].Id == b.Id {
+			merged = &next.Items[i]
+		}
+	}
+	if merged == nil || merged.Status != "done" || merged.MergedIntoId == nil || *merged.MergedIntoId != a.Id {
+		t.Fatalf("merged source must come as done with mergedIntoId: %+v", next)
+	}
+	if w := serve(srv, bearerReq("GET", "/api/uk/incidents/changes?cursor=abc", "", key)); w.Code != 400 {
+		t.Fatalf("bad cursor: want 400 got %d", w.Code)
 	}
 }

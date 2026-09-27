@@ -139,3 +139,39 @@ func (s *Store) ListHouseEvents(ctx context.Context, houseID int64, now time.Tim
 		QueryContext(ctx, s.db, &out)
 	return out, err
 }
+
+type UkChangeRow struct {
+	UkQueueRow
+	MergedIntoID *int64
+	UpdatedAt    time.Time
+	ChangeSeq    int64
+}
+
+func (s *Store) IncidentChanges(ctx context.Context, ukID, cursor, limit int64, before time.Time) ([]UkChangeRow, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT i.id, i.house_id, h.address_raw, i.title, i.description, i.category, i.severity, i.status, i.created_at, i.due_at,
+		       (SELECT count(*) FROM incident_subscription s WHERE s.incident_id = i.id),
+		       (SELECT count(*) FROM incident_confirmation c WHERE c.incident_id = i.id),
+		       i.merged_count, u.full_name, i.merged_into_id, i.updated_at, i.change_seq
+		FROM incident i
+		JOIN house h ON h.id = i.house_id
+		JOIN app_user u ON u.id = i.reporter_id
+		WHERE h.uk_id = $1 AND i.change_seq > $2 AND i.updated_at < $3
+		ORDER BY i.change_seq ASC
+		LIMIT $4`, ukID, cursor, before, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []UkChangeRow{}
+	for rows.Next() {
+		var r UkChangeRow
+		if err := rows.Scan(&r.ID, &r.HouseID, &r.HouseAddress, &r.Title, &r.Description, &r.Category, &r.Severity, &r.Status,
+			&r.CreatedAt, &r.DueAt, &r.AffectedCount, &r.ConfirmedCount, &r.MergedCount, &r.ReporterName,
+			&r.MergedIntoID, &r.UpdatedAt, &r.ChangeSeq); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}

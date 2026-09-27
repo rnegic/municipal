@@ -64,3 +64,39 @@ func (s *server) RevokeUkApiKey(ctx context.Context, req oapi.RevokeUkApiKeyRequ
 	}
 	return oapi.RevokeUkApiKey204Response{}, nil
 }
+
+func (s *server) ListUkIncidentChanges(ctx context.Context, req oapi.ListUkIncidentChangesRequestObject) (oapi.ListUkIncidentChangesResponseObject, error) {
+	cursor, limit := int64(0), int64(100)
+	if req.Params.Cursor != nil {
+		c, err := strconv.ParseInt(*req.Params.Cursor, 10, 64)
+		if err != nil || c < 0 {
+			return oapi.ListUkIncidentChanges400JSONResponse{ErrorJSONResponse: oapi.ErrorJSONResponse(apiErr("validation_failed", "cursor — неотрицательное целое из nextCursor"))}, nil
+		}
+		cursor = c
+	}
+	if req.Params.Limit != nil {
+		limit = int64(*req.Params.Limit)
+	}
+	rows, err := s.svc.UkChanges(ctx, userFromCtx(ctx), cursor, limit)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]oapi.UkChangeItem, len(rows))
+	for i, r := range rows {
+		var mergedInto *string
+		if r.MergedIntoID != nil {
+			m := formatIncidentID(*r.MergedIntoID)
+			mergedInto = &m
+		}
+		items[i] = oapi.UkChangeItem{
+			Id: formatIncidentID(r.ID), HouseId: formatHouseID(r.HouseID), HouseAddress: r.HouseAddress,
+			Title: r.Title, Description: r.Description, Severity: oapi.Severity(r.Severity), Status: oapi.IncidentStatus(r.Status),
+			CreatedAt: r.CreatedAt, DueAt: r.DueAt, AffectedCount: r.AffectedCount, ConfirmedCount: r.ConfirmedCount,
+			ReporterName: r.ReporterName, Photos: toPhotos(r.PhotoIDs),
+			Category: (*oapi.IncidentCategory)(r.Category), MergedCount: r.MergedCount,
+			MergedIntoId: mergedInto, UpdatedAt: r.UpdatedAt,
+		}
+		cursor = r.ChangeSeq
+	}
+	return oapi.ListUkIncidentChanges200JSONResponse{Items: items, NextCursor: strconv.FormatInt(cursor, 10)}, nil
+}
