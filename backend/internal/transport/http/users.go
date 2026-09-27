@@ -46,6 +46,9 @@ func (s *server) BindHouse(ctx context.Context, req oapi.BindHouseRequestObject)
 	if errors.Is(err, service.ErrAddressNotResolved) {
 		return oapi.BindHouse422JSONResponse(apiErr("business_rule_failed", "не удалось распознать адрес")), nil
 	}
+	if errors.Is(err, service.ErrNotApartmentBuilding) {
+		return oapi.BindHouse422JSONResponse(apiErr("business_rule_failed", "дом не найден: это не многоквартирный дом")), nil
+	}
 	if errors.Is(err, service.ErrHouseNotServed) {
 		return oapi.BindHouse422JSONResponse(apiErr("business_rule_failed", "дом не обслуживается подключённой УК")), nil
 	}

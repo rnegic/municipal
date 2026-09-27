@@ -3,6 +3,7 @@ package gisgkh
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,10 +11,11 @@ import (
 	"ukapp/internal/service"
 )
 
-const searchResp = `{"total":3,"items":[
+const searchResp = `{"total":4,"items":[
 {"status":"CANCELLED","address":{"house":{"houseGuid":"f-1"}},"managementOrganization":{"shortName":"Старая","ogrn":"1"}},
 {"status":"APPROVED","address":{"house":{"houseGuid":"f-other"}},"managementOrganization":{"shortName":"Соседняя","ogrn":"2"}},
-{"status":"APPROVED","address":{"house":{"houseGuid":"f-1"}},"managementOrganization":{"fullName":"ООО УК ВАХИТОВСКОГО РАЙОНА","shortName":"ООО \"УК Вахитовского района\"","phone":"78432000000","url":"https://uk.ru","orgAddress":"Казань","ogrn":"1161690000001"},"municipalityOrganization":{"shortName":"МКУ","inn":"9"}}
+{"status":"APPROVED","address":{"house":{"houseGuid":"f-private"}},"houseType":{"code":"2","houseTypeName":"Жилой"},"managementOrganization":null},
+{"status":"APPROVED","address":{"house":{"houseGuid":"f-1"}},"houseType":{"code":"1","houseTypeName":"Многоквартирный"},"managementOrganization":{"fullName":"ООО УК ВАХИТОВСКОГО РАЙОНА","shortName":"ООО \"УК Вахитовского района\"","phone":"78432000000","url":"https://uk.ru","orgAddress":"Казань","ogrn":"1161690000001"},"municipalityOrganization":{"shortName":"МКУ","inn":"9"}}
 ]}`
 
 func fake(t *testing.T) *Client {
@@ -48,5 +50,13 @@ func TestFindOrg_NoApproved(t *testing.T) {
 	org, err := c.FindOrg(context.Background(), service.HouseAddress{HouseFiasID: "f-none", RegionFiasID: "reg", StreetFiasID: "str", House: "7/10"})
 	if err != nil || org != nil {
 		t.Fatalf("want nil, got %v %v", org, err)
+	}
+}
+
+func TestFindOrg_NotApartmentBuilding(t *testing.T) {
+	c := fake(t)
+	_, err := c.FindOrg(context.Background(), service.HouseAddress{HouseFiasID: "f-private", RegionFiasID: "reg", StreetFiasID: "str", House: "7/10"})
+	if !errors.Is(err, service.ErrNotApartmentBuilding) {
+		t.Fatalf("want ErrNotApartmentBuilding, got %v", err)
 	}
 }

@@ -25,6 +25,8 @@ func New() *Client {
 	}
 }
 
+const apartmentBuilding = "1"
+
 type org struct {
 	FullName   string  `json:"fullName"`
 	ShortName  string  `json:"shortName"`
@@ -65,6 +67,9 @@ func (c *Client) FindOrg(ctx context.Context, a service.HouseAddress) (*service.
 					HouseGUID string `json:"houseGuid"`
 				} `json:"house"`
 			} `json:"address"`
+			HouseType *struct {
+				Code string `json:"code"`
+			} `json:"houseType"`
 			ManagementOrganization *org `json:"managementOrganization"`
 		} `json:"items"`
 	}
@@ -72,8 +77,14 @@ func (c *Client) FindOrg(ctx context.Context, a service.HouseAddress) (*service.
 		return nil, err
 	}
 	for _, it := range out.Items {
+		if it.Status != "APPROVED" || it.Address.House.HouseGUID != a.HouseFiasID {
+			continue
+		}
+		if it.HouseType != nil && it.HouseType.Code != apartmentBuilding {
+			return nil, service.ErrNotApartmentBuilding
+		}
 		o := it.ManagementOrganization
-		if it.Status != "APPROVED" || o == nil || o.OGRN == "" || it.Address.House.HouseGUID != a.HouseFiasID {
+		if o == nil || o.OGRN == "" {
 			continue
 		}
 		name := o.ShortName
