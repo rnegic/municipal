@@ -1,12 +1,9 @@
 package http
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
-
-	"ukapp/internal/repository"
 )
 
 func issueKey(t *testing.T, srv http.Handler, token, name string) (id, key string) {
@@ -112,13 +109,6 @@ func TestApiKeys_RateLimited(t *testing.T) {
 	}
 }
 
-func ageIncidents(t *testing.T, s *repository.Store) {
-	t.Helper()
-	if _, err := s.DB().ExecContext(context.Background(), `UPDATE incident SET updated_at = updated_at - interval '1 minute'`); err != nil {
-		t.Fatal(err)
-	}
-}
-
 type changeItem struct {
 	Id, Status   string
 	MergedIntoId *string
@@ -158,8 +148,6 @@ func TestIncidentChanges_FeedForIntegration(t *testing.T) {
 	seedDispatcher(t, s, "uk-2", "7707083893", "2099-12-31", true)
 	_, key := issueKey(t, srv, dispatcherToken(t, srv, "1655000003"), "1С")
 	_, otherKey := issueKey(t, srv, dispatcherToken(t, srv, "7707083893"), "1С")
-	ageIncidents(t, s)
-
 	first := getChanges(t, srv, key, "")
 	if len(first.Items) != 2 || first.Items[0].Id != a.Id || first.Items[0].Status != "pending" {
 		t.Fatalf("initial load: %+v", first)
@@ -181,10 +169,6 @@ func TestIncidentChanges_FeedForIntegration(t *testing.T) {
 		`{"targetIncidentId":"`+a.Id+`","sourceIncidentIds":["`+b.Id+`"]}`, key)); w.Code != 200 {
 		t.Fatalf("merge under key: %d %s", w.Code, w.Body)
 	}
-	if fresh := getChanges(t, srv, key, first.NextCursor); len(fresh.Items) != 0 {
-		t.Fatalf("changes younger than lag must wait: %+v", fresh)
-	}
-	ageIncidents(t, s)
 	next := getChanges(t, srv, key, first.NextCursor)
 	var merged *changeItem
 	for i := range next.Items {

@@ -21,35 +21,81 @@ func seedIncidentRow(t *testing.T, s *Store) int64 {
 	return id
 }
 
-func TestIncidentUpdateBumpsChangeSeq(t *testing.T) {
+func seedSecondIncident(t *testing.T, s *Store, sibling int64) int64 {
+	t.Helper()
+	var id int64
+	err := s.db.QueryRowContext(context.Background(), `
+		INSERT INTO incident (house_id, title, severity, reporter_id, description, status)
+		SELECT house_id, 'Лифт', 'warning', reporter_id, 'd', 'pending' FROM incident WHERE id = $1
+		RETURNING id`, sibling).Scan(&id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+func incidentUk(t *testing.T, s *Store, id int64) int64 {
+	t.Helper()
+	var ukID int64
+	if err := s.db.QueryRowContext(context.Background(),
+		`SELECT h.uk_id FROM incident i JOIN house h ON h.id=i.house_id WHERE i.id=$1`, id).Scan(&ukID); err != nil {
+		t.Fatal(err)
+	}
+	return ukID
+}
+
+func changeState(t *testing.T, s *Store, id int64) (*int64, time.Time) {
+	t.Helper()
+	var seq *int64
+	var upd time.Time
+	if err := s.db.QueryRowContext(context.Background(),
+		`SELECT change_seq, updated_at FROM incident WHERE id=$1`, id).Scan(&seq, &upd); err != nil {
+		t.Fatal(err)
+	}
+	return seq, upd
+}
+
+func TestIncidentChangeStamping(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
 	id := seedIncidentRow(t, s)
 
-	var seq1, seq2 int64
-	var upd1, upd2 time.Time
-	if err := s.db.QueryRowContext(ctx, `SELECT change_seq, updated_at FROM incident WHERE id=$1`, id).Scan(&seq1, &upd1); err != nil {
+	if seq, _ := changeState(t, s, id); seq != nil {
+		t.Fatalf("new incident must be unstamped, got %d", *seq)
+	}
+	if err := s.StampIncidentChanges(ctx); err != nil {
 		t.Fatal(err)
 	}
+	seq1, upd1 := changeState(t, s, id)
+	if seq1 == nil {
+		t.Fatal("stamp must assign change_seq")
+	}
+	if err := s.StampIncidentChanges(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if again, updAgain := changeState(t, s, id); *again != *seq1 || !updAgain.Equal(upd1) {
+		t.Fatalf("stamp must not touch stamped rows or updated_at: %d→%d %v→%v", *seq1, *again, upd1, updAgain)
+	}
+
 	if _, err := s.db.ExecContext(ctx, `UPDATE incident SET status='accepted' WHERE id=$1`, id); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.db.QueryRowContext(ctx, `SELECT change_seq, updated_at FROM incident WHERE id=$1`, id).Scan(&seq2, &upd2); err != nil {
+	seq2, upd2 := changeState(t, s, id)
+	if seq2 != nil || upd2.Before(upd1) {
+		t.Fatalf("business update must unstamp and bump updated_at: %v %v→%v", seq2, upd1, upd2)
+	}
+	if err := s.StampIncidentChanges(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if seq2 <= seq1 || upd2.Before(upd1) {
-		t.Fatalf("update must bump change_seq and updated_at: %d→%d %v→%v", seq1, seq2, upd1, upd2)
+	if seq3, _ := changeState(t, s, id); seq3 == nil || *seq3 <= *seq1 {
+		t.Fatalf("restamp must be higher: %d then %v", *seq1, seq3)
 	}
 
 	past := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
 	if _, err := s.db.ExecContext(ctx, `UPDATE incident SET updated_at=$2 WHERE id=$1`, id, past); err != nil {
 		t.Fatal(err)
 	}
-	var got time.Time
-	if err := s.db.QueryRowContext(ctx, `SELECT updated_at FROM incident WHERE id=$1`, id).Scan(&got); err != nil {
-		t.Fatal(err)
-	}
-	if !got.Equal(past) {
+	if _, got := changeState(t, s, id); !got.Equal(past) {
 		t.Fatalf("explicit updated_at must be kept: want %v got %v", past, got)
 	}
 }
@@ -58,61 +104,80 @@ func TestIncidentChanges(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
 	id := seedIncidentRow(t, s)
-	var ukID int64
-	if err := s.db.QueryRowContext(ctx, `SELECT h.uk_id FROM incident i JOIN house h ON h.id=i.house_id WHERE i.id=$1`, id).Scan(&ukID); err != nil {
+	ukID := incidentUk(t, s, id)
+
+	if rows, err := s.IncidentChanges(ctx, ukID, 0, 100); err != nil || len(rows) != 0 {
+		t.Fatalf("unstamped rows must not be served: %v %d", err, len(rows))
+	}
+	if err := s.StampIncidentChanges(ctx); err != nil {
 		t.Fatal(err)
 	}
-	future := time.Now().Add(time.Minute)
-
-	if rows, err := s.IncidentChanges(ctx, ukID, 0, 100, time.Now().Add(-time.Minute)); err != nil || len(rows) != 0 {
-		t.Fatalf("fresh rows must be hidden by lag: %v %d", err, len(rows))
-	}
-	rows, err := s.IncidentChanges(ctx, ukID, 0, 100, future)
+	rows, err := s.IncidentChanges(ctx, ukID, 0, 100)
 	if err != nil || len(rows) != 1 || rows[0].ID != id || rows[0].Status != "pending" {
 		t.Fatalf("first page: %v %+v", err, rows)
 	}
 	cursor := rows[0].ChangeSeq
-	if again, _ := s.IncidentChanges(ctx, ukID, 0, 100, future); len(again) != 1 || again[0].ChangeSeq != cursor {
+	if again, _ := s.IncidentChanges(ctx, ukID, 0, 100); len(again) != 1 || again[0].ChangeSeq != cursor {
 		t.Fatalf("same cursor must return same rows: %+v", again)
 	}
-	if rows, _ := s.IncidentChanges(ctx, ukID, cursor, 100, future); len(rows) != 0 {
+	if rows, _ := s.IncidentChanges(ctx, ukID, cursor, 100); len(rows) != 0 {
 		t.Fatalf("nothing after cursor: %+v", rows)
 	}
 	if _, err := s.db.ExecContext(ctx, `UPDATE incident SET status='accepted' WHERE id=$1`, id); err != nil {
 		t.Fatal(err)
 	}
-	rows, _ = s.IncidentChanges(ctx, ukID, cursor, 100, future)
+	if err := s.StampIncidentChanges(ctx); err != nil {
+		t.Fatal(err)
+	}
+	rows, _ = s.IncidentChanges(ctx, ukID, cursor, 100)
 	if len(rows) != 1 || rows[0].Status != "accepted" || rows[0].ChangeSeq <= cursor {
 		t.Fatalf("status change must appear after cursor: %+v", rows)
 	}
-	if rows, _ := s.IncidentChanges(ctx, ukID+1000, 0, 100, future); len(rows) != 0 {
+	if rows, _ := s.IncidentChanges(ctx, ukID+1000, 0, 100); len(rows) != 0 {
 		t.Fatalf("foreign uk must see nothing: %+v", rows)
 	}
 }
 
-func TestIncidentChanges_StopsAtYoungLowerSeq(t *testing.T) {
+func TestIncidentChanges_InFlightTransactionNotLost(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
 	a := seedIncidentRow(t, s)
-	var b, ukID int64
-	err := s.db.QueryRowContext(ctx, `
-		INSERT INTO incident (house_id, title, severity, reporter_id, description, status)
-		SELECT house_id, 'Лифт', 'warning', reporter_id, 'd', 'pending' FROM incident WHERE id = $1
-		RETURNING id, (SELECT uk_id FROM house WHERE id = house_id)`, a).Scan(&b, &ukID)
+	b := seedSecondIncident(t, s, a)
+	ukID := incidentUk(t, s, a)
+	if err := s.StampIncidentChanges(ctx); err != nil {
+		t.Fatal(err)
+	}
+	start, _ := s.IncidentChanges(ctx, ukID, 0, 100)
+	cursor := start[len(start)-1].ChangeSeq
+
+	slow, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.db.ExecContext(ctx, `UPDATE incident SET updated_at = now() WHERE id = $1`, a); err != nil {
+	defer func() { _ = slow.Rollback() }()
+	if _, err := slow.ExecContext(ctx, `UPDATE incident SET status='accepted' WHERE id=$1`, a); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.db.ExecContext(ctx, `UPDATE incident SET updated_at = now() - interval '1 hour' WHERE id = $1`, b); err != nil {
+	if _, err := s.db.ExecContext(ctx, `UPDATE incident SET status='accepted' WHERE id=$1`, b); err != nil {
 		t.Fatal(err)
 	}
-	rows, err := s.IncidentChanges(ctx, ukID, 0, 100, time.Now().Add(-time.Minute))
-	if err != nil {
+	if err := s.StampIncidentChanges(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 0 {
-		t.Fatalf("young lower-seq row must hold the page, got %+v", rows)
+	rows, _ := s.IncidentChanges(ctx, ukID, cursor, 100)
+	if len(rows) != 1 || rows[0].ID != b {
+		t.Fatalf("only the committed change is served: %+v", rows)
+	}
+	cursor = rows[0].ChangeSeq
+
+	if err := slow.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.StampIncidentChanges(ctx); err != nil {
+		t.Fatal(err)
+	}
+	rows, _ = s.IncidentChanges(ctx, ukID, cursor, 100)
+	if len(rows) != 1 || rows[0].ID != a || rows[0].Status != "accepted" {
+		t.Fatalf("change committed after the cursor moved must still arrive: %+v", rows)
 	}
 }

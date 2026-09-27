@@ -106,7 +106,7 @@ func newIncidentTableImpl(schemaName, tableName, alias string) incidentTable {
 		UpdatedAtColumn         = postgres.TimestampzColumn("updated_at")
 		allColumns              = postgres.ColumnList{IDColumn, HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn, CategoryColumn, AuthorityColumn, RoutingSourceColumn, CategoryPredictedColumn, RoutingConfidenceColumn, MergedIntoIDColumn, MergedCountColumn, SuspiciousColumn, ChangeSeqColumn, UpdatedAtColumn}
 		mutableColumns          = postgres.ColumnList{HouseIDColumn, TitleColumn, SeverityColumn, ReporterIDColumn, DescriptionColumn, EntranceColumn, RiserColumn, StatusColumn, ExternalIDColumn, CreatedAtColumn, DueAtColumn, ResolvedAtColumn, CategoryColumn, AuthorityColumn, RoutingSourceColumn, CategoryPredictedColumn, RoutingConfidenceColumn, MergedIntoIDColumn, MergedCountColumn, SuspiciousColumn, ChangeSeqColumn, UpdatedAtColumn}
-		defaultColumns          = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn, MergedCountColumn, SuspiciousColumn, ChangeSeqColumn, UpdatedAtColumn}
+		defaultColumns          = postgres.ColumnList{IDColumn, StatusColumn, CreatedAtColumn, MergedCountColumn, SuspiciousColumn, UpdatedAtColumn}
 	)
 
 	return incidentTable{

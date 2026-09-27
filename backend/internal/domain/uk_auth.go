@@ -14,7 +14,6 @@ const (
 
 	UkMaxApiKeys          = 10
 	UkApiKeyRPS           = 10
-	UkChangesLag          = 2 * time.Second
 	UkIntegrationUserName = "1С-интеграция"
 )
 

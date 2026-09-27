@@ -209,7 +209,10 @@ func (s *Service) MergeIncidents(ctx context.Context, u model.AppUser, target in
 }
 
 func (s *Service) UkChanges(ctx context.Context, u model.AppUser, cursor, limit int64) ([]repository.UkChangeRow, error) {
-	rows, err := s.repo.IncidentChanges(ctx, *u.UkID, cursor, limit, time.Now().Add(-domain.UkChangesLag))
+	if err := s.repo.StampIncidentChanges(ctx); err != nil {
+		return nil, err
+	}
+	rows, err := s.repo.IncidentChanges(ctx, *u.UkID, cursor, limit)
 	if err != nil {
 		return nil, err
 	}

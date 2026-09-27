@@ -188,15 +188,20 @@ CREATE TABLE IF NOT EXISTS uk_api_key (
 CREATE INDEX IF NOT EXISTS uk_api_key_active ON uk_api_key(uk_id) WHERE revoked_at IS NULL;
 
 CREATE SEQUENCE IF NOT EXISTS incident_change_seq;
-ALTER TABLE incident ADD COLUMN IF NOT EXISTS change_seq BIGINT NOT NULL DEFAULT nextval('incident_change_seq');
+ALTER TABLE incident ADD COLUMN IF NOT EXISTS change_seq BIGINT;
+ALTER TABLE incident ALTER COLUMN change_seq DROP DEFAULT;
+ALTER TABLE incident ALTER COLUMN change_seq DROP NOT NULL;
 ALTER TABLE incident ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS incident_change_seq_idx ON incident(change_seq);
+CREATE INDEX IF NOT EXISTS incident_change_unstamped ON incident(id) WHERE change_seq IS NULL;
 
 CREATE OR REPLACE FUNCTION incident_touch() RETURNS trigger AS $$
 BEGIN
-  NEW.change_seq := nextval('incident_change_seq');
-  IF NEW.updated_at IS NOT DISTINCT FROM OLD.updated_at THEN
-    NEW.updated_at := now();
+  IF NEW.change_seq IS NOT DISTINCT FROM OLD.change_seq THEN
+    NEW.change_seq := NULL;
+    IF NEW.updated_at IS NOT DISTINCT FROM OLD.updated_at THEN
+      NEW.updated_at := now();
+    END IF;
   END IF;
   RETURN NEW;
 END

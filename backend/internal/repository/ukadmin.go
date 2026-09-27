@@ -147,7 +147,26 @@ type UkChangeRow struct {
 	ChangeSeq    int64
 }
 
-func (s *Store) IncidentChanges(ctx context.Context, ukID, cursor, limit int64, before time.Time) ([]UkChangeRow, error) {
+const incidentStampLock = 7310001
+
+func (s *Store) StampIncidentChanges(ctx context.Context) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock($1)`, incidentStampLock); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE incident SET change_seq = nextval('incident_change_seq')
+		WHERE id IN (SELECT id FROM incident WHERE change_seq IS NULL ORDER BY id FOR UPDATE SKIP LOCKED)`); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) IncidentChanges(ctx context.Context, ukID, cursor, limit int64) ([]UkChangeRow, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT i.id, i.house_id, h.address_raw, i.title, i.description, i.category, i.severity, i.status, i.created_at, i.due_at,
 		       (SELECT count(*) FROM incident_subscription s WHERE s.incident_id = i.id),
@@ -170,9 +189,6 @@ func (s *Store) IncidentChanges(ctx context.Context, ukID, cursor, limit int64, 
 			&r.CreatedAt, &r.DueAt, &r.AffectedCount, &r.ConfirmedCount, &r.MergedCount, &r.ReporterName,
 			&r.MergedIntoID, &r.UpdatedAt, &r.ChangeSeq); err != nil {
 			return nil, err
-		}
-		if !r.UpdatedAt.Before(before) {
-			break
 		}
 		out = append(out, r)
 	}
