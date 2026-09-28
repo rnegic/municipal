@@ -101,7 +101,6 @@ export const incidentTexts = {
     problemLabel: 'Что случилось',
     categoryLabel: 'Категория',
     categoryEmpty: 'Определим после проверки',
-    dueLabel: 'Срок от УК',
     dueValue: (date: string) => `до ${date}`,
     reporterLabel: 'Кто отправил',
     reporterFallback: 'Вы',

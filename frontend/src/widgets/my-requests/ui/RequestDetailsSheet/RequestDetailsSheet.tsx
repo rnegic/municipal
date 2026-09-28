@@ -12,7 +12,7 @@ import {
 import { useMeQuery } from '@/entities/user'
 import { IncidentConfirmButton } from '@/features/incident-confirm'
 import { IconShield } from '@/shared/assets/icons'
-import { formatDate, formatDateTime } from '@/shared/lib/date'
+import { formatDateTime } from '@/shared/lib/date'
 import { BottomSheet } from '@/shared/ui/bottom-sheet'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
@@ -52,11 +52,6 @@ export const RequestDetailsSheet = ({ request, onClose }: RequestDetailsSheetPro
           <Typography.Text variant="description" color="secondary">
             {incidentTexts.statusHints[request.status]}
           </Typography.Text>
-          {request.dueAt ? (
-            <Typography.Text className={s.due} variant="note" color="tertiary">
-              {`${texts.dueLabel}: ${texts.dueValue(formatDate(request.dueAt))}`}
-            </Typography.Text>
-          ) : null}
         </section>
 
         <section className={s.about}>
