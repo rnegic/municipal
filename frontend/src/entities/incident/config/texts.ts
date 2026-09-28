@@ -15,6 +15,21 @@ const duplicateForms: Partial<Record<Intl.LDMLPluralRule, string>> = {
   few: 'дубликата',
 }
 
+const dayForms: Partial<Record<Intl.LDMLPluralRule, string>> = {
+  one: 'день',
+  few: 'дня',
+}
+
+const businessDayForms: Partial<Record<Intl.LDMLPluralRule, string>> = {
+  one: 'рабочий день',
+  few: 'рабочих дня',
+}
+
+const supporterForms: Partial<Record<Intl.LDMLPluralRule, string>> = {
+  one: 'житель',
+  few: 'жителя',
+}
+
 export const incidentTexts = {
   focus: {
     sectionTitle: 'Аварии в вашем доме',
@@ -72,6 +87,38 @@ export const incidentTexts = {
     verifying: 'Проверка жителями',
     done: 'Решена',
     false_alarm: 'Ложный вызов',
+  },
+  statusHints: {
+    pending: 'Заявка ушла в управляющую компанию. Диспетчер ещё не взял её в работу.',
+    accepted: 'Диспетчер принял заявку и готовит выезд мастера.',
+    in_progress: 'Мастер занимается проблемой прямо сейчас.',
+    verifying: 'УК отчиталась о работах. Проверьте результат и подтвердите, что всё в порядке.',
+    done: 'Работы завершены, заявка закрыта.',
+    false_alarm: 'УК не нашла проблему и закрыла заявку как ложный вызов.',
+  },
+  details: {
+    sentAt: (dateTime: string) => `Отправлена ${dateTime}`,
+    problemLabel: 'Что случилось',
+    categoryLabel: 'Категория',
+    categoryEmpty: 'Определим после проверки',
+    dueLabel: 'Срок от УК',
+    dueValue: (date: string) => `до ${date}`,
+    reporterLabel: 'Кто отправил',
+    reporterFallback: 'Вы',
+    responsibleLabel: 'Кто отвечает',
+    responsibleFallback: 'Управляющая компания вашего дома',
+    supportersLabel: 'Соседи поддержали',
+    supportersValue: (count: number) =>
+      `${count} ${supporterForms[ruPlural.select(count)] ?? 'жителей'}`,
+    legalTitle: 'Срок по закону',
+    legalDays: (days: number, businessDays: boolean) =>
+      businessDays
+        ? `${days} ${businessDayForms[ruPlural.select(days)] ?? 'рабочих дней'}`
+        : `${days} ${dayForms[ruPlural.select(days)] ?? 'дней'}`,
+    legalHint: 'Если срок вышел, а тишина, можно жаловаться в жилищную инспекцию.',
+    loadError: 'Не получилось загрузить подробности заявки.',
+    retry: 'Попробовать снова',
+    openCard: 'Открыть подробности заявки',
   },
   confirm: {
     action: 'Подтвердите',

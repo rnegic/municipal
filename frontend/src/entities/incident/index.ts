@@ -15,6 +15,11 @@ export {
   UK_AUTHORITY,
   UK_QUEUE_PRIORITY_MIN_AFFECTED,
 } from './config/domain'
+export {
+  INCIDENT_LEGAL_TERMS,
+  INCIDENT_LEGAL_TERM_DEFAULT,
+  type IncidentLegalTerm,
+} from './config/legal'
 export { incidentTexts } from './config/texts'
 export {
   REQUESTS_PAGE_SIZE,
@@ -34,6 +39,7 @@ export {
   useSetIncidentStatusMutation,
   useUploadIncidentPhotoMutation,
 } from './api'
+export { getIncidentLegalTerm } from './lib/legal'
 export {
   getMergeBlocker,
   getMergedAffectedCount,

@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import { Typography } from '@maxhub/max-ui'
 
 import {
@@ -12,6 +14,7 @@ import { formatDate, formatDateTime } from '@/shared/lib/date'
 import { Card } from '@/shared/ui/card'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { Section } from '@/shared/ui/section'
+import { RequestDetailsSheet } from '../RequestDetailsSheet'
 import s from './MyRequests.module.scss'
 
 export interface MyRequestsProps {
@@ -19,42 +22,63 @@ export interface MyRequestsProps {
   className?: string
 }
 
-export const MyRequests = ({ requests, className }: MyRequestsProps) => (
-  <Section title={incidentTexts.requests.sectionTitle} className={cn(s.root, className)}>
-    {requests.length === 0 ? (
-      <EmptyState
-        illustration={<NoIncidentsIllustration />}
-        title={incidentTexts.requests.emptyTitle}
-        description={incidentTexts.requests.emptyDescription}
-      />
-    ) : (
-      <ul className={s.list}>
-        {requests.map((request) => (
-          <li key={request.id}>
-            <Card padding="compact" className={s.card}>
-              <CategoryIcon category={request.category} size={35} />
-              <div className={s.content}>
-                <div className={s.head}>
-                  <Typography.Text className={s.title} variant="body-strong">
-                    {request.title}
-                  </Typography.Text>
-                  <IncidentStatusBadge status={request.status} />
-                </div>
-                <div className={s.meta}>
-                  <Typography.Text variant="note" color="tertiary">
-                    {incidentTexts.requests.createdAt(formatDateTime(request.createdAt))}
-                  </Typography.Text>
-                  {request.dueAt ? (
-                    <Typography.Text variant="note" color="tertiary">
-                      {incidentTexts.requests.dueAt(formatDate(request.dueAt))}
+export const MyRequests = ({ requests, className }: MyRequestsProps) => {
+  const [openedId, setOpenedId] = useState<string | null>(null)
+  const openedRequest = requests.find((request) => request.id === openedId) ?? null
+
+  return (
+    <Section title={incidentTexts.requests.sectionTitle} className={cn(s.root, className)}>
+      {requests.length === 0 ? (
+        <EmptyState
+          illustration={<NoIncidentsIllustration />}
+          title={incidentTexts.requests.emptyTitle}
+          description={incidentTexts.requests.emptyDescription}
+        />
+      ) : (
+        <ul className={s.list}>
+          {requests.map((request) => (
+            <li key={request.id}>
+              <Card
+                padding="compact"
+                className={s.card}
+                role="button"
+                tabIndex={0}
+                aria-haspopup="dialog"
+                onClick={() => setOpenedId(request.id)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') {
+                    return
+                  }
+
+                  event.preventDefault()
+                  setOpenedId(request.id)
+                }}
+              >
+                <CategoryIcon category={request.category} size={35} />
+                <div className={s.content}>
+                  <div className={s.head}>
+                    <Typography.Text className={s.title} variant="body-strong">
+                      {request.title}
                     </Typography.Text>
-                  ) : null}
+                    <IncidentStatusBadge status={request.status} />
+                  </div>
+                  <div className={s.meta}>
+                    <Typography.Text variant="note" color="tertiary">
+                      {incidentTexts.requests.createdAt(formatDateTime(request.createdAt))}
+                    </Typography.Text>
+                    {request.dueAt ? (
+                      <Typography.Text variant="note" color="tertiary">
+                        {incidentTexts.requests.dueAt(formatDate(request.dueAt))}
+                      </Typography.Text>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            </Card>
-          </li>
-        ))}
-      </ul>
-    )}
-  </Section>
-)
+              </Card>
+            </li>
+          ))}
+        </ul>
+      )}
+      <RequestDetailsSheet request={openedRequest} onClose={() => setOpenedId(null)} />
+    </Section>
+  )
+}
