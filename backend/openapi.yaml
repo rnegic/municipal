@@ -15,6 +15,10 @@ info:
     или `Authorization: Bearer <jwt>` (сотрудник УК, токен из `POST /api/auth/esia-mock`).
     Роль берётся из токена: `/api/uk/*` и смена статуса — только `uk_dispatcher`,
     действия жителя (привязка дома, заявки, «у меня тоже», подтверждение, фото) — только `resident`.
+
+    API-ключ УК для 1С: `Authorization: Bearer uk_live_…` (выпуск — `POST /api/uk/api-keys` из кабинета).
+    Ключ действует как диспетчер своей УК; операции с тегом `integration` — контракт для 1С,
+    гайд — docs/uk-1c-integration.md. Управление ключами под ключом запрещено (403).
 servers:
   - url: http://localhost:8080
 security:
@@ -103,7 +107,8 @@ paths:
   /api/uk/queue:
     get:
       operationId: listUkQueue
-      tags: [uk]
+      tags: [uk, integration]
+      security: [{ UkBearer: [] }, { UkApiKey: [] }]
       summary: Очередь заявок домов своей УК (affectedCount desc, critical, dueAt asc, createdAt asc)
       parameters:
         - name: offset
@@ -120,11 +125,43 @@ paths:
               schema: { $ref: "#/components/schemas/PaginatedUkQueue" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /api/uk/incidents/changes:
+    get:
+      operationId: listUkIncidentChanges
+      tags: [uk, integration]
+      security: [{ UkBearer: [] }, { UkApiKey: [] }]
+      summary: Лента изменений заявок своей УК для синхронизации (по возрастанию курсора)
+      description: |
+        Возвращает заявки, созданные или изменённые (статус, склейка) после `cursor`.
+        Курсор выдаётся только закоммиченным изменениям и растёт монотонно — изменение
+        не может появиться «позади» уже прочитанного курсора.
+        Элементы могут повторяться — обрабатывайте идемпотентно по `id`.
+        Сохраняйте `nextCursor` и передавайте его в следующий запрос; без `cursor` — с начала.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string, pattern: "^[0-9]+$", example: "0" }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+      responses:
+        "200":
+          description: Изменения
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UkChanges" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
 
   /api/uk/incidents/merge:
     post:
       operationId: mergeIncidents
-      tags: [uk]
+      tags: [uk, integration]
+      security: [{ UkBearer: [] }, { UkApiKey: [] }]
       summary: Ручная склейка заявок одного дома диспетчером; источники закрываются, подписчики/фото/подтверждения переносятся на главную
       description: |
         Повторная склейка уже склеенных в эту же главную заявок идемпотентна (200).
@@ -145,11 +182,13 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
 
   /api/uk/events:
     post:
       operationId: createUkEvent
-      tags: [uk]
+      tags: [uk, integration]
+      security: [{ UkBearer: [] }, { UkApiKey: [] }]
       summary: Плановые работы по дому своей УК (чужой дом → 404)
       requestBody:
         required: true
@@ -166,11 +205,61 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+
+  /api/uk/api-keys:
+    post:
+      operationId: createUkApiKey
+      tags: [uk]
+      security: [{ UkBearer: [] }]
+      summary: Выпустить API-ключ для 1С своей УК (ключ показывается один раз; не больше 10 активных)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateApiKeyRequest" }
+      responses:
+        "201":
+          description: Ключ выпущен
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreatedApiKey" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    get:
+      operationId: listUkApiKeys
+      tags: [uk]
+      security: [{ UkBearer: [] }]
+      summary: Ключи своей УК, включая отозванные (без самих ключей)
+      responses:
+        "200":
+          description: Ключи по id asc
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiKeyList" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+
+  /api/uk/api-keys/{id}:
+    delete:
+      operationId: revokeUkApiKey
+      tags: [uk]
+      security: [{ UkBearer: [] }]
+      summary: Отозвать ключ (идемпотентно; чужой или несуществующий → 404)
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Отозван }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
 
   /api/events:
     get:
       operationId: listEvents
-      tags: [events]
+      tags: [events, integration]
+      security: [{ TmaInitData: [] }, { UkBearer: [] }, { UkApiKey: [] }]
       summary: Текущие и будущие плановые работы дома (житель дома или диспетчер его УК; иначе 404)
       parameters:
         - name: houseId
@@ -185,6 +274,7 @@ paths:
               schema: { $ref: "#/components/schemas/EventListResponse" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
 
   /api/houses/suggest:
     get:
@@ -416,7 +506,8 @@ paths:
   /api/incidents/{id}/status:
     patch:
       operationId: setIncidentStatus
-      tags: [incidents]
+      tags: [incidents, integration]
+      security: [{ UkBearer: [] }, { UkApiKey: [] }]
       summary: Смена статуса диспетчером УК (accepted→in_progress, in_progress→verifying, verifying→done; false_alarm недоступен; чужая УК → 404)
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
@@ -434,6 +525,7 @@ paths:
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
 
   /api/incidents/{id}/photos:
     post:
@@ -493,6 +585,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: "ES256 с `kid`; claims: sub, role, uk_id, org_inn, esia_oid, exp, jti"
+    UkApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: "uk_live_…"
+      description: "API-ключ УК для 1С; выпускается в кабинете, хранится у нас только хэш"
 
   parameters:
     ID:
@@ -836,6 +933,60 @@ components:
           type: array
           items: { type: string }
         affectedCount: { type: integer, minimum: 0, description: Подписанты главной заявки после склейки }
+
+    CreateApiKeyRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100, example: "1С: Управление ЖКХ, офис" }
+
+    ApiKey:
+      type: object
+      required: [id, name, prefix, createdAt, lastUsedAt, revokedAt]
+      properties:
+        id: { type: string, example: key_1 }
+        name: { type: string }
+        prefix: { type: string, example: "Xk3v9QaB", description: "первые 8 символов после uk_live_" }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: string, format: date-time, nullable: true }
+        revokedAt: { type: string, format: date-time, nullable: true }
+
+    CreatedApiKey:
+      allOf:
+        - { $ref: "#/components/schemas/ApiKey" }
+        - type: object
+          required: [key]
+          properties:
+            key: { type: string, example: "uk_live_Xk3v9QaB…", description: "показывается один раз" }
+
+    ApiKeyList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ApiKey" }
+
+    UkChangeItem:
+      allOf:
+        - { $ref: "#/components/schemas/UkQueueItem" }
+        - type: object
+          required: [mergedIntoId, updatedAt]
+          properties:
+            mergedIntoId:
+              type: string
+              nullable: true
+              description: "если заявку склеили в другую — id главной; такая заявка приходит со status=done"
+            updatedAt: { type: string, format: date-time }
+
+    UkChanges:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/UkChangeItem" }
+        nextCursor: { type: string, example: "1532", description: "передать как cursor в следующий запрос" }
 
     PaginatedUkQueue:
       type: object

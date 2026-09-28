@@ -33,4 +33,6 @@ type Incident struct {
 	MergedIntoID      *int64
 	MergedCount       int32
 	Suspicious        bool
+	ChangeSeq         *int64
+	UpdatedAt         time.Time
 }

@@ -11,6 +11,10 @@ const (
 	UkTokenTTL         = 8 * time.Hour
 	UkLoginWindow      = 15 * time.Minute
 	UkLoginMaxFailures = 5
+
+	UkMaxApiKeys          = 10
+	UkApiKeyRPS           = 10
+	UkIntegrationUserName = "1С-интеграция"
 )
 
 var innOrgWeights = [9]int{2, 4, 10, 3, 5, 9, 4, 6, 8}

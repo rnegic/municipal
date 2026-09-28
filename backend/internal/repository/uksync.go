@@ -22,7 +22,11 @@ func (s *Store) UnregisteredIncidents(ctx context.Context, limit int64) ([]Unreg
 	var rows []UnregisteredRow
 	err := SELECT(Incident.AllColumns, House.ExternalID.AS("unregistered_row.house_external_id")).
 		FROM(Incident.INNER_JOIN(House, House.ID.EQ(Incident.HouseID))).
-		WHERE(Incident.ExternalID.IS_NULL().AND(Incident.MergedIntoID.IS_NULL())).
+		WHERE(Incident.ExternalID.IS_NULL().AND(Incident.MergedIntoID.IS_NULL()).AND(NOT(EXISTS(
+			SELECT(UkAPIKey.ID).FROM(UkAPIKey.INNER_JOIN(Uk, Uk.ID.EQ(UkAPIKey.UkID))).
+				WHERE(UkAPIKey.UkID.EQ(House.UkID).AND(UkAPIKey.RevokedAt.IS_NULL()).
+					AND(Uk.LicenseNumber.IS_NOT_NULL()).AND(Uk.LicenseValidUntil.GT_EQ(CURRENT_DATE()))),
+		)))).
 		ORDER_BY(Incident.ID).LIMIT(limit).
 		QueryContext(ctx, s.db, &rows)
 	return rows, err

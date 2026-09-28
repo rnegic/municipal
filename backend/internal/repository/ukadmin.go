@@ -34,6 +34,12 @@ func (s *Store) UkByINN(ctx context.Context, inn string) (model.Uk, error) {
 	return u, notFound(err)
 }
 
+func (s *Store) UkByID(ctx context.Context, id int64) (model.Uk, error) {
+	var u model.Uk
+	err := SELECT(Uk.AllColumns).FROM(Uk).WHERE(Uk.ID.EQ(Int64(id))).QueryContext(ctx, s.db, &u)
+	return u, notFound(err)
+}
+
 func (s *Store) UkDispatchers(ctx context.Context, ukID int64) ([]model.AppUser, error) {
 	var us []model.AppUser
 	err := SELECT(AppUser.AllColumns).FROM(AppUser).
@@ -138,4 +144,67 @@ func (s *Store) ListHouseEvents(ctx context.Context, houseID int64, now time.Tim
 		ORDER_BY(UkEvent.ScheduledFrom.ASC(), UkEvent.ID.ASC()).
 		QueryContext(ctx, s.db, &out)
 	return out, err
+}
+
+type UkChangeRow struct {
+	UkQueueRow
+	MergedIntoID *int64
+	UpdatedAt    time.Time
+	ChangeSeq    int64
+}
+
+const (
+	incidentStampLock = 7310001
+	stampBatch        = 1000
+)
+
+func (s *Store) StampIncidentChanges(ctx context.Context) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var locked bool
+	if err := tx.QueryRowContext(ctx, `SELECT pg_try_advisory_xact_lock($1)`, incidentStampLock).Scan(&locked); err != nil {
+		return err
+	}
+	if !locked {
+		return nil
+	}
+	if _, err := tx.ExecContext(ctx, `
+		WITH c AS MATERIALIZED (
+		  SELECT id FROM incident WHERE change_seq IS NULL ORDER BY id LIMIT $1 FOR NO KEY UPDATE SKIP LOCKED)
+		UPDATE incident i SET change_seq = nextval('incident_change_seq') FROM c WHERE i.id = c.id`, stampBatch); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Store) IncidentChanges(ctx context.Context, ukID, cursor, limit int64) ([]UkChangeRow, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT i.id, i.house_id, h.address_raw, i.title, i.description, i.category, i.severity, i.status, i.created_at, i.due_at,
+		       (SELECT count(*) FROM incident_subscription s WHERE s.incident_id = i.id),
+		       (SELECT count(*) FROM incident_confirmation c WHERE c.incident_id = i.id),
+		       i.merged_count, u.full_name, i.merged_into_id, i.updated_at, i.change_seq
+		FROM incident i
+		JOIN house h ON h.id = i.house_id
+		JOIN app_user u ON u.id = i.reporter_id
+		WHERE h.uk_id = $1 AND i.change_seq > $2
+		ORDER BY i.change_seq ASC
+		LIMIT $3`, ukID, cursor, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []UkChangeRow{}
+	for rows.Next() {
+		var r UkChangeRow
+		if err := rows.Scan(&r.ID, &r.HouseID, &r.HouseAddress, &r.Title, &r.Description, &r.Category, &r.Severity, &r.Status,
+			&r.CreatedAt, &r.DueAt, &r.AffectedCount, &r.ConfirmedCount, &r.MergedCount, &r.ReporterName,
+			&r.MergedIntoID, &r.UpdatedAt, &r.ChangeSeq); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }
