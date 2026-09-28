@@ -1,0 +1,67 @@
+# Зависимости проекта «УК-инциденты». Все библиотеки и модели — open source.
+# Точные версии зафиксированы в backend/go.mod, mock/uk/go.mod, frontend/package-lock.json,
+# backend/laya/package-lock.json, ml/dedup/requirements*.txt, backend/laya/export/requirements.txt.
+
+# === Бэкенд (Go 1.26, backend/) ===
+github.com/gin-gonic/gin v1.12.0                  # HTTP-сервер — MIT
+github.com/oapi-codegen/oapi-codegen/v2 v2.8.0    # генерация сервера по OpenAPI — Apache-2.0
+github.com/oapi-codegen/runtime v1.7.0            # рантайм сгенерированного кода — Apache-2.0
+github.com/getkin/kin-openapi v0.142.0            # валидация запросов по OpenAPI — MIT
+github.com/jackc/pgx/v5 v5.11.0                   # драйвер PostgreSQL — MIT
+github.com/go-jet/jet/v2 v2.16.0                  # типобезопасный SQL-билдер — Apache-2.0
+github.com/golang-jwt/jwt/v5 v5.3.1               # JWT диспетчера УК (ES256) — MIT
+golang.org/x/crypto v0.54.0                       # bcrypt паролей УК — BSD-3-Clause
+github.com/google/uuid v1.6.0                     # UUID — BSD-3-Clause
+github.com/skip2/go-qrcode                        # QR-наклейки для подъездов — MIT
+github.com/gen2brain/heic v0.7.2                  # конвертация фото HEIC с iPhone — MIT
+
+# === Mock-сервер УК и ЛК диспетчера (Go 1.26, mock/uk/) ===
+github.com/gin-gonic/gin v1.12.0                  # MIT
+github.com/jackc/pgx/v5 v5.11.0                   # MIT
+github.com/oapi-codegen/runtime v1.7.0            # Apache-2.0
+
+# === Классификатор категорий laya (Node.js 20, backend/laya/) ===
+@receptron/laya 0.1.2                             # инференс ONNX-модели — MIT
+convaiinnovations/laya (Hugging Face)             # модель классификации обращений — Apache-2.0
+
+# Экспорт модели laya в ONNX (стадия сборки образа)
+torch==2.14.0+cpu                                 # BSD-3-Clause
+transformers==5.17.0                              # Apache-2.0
+tokenizers==0.23.2                                # Apache-2.0
+safetensors==0.8.0                                # Apache-2.0
+onnx==1.23.0                                      # Apache-2.0
+onnxscript==0.7.2                                 # MIT
+onnxruntime==1.30.0                               # MIT
+huggingface_hub==1.33.0                           # Apache-2.0
+numpy==2.5.3                                      # BSD-3-Clause
+
+# === ML-дедупликация заявок (Python 3.10, ml/dedup/) ===
+# Сервис инференса
+numpy==1.26.4                                     # BSD-3-Clause
+onnxruntime==1.19.2                               # MIT
+tokenizers==0.19.1                                # Apache-2.0
+# Обучение модели
+torch==2.4.1+cpu                                  # BSD-3-Clause
+transformers==4.44.2                              # Apache-2.0
+scikit-learn==1.5.2                               # BSD-3-Clause
+onnx==1.16.2                                      # Apache-2.0
+sergeyzh/BERTA (Hugging Face)                     # базовая модель cross-encoder — MIT
+
+# === Фронтенд (React, frontend/) ===
+react 19.2.8                                      # MIT
+react-dom 19.2.8                                  # MIT
+react-router-dom 6.30.6                           # MIT
+@tanstack/react-query 5.103.1                     # MIT
+zod 4.6.5                                         # MIT
+dayjs 1.11.23                                     # MIT
+@maxhub/max-ui 0.5.0                              # UI-кит MAX — MIT
+# Сборка и линтинг
+vite 8.3.0                                        # MIT
+typescript 6.0.2                                  # Apache-2.0
+sass-embedded 1.104.1                             # MIT
+eslint 10.10.0                                    # MIT
+stylelint 17.15.0                                 # MIT
+
+# === Инфраструктура ===
+postgres:16-alpine                                # СУБД — PostgreSQL License
+Docker / Docker Compose                           # Apache-2.0
