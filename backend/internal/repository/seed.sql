@@ -32,17 +32,17 @@ INSERT INTO app_user (max_user_id, full_name, house_id)
   WHERE h.house_fias_id = 'c6f16fa1-aa2d-4507-bda5-d0ab2cc7a531'
   ON CONFLICT (max_user_id) DO NOTHING;
 
-INSERT INTO incident (house_id, title, severity, reporter_id, description, entrance, riser, status)
-  SELECT h.id, v.title, v.severity, u.id, v.description, v.entrance, v.riser, 'accepted'
+INSERT INTO incident (house_id, title, severity, reporter_id, description, entrance, riser, status, category, authority)
+  SELECT h.id, v.title, v.severity, u.id, v.description, v.entrance, v.riser, 'accepted', v.category, 'UK'
   FROM house h
   CROSS JOIN (VALUES
     (900000001, 'Течёт крыша над 3 подъездом', 'critical',
-     'Второй день капает с потолка на лестничной клетке.', '3', NULL),
+     'Второй день капает с потолка на лестничной клетке.', '3', NULL, 'BUILDING_STRUCTURE'),
     (900000002, 'Не горит свет в подъезде', 'warning',
-     'На 2 и 3 этажах не работает освещение с вечера.', '1', NULL),
+     'На 2 и 3 этажах не работает освещение с вечера.', '1', NULL, 'ELECTRICITY'),
     (900000003, 'Объявление: отключение горячей воды 25–27 сентября', 'warning',
-     'Плановые работы на теплосети, УК «Наш Дом» просит заранее набрать воду.', NULL, NULL)
-  ) AS v(reporter, title, severity, description, entrance, riser)
+     'Плановые работы на теплосети, УК «Наш Дом» просит заранее набрать воду.', NULL, NULL, 'WATER_HEAT')
+  ) AS v(reporter, title, severity, description, entrance, riser, category)
   JOIN app_user u ON u.max_user_id = v.reporter
   WHERE h.house_fias_id = 'c6f16fa1-aa2d-4507-bda5-d0ab2cc7a531'
     AND NOT EXISTS (SELECT 1 FROM incident i WHERE i.house_id = h.id AND i.title = v.title);

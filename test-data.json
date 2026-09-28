@@ -7,7 +7,6 @@
   },
   "accounts": {
     "ukDispatcher": { "inn": "1655000003", "password": "admin2026", "login": "POST /api/auth/esia-mock" },
-    "mockUkCabinet": { "url": "/lk/login", "login": "dispatcher", "password": "demo1234" },
     "residents": [
       { "maxUserId": 900000101, "name": "Анна" },
       { "maxUserId": 900000102, "name": "Борис" },
