@@ -164,7 +164,7 @@ func TestOpenIncidentsCarriesTextAndSkipsOld(t *testing.T) {
 	}
 }
 
-func TestJoinWithPhotos_CountsNewReporterAsDuplicate(t *testing.T) {
+func TestJoinWithPhotos_CountsEveryJoinAsDuplicate(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
 	_, reporter, incID := seedIncident(t, s)
@@ -181,7 +181,7 @@ func TestJoinWithPhotos_CountsNewReporterAsDuplicate(t *testing.T) {
 	if err := s.db.QueryRowContext(ctx, `SELECT merged_count FROM incident WHERE id = $1`, incID).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
-	if n != 1 {
-		t.Fatalf("merged_count = %d, want 1", n)
+	if n != 3 {
+		t.Fatalf("merged_count = %d, want 3", n)
 	}
 }
