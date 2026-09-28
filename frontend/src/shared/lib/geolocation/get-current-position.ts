@@ -27,7 +27,6 @@ const GEOLOCATION_OPTIONS: PositionOptions = {
   maximumAge: 60_000,
 }
 
-/** Текущие координаты через браузерный Geolocation API (MAX Bridge их не отдаёт). */
 export const getCurrentPosition = (): Promise<GeoPoint> =>
   new Promise((resolve, reject) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {

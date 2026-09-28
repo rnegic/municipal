@@ -1,6 +1,3 @@
--- Демо-дом и мок-заявки для дефолтного адреса (см. docs/uk-integration.md «Демо-дом»).
--- house_fias_id взят из DaData suggest для "Казань, ул. Баумана, д. 7/10" — держите его в
--- синхроне с тем же id в mock/uk/internal/store/seed.sql.
 INSERT INTO uk (external_id, name, inn, ogrn, license_number, license_valid_until,
                 phone, emergency_phone, email, website, office_address, working_hours)
   VALUES ('uk-1', 'УК Наш Дом', '1655000003', '1021602000000', '16-000123', '2030-12-31',
@@ -35,8 +32,6 @@ INSERT INTO app_user (max_user_id, full_name, house_id)
   WHERE h.house_fias_id = 'c6f16fa1-aa2d-4507-bda5-d0ab2cc7a531'
   ON CONFLICT (max_user_id) DO NOTHING;
 
--- Третья строка — «объявление»: своей сущности под него нет (event/event_response снесены
--- при мерже uk-contour, см. docs/superpowers/), это обычная заявка с соответствующим title.
 INSERT INTO incident (house_id, title, severity, reporter_id, description, entrance, riser, status)
   SELECT h.id, v.title, v.severity, u.id, v.description, v.entrance, v.riser, 'accepted'
   FROM house h

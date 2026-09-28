@@ -3,7 +3,7 @@ info:
   title: Контракт системы УК
   version: 0.1.0
   description: |
-    Что система управляющей компании предоставляет бэкенду «УК-инциденты».
+    Что система управляющей компании предоставляет бэкенду «Дом.Пульс».
     Из этого файла генерируется клиент нашего бэкенда (gen/uk) и сервер
     референсной реализации mock/uk. Авторизация: `Authorization: Bearer <token>`.
     Ручки с тегом `dispatcher` — внутреннее действие УК (у настоящей УК свой UI);
@@ -72,7 +72,7 @@ paths:
     patch:
       operationId: setIncidentStatus
       tags: [dispatcher]
-      summary: Сменить статус (диспетчер УК; наш бэкенд — только done)
+      summary: Сменить статус (диспетчер УК; наш бэкенд — done после подтверждения жителями и переходы из своего кабинета)
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
       requestBody:

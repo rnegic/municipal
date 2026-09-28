@@ -1,0 +1,655 @@
+openapi: 3.0.3
+info:
+  title: Дом.Пульс — API для 1С
+  version: 0.3.0
+  description: 'Контракт для 1С управляющей компании: операции основного API с тегом `integration`.
+
+    Сгенерирован из backend/openapi.yaml командой `make openapi-1c` — правьте исходник.
+
+
+    Авторизация: `Authorization: Bearer uk_live_…` — ключ выпускается в кабинете УК и действует
+
+    как диспетчер своей УК: видны только её дома и заявки. Не больше 10 запросов в секунду на ключ.
+
+    Истёкшая лицензия УК или отозванный ключ — 401.
+
+
+    Все запросы и ответы — JSON в UTF-8, ошибки — `{ "code": "...", "message": "..." }`.
+
+    Гайд по подключению — docs/uk-1c-integration.md.
+
+    '
+servers:
+- url: https://nerionapp.ru
+security:
+- UkApiKey: []
+tags:
+- name: integration
+  description: Обмен заявками и статусами с 1С УК
+paths:
+  /api/uk/queue:
+    get:
+      operationId: listUkQueue
+      tags:
+      - integration
+      security:
+      - UkApiKey: []
+      summary: Очередь заявок домов своей УК (affectedCount desc, critical, dueAt asc, createdAt asc)
+      parameters:
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 100
+      responses:
+        '200':
+          description: Страница очереди
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUkQueue'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /api/uk/incidents/changes:
+    get:
+      operationId: listUkIncidentChanges
+      tags:
+      - integration
+      security:
+      - UkApiKey: []
+      summary: Лента изменений заявок своей УК для синхронизации (по возрастанию курсора)
+      description: 'Возвращает заявки, созданные или изменённые (статус, склейка) после `cursor`.
+
+        Курсор выдаётся только закоммиченным изменениям и растёт монотонно — изменение
+
+        не может появиться «позади» уже прочитанного курсора.
+
+        Элементы могут повторяться — обрабатывайте идемпотентно по `id`.
+
+        Сохраняйте `nextCursor` и передавайте его в следующий запрос; без `cursor` — с начала.
+
+        '
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+          example: '0'
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 100
+      responses:
+        '200':
+          description: Изменения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UkChanges'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /api/uk/incidents/merge:
+    post:
+      operationId: mergeIncidents
+      tags:
+      - integration
+      security:
+      - UkApiKey: []
+      summary: Ручная склейка заявок одного дома диспетчером; источники закрываются, подписчики/фото/подтверждения переносятся
+        на главную
+      description: 'Повторная склейка уже склеенных в эту же главную заявок идемпотентна (200).
+
+        Чужая УК → 403, заявки разных домов или закрытые → 422, несуществующий id → 404.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeIncidentsRequest'
+      responses:
+        '200':
+          description: Заявки склеены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MergeIncidentsResponse'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /api/uk/events:
+    post:
+      operationId: createUkEvent
+      tags:
+      - integration
+      security:
+      - UkApiKey: []
+      summary: Плановые работы по дому своей УК (чужой дом → 404)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+      responses:
+        '201':
+          description: Событие создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /api/events:
+    get:
+      operationId: listEvents
+      tags:
+      - integration
+      security:
+      - UkApiKey: []
+      summary: Текущие и будущие плановые работы дома (житель дома или диспетчер его УК; иначе 404)
+      parameters:
+      - name: houseId
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: События (scheduledFrom asc)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventListResponse'
+        '401':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+  /api/incidents/{id}/status:
+    patch:
+      operationId: setIncidentStatus
+      tags:
+      - integration
+      security:
+      - UkApiKey: []
+      summary: Смена статуса диспетчером УК (accepted→in_progress, in_progress→verifying, verifying→done; false_alarm недоступен;
+        чужая УК → 404)
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetIncidentStatusRequest'
+      responses:
+        '200':
+          description: Авария с новым статусом
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+components:
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    Error:
+      description: Ошибка
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+  schemas:
+    ApiErrorResponse:
+      type: object
+      required:
+      - code
+      - message
+      properties:
+        code:
+          type: string
+          example: validation_failed
+        message:
+          type: string
+        details: {}
+    CreateEventRequest:
+      type: object
+      required:
+      - houseId
+      - reason
+      - responsible
+      - scheduledFrom
+      - scheduledTo
+      properties:
+        houseId:
+          type: string
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 120
+        responsible:
+          type: string
+          minLength: 1
+          maxLength: 80
+        entrance:
+          type: string
+        riser:
+          type: string
+        scheduledFrom:
+          type: string
+          format: date-time
+        scheduledTo:
+          type: string
+          format: date-time
+    Event:
+      type: object
+      required:
+      - id
+      - houseId
+      - entrance
+      - riser
+      - reason
+      - responsible
+      - scheduledFrom
+      - scheduledTo
+      - status
+      - createdAt
+      - resolvedAt
+      properties:
+        id:
+          type: string
+          example: ev_1
+        houseId:
+          type: string
+        entrance:
+          type: string
+          nullable: true
+        riser:
+          type: string
+          nullable: true
+        reason:
+          type: string
+        responsible:
+          type: string
+        scheduledFrom:
+          type: string
+          format: date-time
+        scheduledTo:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/EventStatus'
+        createdAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+    EventListResponse:
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+    EventStatus:
+      type: string
+      description: planned — до scheduledFrom, in_progress — идут работы, closed — после scheduledTo
+      enum:
+      - planned
+      - in_progress
+      - awaiting_confirmation
+      - disputed
+      - closed
+    Incident:
+      type: object
+      required:
+      - id
+      - houseId
+      - title
+      - description
+      - category
+      - entrance
+      - riser
+      - severity
+      - status
+      - affectedCount
+      - createdAt
+      - dueAt
+      - joinedByMe
+      - confirmedByMe
+      - photos
+      - supporters
+      - mergedCount
+      properties:
+        id:
+          type: string
+          example: inc_01H
+        houseId:
+          type: string
+          example: h_123
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          nullable: true
+          description: null у заявок, созданных до умного роутинга
+          allOf:
+          - $ref: '#/components/schemas/IncidentCategory'
+        entrance:
+          type: string
+          nullable: true
+        riser:
+          type: string
+          nullable: true
+          description: Этаж/зона (floorZone из запроса)
+        severity:
+          $ref: '#/components/schemas/Severity'
+        status:
+          $ref: '#/components/schemas/IncidentStatus'
+        affectedCount:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        dueAt:
+          type: string
+          format: date-time
+          nullable: true
+        joinedByMe:
+          type: boolean
+        confirmedByMe:
+          type: boolean
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Photo'
+        supporters:
+          type: array
+          maxItems: 5
+          description: Превью подписантов для аватарок, отсортировано по времени подписки
+          items:
+            $ref: '#/components/schemas/Supporter'
+        mergedCount:
+          type: integer
+          minimum: 0
+          description: Сколько заявок склеено в эту (с учётом склеенных в них)
+    IncidentCategory:
+      type: string
+      enum:
+      - WATER_HEAT
+      - ELECTRICITY
+      - ELEVATOR
+      - CLEANING_YARD
+      - BUILDING_STRUCTURE
+      - CITY_TERRITORY
+    IncidentStatus:
+      type: string
+      description: 'pending — заявка ждёт приёмки УК: видна диспетчеру и участникам (автор, склеенные),
+
+        но не попадает в ленту дома; диспетчер переводит её только в accepted.
+
+        false_alarm — заявку закрыла УК с отметкой «Ложный вызов»; статус финальный,
+
+        диспетчер его не выставляет (приходит только из УК) и обратно из него не выйти.
+
+        '
+      enum:
+      - pending
+      - accepted
+      - in_progress
+      - verifying
+      - done
+      - false_alarm
+    MergeIncidentsRequest:
+      type: object
+      required:
+      - targetIncidentId
+      - sourceIncidentIds
+      properties:
+        targetIncidentId:
+          type: string
+          example: inc_01H
+          description: Заявка, которая остаётся открытой
+        sourceIncidentIds:
+          type: array
+          minItems: 1
+          description: Заявки-дубликаты; не должны содержать targetIncidentId
+          items:
+            type: string
+    MergeIncidentsResponse:
+      type: object
+      required:
+      - targetIncidentId
+      - mergedIncidentIds
+      - affectedCount
+      properties:
+        targetIncidentId:
+          type: string
+        mergedIncidentIds:
+          type: array
+          items:
+            type: string
+        affectedCount:
+          type: integer
+          minimum: 0
+          description: Подписанты главной заявки после склейки
+    PaginatedUkQueue:
+      type: object
+      required:
+      - items
+      - total
+      - offset
+      - limit
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/UkQueueItem'
+        total:
+          type: integer
+          minimum: 0
+        offset:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 0
+    Photo:
+      type: object
+      required:
+      - id
+      - url
+      properties:
+        id:
+          type: string
+          example: ph_1
+        url:
+          type: string
+          example: /api/photos/ph_1
+    SetIncidentStatusRequest:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          $ref: '#/components/schemas/IncidentStatus'
+    Severity:
+      type: string
+      enum:
+      - critical
+      - warning
+    Supporter:
+      type: object
+      required:
+      - id
+      - name
+      - avatarUrl
+      properties:
+        id:
+          type: string
+          example: u_123
+        name:
+          type: string
+          nullable: true
+          description: 'Имя и первая буква фамилии: «Анна М.»'
+        avatarUrl:
+          type: string
+          nullable: true
+          description: photo_url из initData MAX
+    UkChangeItem:
+      allOf:
+      - $ref: '#/components/schemas/UkQueueItem'
+      - type: object
+        required:
+        - mergedIntoId
+        - updatedAt
+        properties:
+          mergedIntoId:
+            type: string
+            nullable: true
+            description: если заявку склеили в другую — id главной; такая заявка приходит со status=done
+          updatedAt:
+            type: string
+            format: date-time
+    UkChanges:
+      type: object
+      required:
+      - items
+      - nextCursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/UkChangeItem'
+        nextCursor:
+          type: string
+          example: '1532'
+          description: передать как cursor в следующий запрос
+    UkQueueItem:
+      type: object
+      required:
+      - id
+      - houseId
+      - houseAddress
+      - title
+      - description
+      - category
+      - severity
+      - status
+      - createdAt
+      - dueAt
+      - affectedCount
+      - confirmedCount
+      - mergedCount
+      - reporterName
+      - photos
+      properties:
+        id:
+          type: string
+        houseId:
+          type: string
+        houseAddress:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          nullable: true
+          allOf:
+          - $ref: '#/components/schemas/IncidentCategory'
+        severity:
+          $ref: '#/components/schemas/Severity'
+        status:
+          $ref: '#/components/schemas/IncidentStatus'
+        createdAt:
+          type: string
+          format: date-time
+        dueAt:
+          type: string
+          format: date-time
+          nullable: true
+        affectedCount:
+          type: integer
+          minimum: 0
+        confirmedCount:
+          type: integer
+          minimum: 0
+        mergedCount:
+          type: integer
+          minimum: 0
+        reporterName:
+          type: string
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Photo'
+  securitySchemes:
+    UkApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: uk_live_…
+      description: API-ключ УК для 1С; выпускается в кабинете, хранится у нас только хэш

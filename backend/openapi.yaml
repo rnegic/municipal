@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: УК-инциденты API
+  title: Дом.Пульс API
   version: 0.3.0
   description: |
     Бэкенд мини-аппа MAX для жильцов и УК. Источник правды по контракту —
@@ -18,7 +18,7 @@ info:
 
     API-ключ УК для 1С: `Authorization: Bearer uk_live_…` (выпуск — `POST /api/uk/api-keys` из кабинета).
     Ключ действует как диспетчер своей УК; операции с тегом `integration` — контракт для 1С,
-    гайд — docs/uk-1c-integration.md. Управление ключами под ключом запрещено (403).
+    выделенный в docs/uk-1c-openapi.yaml (`make openapi-1c`), гайд — docs/uk-1c-integration.md. Управление ключами под ключом запрещено (403).
 servers:
   - url: http://localhost:8080
 security:
@@ -84,7 +84,7 @@ paths:
       operationId: esiaMockLogin
       security: []
       tags: [uk]
-      summary: Вход сотрудника УК (mock ЕСИА + реестр лицензий ГИС ЖКХ + полномочие «Сотрудник АДС»)
+      summary: Вход сотрудника УК (mock ЕСИА + действующая лицензия УК + полномочие «Сотрудник АДС»)
       description: |
         `Authorization: tma <initData>` необязателен; если он валиден — max user id пишется в аудит попыток.
         Неизвестная организация, недействующая лицензия, нет полномочия АДС и неверный пароль — одинаковый 403.

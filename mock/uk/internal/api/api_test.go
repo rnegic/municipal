@@ -91,19 +91,19 @@ func TestIncidentLifecycle(t *testing.T) {
 	if inc.Id != "INC-001" || inc.Status != "pending" {
 		t.Fatalf("bad incident %+v", inc)
 	}
-	// idempotent by externalRef
+
 	if w := do(t, h, "POST", "/incidents", body, "tok"); w.Code != 200 || !strings.Contains(w.Body.String(), `"id":"INC-001"`) {
 		t.Fatalf("dup: %d %s", w.Code, w.Body)
 	}
-	// unknown house
+
 	if w := do(t, h, "POST", "/incidents", `{"externalRef":"43","houseId":"h-9","title":"t","description":"d","severity":"warning"}`, "tok"); w.Code != 404 {
 		t.Fatalf("unknown house: want 404 got %d", w.Code)
 	}
-	// nothing updated after "now"
+
 	if w := do(t, h, "GET", "/incidents?updatedSince=2999-01-01T00:00:00Z", "", "tok"); w.Code != 200 || !strings.Contains(w.Body.String(), `"items":[]`) {
 		t.Fatalf("updates: %d %s", w.Code, w.Body)
 	}
-	// dispatcher moves to in_progress → visible in updates
+
 	if w := do(t, h, "PATCH", "/incidents/INC-001", `{"status":"in_progress"}`, "tok"); w.Code != 200 {
 		t.Fatalf("patch: %d %s", w.Code, w.Body)
 	}
@@ -111,7 +111,7 @@ func TestIncidentLifecycle(t *testing.T) {
 	if !strings.Contains(w.Body.String(), `"status":"in_progress"`) || !strings.Contains(w.Body.String(), `"externalRef":"42"`) {
 		t.Fatalf("updates after patch: %s", w.Body)
 	}
-	// done is final
+
 	if w := do(t, h, "PATCH", "/incidents/INC-001", `{"status":"done"}`, "tok"); w.Code != 200 {
 		t.Fatalf("done: %d", w.Code)
 	}
@@ -141,7 +141,7 @@ func TestFailureInjection(t *testing.T) {
 
 func TestErrorEnvelope(t *testing.T) {
 	h := testRouter(t)
-	// (a) invalid JSON → 400 with code:validation_failed
+
 	w := do(t, h, "POST", "/incidents", `{not json`, "tok")
 	if w.Code != 400 {
 		t.Fatalf("malformed JSON: want 400, got %d", w.Code)
@@ -149,8 +149,7 @@ func TestErrorEnvelope(t *testing.T) {
 	if !strings.Contains(w.Body.String(), `"code":"validation_failed"`) {
 		t.Fatalf("malformed JSON: body missing code:validation_failed, got %s", w.Body)
 	}
-	// (b) invalid status enum → 400 with code:validation_failed
-	// First create an incident
+
 	createBody := `{"externalRef":"e-test","houseId":"h-1","title":"Test","description":"d","severity":"critical"}`
 	createW := do(t, h, "POST", "/incidents", createBody, "tok")
 	if createW.Code != 201 {
@@ -158,7 +157,7 @@ func TestErrorEnvelope(t *testing.T) {
 	}
 	var inc struct{ Id string }
 	json.Unmarshal(createW.Body.Bytes(), &inc)
-	// Patch with bogus status
+
 	w = do(t, h, "PATCH", "/incidents/"+inc.Id, `{"status":"bogus"}`, "tok")
 	if w.Code != 400 {
 		t.Fatalf("bogus status: want 400, got %d %s", w.Code, w.Body)
@@ -178,9 +177,9 @@ func TestBearerEmptyTokenFailsClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(st.Close)
-	// Router with empty token
+
 	h := NewRouter(st, "", 0)
-	// Request with "Authorization: Bearer " (empty token) should fail
+
 	r := httptest.NewRequest("GET", "/houses/x", nil)
 	r.Header.Set("Authorization", "Bearer ")
 	w := httptest.NewRecorder()

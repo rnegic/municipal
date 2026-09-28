@@ -35,7 +35,6 @@ export interface AddressByCoordsParams {
   signal?: AbortSignal
 }
 
-/** Ближайший адрес с домом по координатам (обратный геокодинг через бэкенд). */
 export const fetchAddressByCoords = ({ lat, lon, count, signal }: AddressByCoordsParams) =>
   apiRequest(
     ADDRESS_SUGGEST_PATH,

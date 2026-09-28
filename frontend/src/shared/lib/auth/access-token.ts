@@ -75,7 +75,6 @@ export const clearAccessToken = (): void => {
 export const subscribeAccessToken = (listener: Listener): (() => void) => {
   listeners.add(listener)
 
-  // другая вкладка/окно вебвью чистит токен
   const onStorage = (event: StorageEvent) => {
     if (event.key === STORAGE_KEY || event.key === null) {
       notify()

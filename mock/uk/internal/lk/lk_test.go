@@ -51,7 +51,6 @@ func TestLoginAndChangeStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// unauthenticated → redirect to login
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/lk", nil))
 	if w.Code != 302 || w.Header().Get("Location") != "/lk/login" {
@@ -78,7 +77,7 @@ func TestLoginAndChangeStatus(t *testing.T) {
 	if w := form(t, h, "/lk/incidents/INC-001/status", url.Values{"status": {"in_progress"}}, cookie); w.Code != 302 {
 		t.Fatalf("status: %d %s", w.Code, w.Body)
 	}
-	inc, err := st.SetStatus(context.Background(), "INC-001", "in_progress") // no-op read-back
+	inc, err := st.SetStatus(context.Background(), "INC-001", "in_progress")
 	if err != nil || inc.Status != "in_progress" {
 		t.Fatalf("status not applied: %+v %v", inc, err)
 	}

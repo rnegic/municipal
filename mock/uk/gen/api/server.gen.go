@@ -175,7 +175,7 @@ type ServerInterface interface {
 	// RegisterIncident Зарегистрировать обращение (идемпотентно по externalRef)
 	// (POST /incidents)
 	RegisterIncident(c *gin.Context)
-	// SetIncidentStatus Сменить статус (диспетчер УК; наш бэкенд — только done)
+	// SetIncidentStatus Сменить статус (диспетчер УК; наш бэкенд — done после подтверждения жителями и переходы из своего кабинета)
 	// (PATCH /incidents/{id})
 	SetIncidentStatus(c *gin.Context, id string)
 }
@@ -578,7 +578,7 @@ type StrictServerInterface interface {
 	// RegisterIncident Зарегистрировать обращение (идемпотентно по externalRef)
 	// (POST /incidents)
 	RegisterIncident(ctx context.Context, request RegisterIncidentRequestObject) (RegisterIncidentResponseObject, error)
-	// SetIncidentStatus Сменить статус (диспетчер УК; наш бэкенд — только done)
+	// SetIncidentStatus Сменить статус (диспетчер УК; наш бэкенд — done после подтверждения жителями и переходы из своего кабинета)
 	// (PATCH /incidents/{id})
 	SetIncidentStatus(ctx context.Context, request SetIncidentStatusRequestObject) (SetIncidentStatusResponseObject, error)
 }

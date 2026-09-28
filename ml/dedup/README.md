@@ -4,8 +4,6 @@ Pairwise Cross-Encoder (текущая модель — `sergeyzh/BERTA`, `runs/
 «две заявки сообщают об одной и той же конкретной аварии?». Вход: две заявки
 (title, description, подъезд, стояк, срочность). Выход: `P(duplicate)`.
 
-Итоговый отчёт и статус: [`docs/ml/dedup-report.md`](../../docs/ml/dedup-report.md).
-
 ## Окружение
 
 ```bash

@@ -106,7 +106,6 @@ CREATE TABLE IF NOT EXISTS incident_subscription (
 );
 CREATE INDEX IF NOT EXISTS incident_subscription_user ON incident_subscription(user_id, joined_at);
 
--- Одно подтверждение «починили» от жителя = 1 строка (идемпотентно, см. confirm-эндпоинт).
 CREATE TABLE IF NOT EXISTS incident_confirmation (
   incident_id  BIGINT NOT NULL REFERENCES incident(id),
   user_id      BIGINT NOT NULL REFERENCES app_user(id),

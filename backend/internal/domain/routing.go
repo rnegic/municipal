@@ -71,8 +71,6 @@ func ValidDescription(s string) (string, bool) {
 	return s, n >= 10 && n <= 2000
 }
 
-// ValidTitle нормализует краткое название заявки. Оно используется только для
-// отображения и не участвует в автоопределении категории.
 func ValidTitle(s string) (string, bool) {
 	s = strings.TrimSpace(s)
 	n := utf8.RuneCountInString(s)

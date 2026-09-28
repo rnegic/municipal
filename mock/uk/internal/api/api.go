@@ -1,4 +1,3 @@
-// Package api — реализация контракта contracts/uk.yaml (gin strict-server из gen/api).
 package api
 
 import (

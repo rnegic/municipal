@@ -29,7 +29,6 @@ func (s *Service) SuggestAddresses(ctx context.Context, query string, count int)
 	return toAddressSuggestions(sugs), nil
 }
 
-// GeolocateAddresses возвращает ближайшие адреса с домом по координатам (reverse geocoding).
 func (s *Service) GeolocateAddresses(ctx context.Context, lat, lon float64, count int) ([]AddressSuggestion, error) {
 	if lat < -90 || lat > 90 || lon < -180 || lon > 180 {
 		return nil, ErrInvalidInput

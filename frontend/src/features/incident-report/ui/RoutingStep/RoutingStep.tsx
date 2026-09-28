@@ -56,8 +56,6 @@ export const RoutingStep = ({
 
   const isUkFlow = decision?.isUkResponsibility ?? false
 
-  // В ручном сценарии показываем вердикт сразу после выбора ведомства,
-  // не дожидаясь выбора категории.
   const verdict =
     decision ??
     (isManualRouting && manualAuthority

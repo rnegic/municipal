@@ -39,7 +39,6 @@ func (c *Client) Suggest(ctx context.Context, q string, count int) ([]Suggestion
 	return c.post(ctx, c.BaseURL, map[string]any{"query": q, "count": normalizeCount(count)})
 }
 
-// Geolocate возвращает ближайшие адреса с домом по координатам (reverse geocoding).
 func (c *Client) Geolocate(ctx context.Context, lat, lon float64, count int) ([]Suggestion, error) {
 	return c.post(ctx, c.GeolocateURL, map[string]any{"lat": lat, "lon": lon, "count": normalizeCount(count)})
 }

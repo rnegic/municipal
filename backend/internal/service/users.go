@@ -67,7 +67,6 @@ func (s *Service) HouseAddress(ctx context.Context, houseID int64) (string, erro
 	return h.AddressRaw, err
 }
 
-// HouseUk — контакты УК, обслуживающей дом (для шапки-подсказки на фронте).
 func (s *Service) HouseUk(ctx context.Context, houseID int64) (model.Uk, error) {
 	return s.repo.HouseUk(ctx, houseID)
 }

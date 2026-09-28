@@ -24,7 +24,6 @@ export const isInsideMax = (): boolean => getWebApp() !== null
 
 const LAUNCH_DATA_PARAM = 'WebAppData'
 
-/** MAX кладёт initData в hash (#WebAppData=…) — чистим его, иначе HashRouter примет его за маршрут */
 export const normalizeLaunchHash = (): void => {
   if (typeof window === 'undefined' || !window.location.hash.includes(`${LAUNCH_DATA_PARAM}=`)) {
     return
@@ -71,7 +70,6 @@ export const shareMaxContent = (params: MaxWebAppShareContentParams): boolean =>
   return true
 }
 
-/** Внешний браузер: печать наклейки возможна только снаружи MAX */
 export const openLink = (url: string): void => {
   const webApp = getWebApp()
 
@@ -85,12 +83,10 @@ export const openLink = (url: string): void => {
 
 const START_PARAM_PATTERN = /^[A-Za-z0-9_-]{1,512}$/
 
-/** Диплинк мини-приложения: https://max.ru/{botName}?startapp={payload} */
 export const buildMiniAppLink = (startParam: string): string | null =>
   env.maxBotName && START_PARAM_PATTERN.test(startParam)
     ? `https://max.ru/${env.maxBotName}?startapp=${startParam}`
     : null
 
-/** Диплинк экрана «Отправить в MAX»: https://max.ru/:share?text={text} */
 export const buildShareDeepLink = (text: string): string =>
   `https://max.ru/:share?text=${encodeURIComponent(text)}`

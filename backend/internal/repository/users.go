@@ -32,7 +32,6 @@ func (s *Store) UpsertUser(ctx context.Context, iu domain.InitUser) (model.AppUs
 	return u, err
 }
 
-// UkContacts — контакты УК из системы УК (nil = не переданы; сохранённое значение не затирается).
 type UkContacts struct {
 	Phone, EmergencyPhone, Email, Website, OfficeAddress, WorkingHours *string
 }
@@ -95,7 +94,6 @@ func (s *Store) FindHouse(ctx context.Context, id int64) (model.House, error) {
 	return h, err
 }
 
-// HouseUk — организация, обслуживающая дом (контакты для жителя).
 func (s *Store) HouseUk(ctx context.Context, houseID int64) (model.Uk, error) {
 	var u model.Uk
 	err := SELECT(Uk.AllColumns).

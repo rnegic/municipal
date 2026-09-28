@@ -116,8 +116,7 @@ func (s *Service) CreateIncident(ctx context.Context, houseID, reporterID int64,
 	if !ok || !in.Category.Valid() || tooLong(in.Entrance, 40) || tooLong(in.FloorZone, 120) || len(in.PhotoIDs) > MaxPhotosPerIncident {
 		return IncidentRow{}, false, ErrInvalidInput
 	}
-	// Название заявки задаёт пользователь; если он его не прислал, откатываемся
-	// на название категории. На автоопределение категории название не влияет.
+
 	title := in.Category.Title()
 	if in.Title != nil {
 		t, ok := domain.ValidTitle(*in.Title)

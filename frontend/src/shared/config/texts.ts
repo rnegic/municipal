@@ -1,5 +1,5 @@
 export const commonTexts = {
-  appName: 'УК ↔ Жилец',
+  appName: 'Дом.Пульс',
   actions: {
     back: 'Назад',
     goHome: 'Вернуться на главную',

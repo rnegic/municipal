@@ -1,5 +1,3 @@
-// Package store — Postgres mock-системы УК: реестр организаций, домов, инцидентов, диспетчеров.
-// Строковый SQL через database/sql: это не продукт, а референсная реализация контракта.
 package store
 
 import (
@@ -10,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib" // driver "pgx"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 //go:embed schema.sql
@@ -37,12 +35,11 @@ type Incident struct {
 	Entrance, Riser                                                *string
 	Suspicious                                                     bool
 	CreatedAt, UpdatedAt                                           time.Time
-	Address                                                        string // house.address, для ЛК
+	Address                                                        string
 }
 
 type Dispatcher struct{ Login, PasswordSHA256, OrgID string }
 
-// Open connects, applies schema.sql and seed.sql (both idempotent).
 func Open(ctx context.Context, dsn string) (*Store, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
@@ -59,7 +56,6 @@ func Open(ctx context.Context, dsn string) (*Store, error) {
 
 func (s *Store) Close() { _ = s.db.Close() }
 
-// DB exposes the handle for test setup.
 func (s *Store) DB() *sql.DB { return s.db }
 
 func (s *Store) FindHouseByFias(ctx context.Context, fias string, address *string) (House, error) {
@@ -99,8 +95,6 @@ func (s *Store) get(ctx context.Context, where string, arg any) (Incident, error
 	return in, err
 }
 
-// CreateIncident is idempotent by external_ref: created=false returns the existing row.
-// Unknown house_id → ErrNotFound.
 func (s *Store) CreateIncident(ctx context.Context, in Incident) (Incident, bool, error) {
 	if existing, err := s.get(ctx, `i.external_ref = $1`, in.ExternalRef); err == nil {
 		return existing, false, nil
@@ -151,7 +145,6 @@ func (s *Store) list(ctx context.Context, whereOrder string, arg any) ([]Inciden
 	return out, rows.Err()
 }
 
-// SetStatus: ErrNotFound for unknown id, ErrConflict when leaving done or false_alarm.
 func (s *Store) SetStatus(ctx context.Context, id, status string) (Incident, error) {
 	cur, err := s.get(ctx, `i.id = $1`, id)
 	if err != nil {

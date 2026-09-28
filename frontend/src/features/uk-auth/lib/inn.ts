@@ -26,6 +26,5 @@ export const isValidInn = (value: string): boolean => {
   )
 }
 
-/** УК - всегда юрлицо */
 export const isOrganizationInn = (value: string): boolean =>
   normalizeInn(value).length === 10 && isValidInn(value)

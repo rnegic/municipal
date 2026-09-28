@@ -1,5 +1,3 @@
-// Package lk — минимальный личный кабинет диспетчера УК: вход по логину/паролю из сида,
-// список обращений организации, смена статуса. html/template, cookie-сессии в памяти.
 package lk
 
 import (
@@ -33,7 +31,7 @@ const cookieName = "lk_session"
 type lk struct {
 	st       *store.Store
 	mu       sync.Mutex
-	sessions map[string]store.Dispatcher // ponytail: сессии в памяти, рестарт = разлогин
+	sessions map[string]store.Dispatcher
 }
 
 func Mount(r gin.IRouter, st *store.Store) {
@@ -80,7 +78,6 @@ func (l *lk) logout(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/lk/login")
 }
 
-// current returns the dispatcher for the session cookie or redirects to login (ok=false).
 func (l *lk) current(c *gin.Context) (store.Dispatcher, bool) {
 	tok, err := c.Cookie(cookieName)
 	if err == nil {

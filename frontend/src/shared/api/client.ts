@@ -6,7 +6,6 @@ import { getInitData } from '@/shared/lib/max'
 
 export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 
-/** max — житель (initData из MAX), uk — сотрудник УК (ESIA-токен). По умолчанию житель. */
 export type AuthMode = 'max' | 'uk'
 
 export type QueryValue = string | number | boolean | undefined

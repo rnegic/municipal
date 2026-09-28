@@ -1,7 +1,7 @@
 version: "1.0"
 
 solution:
-  name: УК-инциденты
+  name: Дом.Пульс
   team: municipal
   repository: https://github.com/rnegic/municipal
   openapi: backend/openapi.yaml

@@ -1,8 +1,6 @@
 DATABASE_URL ?= postgres://ukapp:ukapp@localhost:5432/ukapp?sslmode=disable
 
 .PHONY: gen gen-api gen-db lint test run db
-
-## gen: openapi.yaml → gen/api; schema.sql → Postgres → gen/db (jet). Требует docker compose up.
 gen: gen-api gen-db
 
 gen-api:
@@ -22,8 +20,6 @@ lint:
 	golangci-lint run ./...
 
 test:
-	# -p 1: repository/service/transport-тесты бьют в один и тот же локальный Postgres
-	# (TRUNCATE ... CASCADE); параллельные пакеты могут словить deadlock.
 	go test -p 1 ./...
 
 run:

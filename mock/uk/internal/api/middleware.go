@@ -26,8 +26,6 @@ func bearer(token string) ukapi.MiddlewareFunc {
 	}
 }
 
-// faults: MOCK_FAILURE_RATE — доля запросов, падающих 500, чтобы показать устойчивость
-// бэкенда к недоступной УК. ponytail: только 500; таймауты/504 — добавить sleep здесь же.
 func faults(rate float64) ukapi.MiddlewareFunc {
 	return func(c *gin.Context) {
 		if rate > 0 && rand.Float64() < rate { //nolint:gosec // не криптография

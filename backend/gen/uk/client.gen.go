@@ -264,14 +264,14 @@ type ClientInterface interface {
 	// Corresponds with POST /incidents (the `RegisterIncident` operationId).
 	RegisterIncident(ctx context.Context, body RegisterIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// SetIncidentStatusWithBody Сменить статус (диспетчер УК; наш бэкенд — только done)
+	// SetIncidentStatusWithBody Сменить статус (диспетчер УК; наш бэкенд — done после подтверждения жителями и переходы из своего кабинета)
 	//
 	// Takes any type of body and a specified content type.
 	//
 	// Corresponds with PATCH /incidents/{id} (the `SetIncidentStatus` operationId).
 	SetIncidentStatusWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// SetIncidentStatus Сменить статус (диспетчер УК; наш бэкенд — только done)
+	// SetIncidentStatus Сменить статус (диспетчер УК; наш бэкенд — done после подтверждения жителями и переходы из своего кабинета)
 	//
 	// Takes a body of the `application/json` content type.
 	//
@@ -343,7 +343,7 @@ func (c *Client) RegisterIncident(ctx context.Context, body RegisterIncidentJSON
 	return c.Client.Do(req)
 }
 
-// SetIncidentStatusWithBody Сменить статус (диспетчер УК; наш бэкенд — только done)
+// SetIncidentStatusWithBody Сменить статус (диспетчер УК; наш бэкенд — done после подтверждения жителями и переходы из своего кабинета)
 //
 // Takes any type of body and a specified content type.
 //
@@ -360,7 +360,7 @@ func (c *Client) SetIncidentStatusWithBody(ctx context.Context, id string, conte
 	return c.Client.Do(req)
 }
 
-// SetIncidentStatus Сменить статус (диспетчер УК; наш бэкенд — только done)
+// SetIncidentStatus Сменить статус (диспетчер УК; наш бэкенд — done после подтверждения жителями и переходы из своего кабинета)
 //
 // Takes a body of the `application/json` content type.
 //
@@ -647,14 +647,14 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with POST /incidents (the `RegisterIncident` operationId).
 	RegisterIncidentWithResponse(ctx context.Context, body RegisterIncidentJSONRequestBody, reqEditors ...RequestEditorFn) (*RegisterIncidentResponse, error)
 
-	// SetIncidentStatusWithBodyWithResponse Сменить статус (диспетчер УК; наш бэкенд — только done)
+	// SetIncidentStatusWithBodyWithResponse Сменить статус (диспетчер УК; наш бэкенд — done после подтверждения жителями и переходы из своего кабинета)
 	//
 	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with PATCH /incidents/{id} (the `SetIncidentStatus` operationId).
 	SetIncidentStatusWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetIncidentStatusResponse, error)
 
-	// SetIncidentStatusWithResponse Сменить статус (диспетчер УК; наш бэкенд — только done)
+	// SetIncidentStatusWithResponse Сменить статус (диспетчер УК; наш бэкенд — done после подтверждения жителями и переходы из своего кабинета)
 	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
@@ -955,7 +955,7 @@ func (c *ClientWithResponses) RegisterIncidentWithResponse(ctx context.Context, 
 	return ParseRegisterIncidentResponse(rsp)
 }
 
-// SetIncidentStatusWithBodyWithResponse Сменить статус (диспетчер УК; наш бэкенд — только done)
+// SetIncidentStatusWithBodyWithResponse Сменить статус (диспетчер УК; наш бэкенд — done после подтверждения жителями и переходы из своего кабинета)
 //
 // Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
 //
@@ -968,7 +968,7 @@ func (c *ClientWithResponses) SetIncidentStatusWithBodyWithResponse(ctx context.
 	return ParseSetIncidentStatusResponse(rsp)
 }
 
-// SetIncidentStatusWithResponse Сменить статус (диспетчер УК; наш бэкенд — только done)
+// SetIncidentStatusWithResponse Сменить статус (диспетчер УК; наш бэкенд — done после подтверждения жителями и переходы из своего кабинета)
 //
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
