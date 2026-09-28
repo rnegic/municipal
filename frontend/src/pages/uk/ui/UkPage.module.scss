@@ -170,6 +170,7 @@
   flex-direction: row;
   align-items: center;
   gap: var(--app-space-4);
+  min-width: 0;
   border: 1px solid var(--app-color-border-card);
   background: transparent;
   box-shadow: none;
@@ -363,6 +364,6 @@
 
   .board,
   .archive {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
