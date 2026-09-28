@@ -161,9 +161,6 @@ export const RequestDetailsSheet = ({ request, onClose }: RequestDetailsSheetPro
             <Typography.Text variant="note" color="tertiary">
               {legalTerm.law}
             </Typography.Text>
-            <Typography.Text variant="note" color="tertiary">
-              {texts.legalHint}
-            </Typography.Text>
           </div>
         </section>
 

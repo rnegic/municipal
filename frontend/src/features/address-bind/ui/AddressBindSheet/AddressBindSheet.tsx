@@ -167,6 +167,7 @@ export const AddressBindSheet = ({ open, onClose, onSuccess }: AddressBindSheetP
             autoFocus
             withClearButton
             size="large"
+            innerClassNames={{ input: s.input }}
             autoComplete="street-address"
             role="combobox"
             aria-labelledby={captionId}

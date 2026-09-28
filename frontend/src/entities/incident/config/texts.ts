@@ -115,7 +115,6 @@ export const incidentTexts = {
       businessDays
         ? `${days} ${businessDayForms[ruPlural.select(days)] ?? 'рабочих дней'}`
         : `${days} ${dayForms[ruPlural.select(days)] ?? 'дней'}`,
-    legalHint: 'Если срок вышел, а тишина, можно жаловаться в жилищную инспекцию.',
     loadError: 'Не получилось загрузить подробности заявки.',
     retry: 'Попробовать снова',
     openCard: 'Открыть подробности заявки',
