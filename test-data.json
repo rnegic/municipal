@@ -1,0 +1,58 @@
+{
+  "house": {
+    "id": "h_1",
+    "address": "Казань, ул. Баумана, д. 7/10",
+    "startParam": "h_1",
+    "uk": "УК Наш Дом"
+  },
+  "accounts": {
+    "ukDispatcher": { "inn": "1655000003", "password": "admin2026", "login": "POST /api/auth/esia-mock" },
+    "mockUkCabinet": { "url": "/lk/login", "login": "dispatcher", "password": "demo1234" },
+    "residents": [
+      { "maxUserId": 900000101, "name": "Анна" },
+      { "maxUserId": 900000102, "name": "Борис" },
+      { "maxUserId": 900000103, "name": "Вера" }
+    ]
+  },
+  "incidents": {
+    "original": {
+      "author": 900000101,
+      "body": { "title": "Нет горячей воды", "description": "В третьем подъезде нет горячей воды с утра", "category": "WATER_HEAT", "entrance": "3", "photoUrls": [] },
+      "expect": { "status": [201, 200], "affectedCount": ">= 1" }
+    },
+    "duplicate": {
+      "author": 900000102,
+      "body": { "title": "Горячая вода", "description": "Горячую воду отключили, из крана идёт только холодная", "category": "WATER_HEAT", "entrance": "3", "photoUrls": [] },
+      "expect": { "status": [200], "sameIdAs": "original", "affectedCount": "+1" }
+    },
+    "mergeTarget": {
+      "author": 900000103,
+      "body": { "title": "Лифт не работает", "description": "Лифт во втором подъезде остановился и не вызывается", "category": "ELEVATOR", "entrance": "2", "photoUrls": [] },
+      "expect": { "status": [201, 200] }
+    },
+    "mergeSource": {
+      "author": 900000101,
+      "body": { "title": "Нет света на лестнице", "description": "Во втором подъезде на лестнице не горят лампы", "category": "ELECTRICITY", "entrance": "2", "photoUrls": [] },
+      "expect": { "status": [201, 200] }
+    },
+    "notUkResponsibility": {
+      "author": 900000101,
+      "body": { "description": "Во дворе огромная яма на дороге", "category": "CITY_TERRITORY", "photoUrls": [] },
+      "expect": { "status": [422], "code": "business_rule_failed" }
+    },
+    "invalid": {
+      "author": 900000101,
+      "body": { "description": "коротко", "category": "WATER_HEAT", "photoUrls": [] },
+      "expect": { "status": [400], "code": "validation_failed" }
+    }
+  },
+  "statusFlow": ["accepted", "in_progress", "verifying"],
+  "closeRule": "заявка в verifying закрывается (done), когда подтвердили не меньше 2 жителей и не меньше половины подписанных",
+  "event": {
+    "houseId": "h_1",
+    "reason": "Промывка системы отопления",
+    "responsible": "УК Наш Дом",
+    "scheduledFrom": "2026-10-01T09:00:00Z",
+    "scheduledTo": "2026-10-01T18:00:00Z"
+  }
+}

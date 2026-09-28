@@ -1,0 +1,397 @@
+version: "1.0"
+
+solution:
+  name: УК-инциденты
+  team: municipal
+  repository: https://github.com/rnegic/municipal
+  openapi: backend/openapi.yaml
+  testData: test-data.json
+
+baseUrl: https://nerionapp.ru
+
+roles:
+  resident:
+    description: Житель дома. В MAX initData подписывает бот; для проверки заголовок генерируется скриптом.
+    header: "Authorization: tma <initData>"
+    obtain: python3 scripts/initdata.py --token "$MAX_BOT_TOKEN" --user <maxUserId> --name <имя> --house h_1
+    note: >
+      initData действует 24 часа. start_param=h_1 привязывает жителя к демо-дому, как QR-наклейка.
+      Для baseUrl подпись делается токеном прод-бота — готовые заголовки выдаёт команда;
+      для локального запуска подойдёт любой MAX_BOT_TOKEN из .env.
+    users:
+      resident_a: { maxUserId: 900000101, name: Анна }
+      resident_b: { maxUserId: 900000102, name: Борис }
+      resident_c: { maxUserId: 900000103, name: Вера }
+  uk_dispatcher:
+    description: Диспетчер УК «Наш Дом»
+    header: "Authorization: Bearer <token>"
+    obtain: check auth_login_ok → response.token
+    credentials: { inn: "1655000003", password: admin2026 }
+  uk_api_key:
+    description: Ключ 1С той же УК
+    header: "Authorization: Bearer uk_live_…"
+    obtain: check uk_api_key_issue → response.key
+
+variables:
+  houseId: h_1
+
+checks:
+  - id: health
+    title: Сервис жив
+    method: GET
+    path: /health
+    role: none
+    expect:
+      status: [200]
+      contentType: text/plain
+      body: ok
+
+  - id: auth_login_bad_password
+    title: Вход диспетчера с неверным паролем
+    method: POST
+    path: /api/auth/esia-mock
+    role: none
+    request:
+      headers: { Content-Type: application/json }
+      body: { inn: "1655000003", password: wrong }
+    expect:
+      status: [403]
+      contentType: application/json
+      requiredFields: [code, message]
+
+  - id: auth_login_ok
+    title: Вход диспетчера по ИНН и паролю
+    method: POST
+    path: /api/auth/esia-mock
+    role: none
+    request:
+      headers: { Content-Type: application/json }
+      body: { inn: "1655000003", password: admin2026 }
+    expect:
+      status: [200]
+      contentType: application/json
+      requiredFields: [token, expiresAt, authMethod, user.id, user.role, organization.inn]
+      values: { user.role: uk_dispatcher, organization.inn: "1655000003" }
+    save: { dispatcherToken: token }
+
+  - id: me_resident
+    title: Профиль жителя и привязанный дом
+    method: GET
+    path: /api/me
+    role: resident_a
+    expect:
+      status: [200]
+      contentType: application/json
+      requiredFields: [user.id, user.role, house.id, house.address, house.uk.name]
+      values: { user.role: resident, house.id: h_1 }
+
+  - id: unauthorized
+    title: Без авторизации
+    method: GET
+    path: /api/me
+    role: none
+    expect:
+      status: [401]
+      contentType: application/json
+      requiredFields: [code, message]
+
+  - id: analyze
+    title: Классификация текста заявки
+    method: POST
+    path: /api/incidents/analyze
+    role: resident_a
+    request:
+      headers: { Content-Type: application/json }
+      body: { description: В третьем подъезде нет горячей воды с утра }
+    expect:
+      status: [200]
+      contentType: application/json
+      requiredFields: [category, authority, isUkResponsibility, photoRequired]
+      note: category = null, если модель не уверена — фронт предлагает ручной выбор
+
+  - id: incident_create
+    title: Житель создаёт заявку
+    method: POST
+    path: /api/incidents
+    role: resident_a
+    request:
+      headers: { Content-Type: application/json }
+      body: { title: Нет горячей воды, description: В третьем подъезде нет горячей воды с утра, category: WATER_HEAT, entrance: "3", photoUrls: [] }
+    expect:
+      status: [201, 200]
+      contentType: application/json
+      requiredFields: [id, houseId, title, category, severity, status, affectedCount, dueAt, joinedByMe]
+      values: { houseId: h_1, category: WATER_HEAT, severity: critical, joinedByMe: true }
+      note: 201 — новая заявка; 200 — такая авария в доме уже открыта и житель к ней присоединён
+    save: { incidentId: id }
+
+  - id: incident_duplicate
+    title: Сосед пишет о той же аварии другими словами — заявки склеиваются
+    method: POST
+    path: /api/incidents
+    role: resident_b
+    request:
+      headers: { Content-Type: application/json }
+      body: { title: Горячая вода, description: "Горячую воду отключили, из крана идёт только холодная", category: WATER_HEAT, entrance: "3", photoUrls: [] }
+    expect:
+      status: [200]
+      contentType: application/json
+      requiredFields: [id, affectedCount, supporters]
+      values: { id: "{{incidentId}}", joinedByMe: true }
+
+  - id: incident_invalid
+    title: Слишком короткое описание
+    method: POST
+    path: /api/incidents
+    role: resident_a
+    request:
+      headers: { Content-Type: application/json }
+      body: { description: коротко, category: WATER_HEAT, photoUrls: [] }
+    expect:
+      status: [400]
+      contentType: application/json
+      values: { code: validation_failed }
+
+  - id: incident_not_uk
+    title: Проблема не в зоне ответственности УК
+    method: POST
+    path: /api/incidents
+    role: resident_a
+    request:
+      headers: { Content-Type: application/json }
+      body: { description: Во дворе огромная яма на дороге, category: CITY_TERRITORY, photoUrls: [] }
+    expect:
+      status: [422]
+      contentType: application/json
+      values: { code: business_rule_failed }
+
+  - id: incident_get
+    title: Карточка заявки
+    method: GET
+    path: /api/incidents/{{incidentId}}
+    role: resident_a
+    expect:
+      status: [200]
+      contentType: application/json
+      requiredFields: [id, status, affectedCount, supporters, mergedCount]
+
+  - id: incident_not_found
+    title: Несуществующая заявка
+    method: GET
+    path: /api/incidents/inc_999999999
+    role: resident_a
+    expect:
+      status: [404]
+      contentType: application/json
+      requiredFields: [code, message]
+
+  - id: incident_join
+    title: «У меня тоже» от третьего жителя
+    method: POST
+    path: /api/incidents/{{incidentId}}/join
+    role: resident_c
+    expect:
+      status: [200]
+      contentType: application/json
+      requiredFields: [incidentId, affectedCount, joined]
+      values: { incidentId: "{{incidentId}}", joined: true }
+
+  - id: house_incidents
+    title: Лента заявок дома
+    method: GET
+    path: /api/houses/h_1/incidents
+    role: resident_a
+    expect:
+      status: [200]
+      contentType: application/json
+      requiredFields: [items]
+
+  - id: uk_queue_forbidden_for_resident
+    title: Житель не видит очередь УК
+    method: GET
+    path: /api/uk/queue
+    role: resident_a
+    expect:
+      status: [403]
+      contentType: application/json
+      requiredFields: [code, message]
+
+  - id: uk_queue
+    title: Очередь заявок УК
+    method: GET
+    path: /api/uk/queue
+    role: uk_dispatcher
+    request:
+      query: { offset: 0, limit: 20 }
+    expect:
+      status: [200]
+      contentType: application/json
+      requiredFields: [items, total, offset, limit, "items[].id", "items[].houseAddress", "items[].status", "items[].affectedCount"]
+
+  - id: status_forbidden_for_resident
+    title: Житель не меняет статус
+    method: PATCH
+    path: /api/incidents/{{incidentId}}/status
+    role: resident_a
+    request:
+      headers: { Content-Type: application/json }
+      body: { status: accepted }
+    expect:
+      status: [403]
+      contentType: application/json
+
+  - id: status_accepted
+    title: Диспетчер принимает заявку
+    method: PATCH
+    path: /api/incidents/{{incidentId}}/status
+    role: uk_dispatcher
+    request:
+      headers: { Content-Type: application/json }
+      body: { status: accepted }
+    expect:
+      status: [200]
+      contentType: application/json
+      values: { status: accepted }
+
+  - id: status_in_progress
+    title: Заявка в работе
+    method: PATCH
+    path: /api/incidents/{{incidentId}}/status
+    role: uk_dispatcher
+    request:
+      headers: { Content-Type: application/json }
+      body: { status: in_progress }
+    expect:
+      status: [200]
+      contentType: application/json
+      values: { status: in_progress }
+
+  - id: status_verifying
+    title: УК отметила выполнение, ждём подтверждения жителей
+    method: PATCH
+    path: /api/incidents/{{incidentId}}/status
+    role: uk_dispatcher
+    request:
+      headers: { Content-Type: application/json }
+      body: { status: verifying }
+    expect:
+      status: [200]
+      contentType: application/json
+      values: { status: verifying }
+
+  - id: confirm_first
+    title: Первый житель подтверждает — заявка ещё не закрыта
+    method: POST
+    path: /api/incidents/{{incidentId}}/confirm
+    role: resident_a
+    expect:
+      status: [200]
+      contentType: application/json
+      requiredFields: [incidentId, status, confirmedAt]
+      values: { status: verifying }
+
+  - id: confirm_second
+    title: Второй житель подтверждает — заявка закрыта (≥2 и ≥50% подписанных)
+    method: POST
+    path: /api/incidents/{{incidentId}}/confirm
+    role: resident_b
+    expect:
+      status: [200]
+      contentType: application/json
+      values: { status: done }
+
+  - id: merge_target_create
+    title: Заявка про лифт
+    method: POST
+    path: /api/incidents
+    role: resident_c
+    request:
+      headers: { Content-Type: application/json }
+      body: { title: Лифт не работает, description: Лифт во втором подъезде остановился и не вызывается, category: ELEVATOR, entrance: "2", photoUrls: [] }
+    expect:
+      status: [201, 200]
+      contentType: application/json
+    save: { mergeTargetId: id }
+
+  - id: merge_source_create
+    title: Заявка про свет в том же подъезде
+    method: POST
+    path: /api/incidents
+    role: resident_a
+    request:
+      headers: { Content-Type: application/json }
+      body: { title: Нет света на лестнице, description: Во втором подъезде на лестнице не горят лампы, category: ELECTRICITY, entrance: "2", photoUrls: [] }
+    expect:
+      status: [201, 200]
+      contentType: application/json
+    save: { mergeSourceId: id }
+
+  - id: uk_merge
+    title: Диспетчер вручную склеивает заявки
+    method: POST
+    path: /api/uk/incidents/merge
+    role: uk_dispatcher
+    request:
+      headers: { Content-Type: application/json }
+      body: { targetIncidentId: "{{mergeTargetId}}", sourceIncidentIds: ["{{mergeSourceId}}"] }
+    expect:
+      status: [200]
+      contentType: application/json
+      requiredFields: [targetIncidentId, mergedIncidentIds, affectedCount]
+      values: { targetIncidentId: "{{mergeTargetId}}" }
+
+  - id: uk_event
+    title: Объявление о плановых работах в доме
+    method: POST
+    path: /api/uk/events
+    role: uk_dispatcher
+    request:
+      headers: { Content-Type: application/json }
+      body: { houseId: h_1, reason: Промывка системы отопления, responsible: УК Наш Дом, scheduledFrom: "2026-10-01T09:00:00Z", scheduledTo: "2026-10-01T18:00:00Z" }
+    expect:
+      status: [201]
+      contentType: application/json
+      requiredFields: [id, houseId, reason, scheduledFrom, scheduledTo, status]
+
+  - id: uk_api_key_issue
+    title: Выпуск ключа 1С
+    method: POST
+    path: /api/uk/api-keys
+    role: uk_dispatcher
+    request:
+      headers: { Content-Type: application/json }
+      body: { name: Проверка DATA-API }
+    expect:
+      status: [201]
+      contentType: application/json
+      requiredFields: [id, key, prefix, name, createdAt]
+    save: { apiKey: key, apiKeyId: id }
+
+  - id: uk_changes_by_key
+    title: 1С забирает ленту изменений по ключу
+    method: GET
+    path: /api/uk/incidents/changes
+    role: uk_api_key
+    request:
+      query: { limit: 50 }
+    expect:
+      status: [200]
+      contentType: application/json
+      requiredFields: [items, nextCursor]
+
+  - id: uk_keys_forbidden_by_key
+    title: Ключом нельзя управлять ключами
+    method: GET
+    path: /api/uk/api-keys
+    role: uk_api_key
+    expect:
+      status: [403]
+      contentType: application/json
+
+  - id: uk_api_key_revoke
+    title: Отзыв ключа
+    method: DELETE
+    path: /api/uk/api-keys/{{apiKeyId}}
+    role: uk_dispatcher
+    expect:
+      status: [204]

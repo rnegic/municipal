@@ -40,7 +40,10 @@ services:
 
   laya:
     image: ghcr.io/rnegic/municipal-laya:latest
-    build: ./backend/laya
+    build:
+      context: ./backend/laya
+      args:
+        MODEL_SHA256: ${LAYA_SHA256:-03187a5ca9d3d70539b25a1d85711d04bafc8ad218f2b154643f40233551c729}
     mem_limit: 3g
     environment:
       LAYA_THREADS: ${LAYA_THREADS:-2}

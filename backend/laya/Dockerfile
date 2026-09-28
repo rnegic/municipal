@@ -10,12 +10,18 @@ RUN python /tools/fetch.py ${LAYA_HF_REVISION} /checkpoint \
  && cd /src/export && python export_onnx.py /checkpoint /model \
  && python /tools/alias_tokens.py /model/tokenizer/tokenizer.json
 
+FROM scratch AS model
+COPY --from=export /model /
+
 FROM node:20-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
+ARG MODEL_SHA256
+RUN --mount=type=bind,source=model.tar.gz,target=/tmp/model.tar.gz \
+    echo "$MODEL_SHA256  /tmp/model.tar.gz" | sha256sum -c - \
+ && mkdir /model && tar -xzf /tmp/model.tar.gz -C /model
 COPY *.mjs eval.json ./
-COPY --from=export /model /model
 ENV LAYA_MODEL_DIR=/model
 EXPOSE 8090
 CMD ["node", "server.mjs"]

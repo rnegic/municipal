@@ -20,6 +20,8 @@ env:
   SITE: https://nerionapp.ru
   REGISTRY: ghcr.io/rnegic/municipal
   DEDUP_RELEASE: dedup-ftM2-berta-s16
+  LAYA_RELEASE: laya-onnx-55cf4c4
+  LAYA_SHA256: 03187a5ca9d3d70539b25a1d85711d04bafc8ad218f2b154643f40233551c729
   DEDUP_SHA256: 9ade90a570595aad76b48587a4355f11075bdb5b79657f1202c3afc1e1afe33c
 
 jobs:
@@ -95,6 +97,12 @@ jobs:
           cache-from: type=gha,scope=mockuk
           cache-to: type=gha,mode=max,scope=mockuk
 
+      - name: Download laya model
+        if: steps.changes.outputs.backend
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release download "$LAYA_RELEASE" -p model.tar.gz -D backend/laya
+
       - name: Build and push laya image
         if: steps.changes.outputs.backend
         uses: docker/build-push-action@v6
@@ -102,6 +110,7 @@ jobs:
           context: backend/laya
           push: true
           tags: ${{ env.REGISTRY }}-laya:latest
+          build-args: MODEL_SHA256=${{ env.LAYA_SHA256 }}
           cache-from: type=gha,scope=laya
           cache-to: type=gha,mode=max,scope=laya
 
