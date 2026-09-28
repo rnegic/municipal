@@ -23,6 +23,7 @@ import {
   useIncidentMerge,
 } from '@/features/incident-merge'
 import { ThemeToggle } from '@/features/theme-switch'
+import { UkApiKeysButton } from '@/features/uk-api-keys'
 import { ResidentModeLink, UkSessionBadge, UkSignOutButton } from '@/features/uk-auth'
 import { IconLocation } from '@/shared/assets/icons'
 import { cn } from '@/shared/lib/cn'
@@ -397,6 +398,7 @@ export const UkPage = () => {
       actions={
         <div className={s.sessionActions}>
           <div className={s.sessionIcons}>
+            <UkApiKeysButton />
             <ThemeToggle />
             <UkSignOutButton />
           </div>
