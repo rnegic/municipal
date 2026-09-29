@@ -2,7 +2,7 @@ REPO := rnegic/municipal
 DEDUP_RELEASE := dedup-ftM2-berta-s16
 LAYA_RELEASE := laya-onnx-55cf4c4
 
-.PHONY: up stop down reset logs openapi-1c
+.PHONY: up stop down reset logs
 
 up: .env ml/dedup/bundle.tar.gz backend/laya/model.tar.gz
 	docker compose up -d --build
@@ -18,9 +18,6 @@ reset:
 
 logs:
 	docker compose logs -f
-
-openapi-1c:
-	python3 scripts/openapi_1c.py
 
 .env:
 	cp .env.example .env

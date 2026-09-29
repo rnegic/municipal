@@ -11,13 +11,11 @@ baseUrl: https://nerionapp.ru
 
 roles:
   resident:
-    description: Житель дома. В MAX initData подписывает бот; для проверки заголовок генерируется скриптом.
+    description: Житель дома. initData подписывает бот MAX.
     header: "Authorization: tma <initData>"
-    obtain: python3 scripts/initdata.py --token "$MAX_BOT_TOKEN" --user <maxUserId> --name <имя> --house h_1
+    obtain: вход в Mini App через бота MAX
     note: >
-      initData действует 24 часа. start_param=h_1 привязывает жителя к демо-дому, как QR-наклейка.
-      Для baseUrl подпись делается токеном прод-бота — готовые заголовки выдаёт команда;
-      для локального запуска подойдёт любой MAX_BOT_TOKEN из .env.
+      initData действует 24 часа. Без авторизации MAX сценарии жителя недоступны — проверка в боте.
     users:
       resident_a: { maxUserId: 900000101, name: Анна }
       resident_b: { maxUserId: 900000102, name: Борис }

@@ -51,10 +51,10 @@
 
 ## Внешние сервисы и интеграции
 
-Для полноценной работы MVP нужны внешние сервисы, которые работают вне Docker. Если ключей нет, локальная проверка API все равно пройдет, но с ограничениями:
+Для полноценной работы MVP нужны внешние сервисы, которые работают вне Docker. Без ключей часть функций недоступна:
 
-1. **MAX Bot API:** Нужен для отправки пуш-уведомлений и проверки подписи `initData`. Без ключа уведомления не доходят, а для локальных тестов можно использовать любую строку.
-2. **DaData:** Нужен для подсказок при вводе адреса и получения ФИАС-id. Без ключа (`DADATA_TOKEN`) привязка по тексту выдаст ошибку 500, но можно привязать дом по QR-коду.
+1. **MAX Bot API:** Нужен для отправки пуш-уведомлений и проверки подписи `initData`. Без настоящего токена авторизация жителя и уведомления не работают.
+2. **DaData:** Нужен для подсказок при вводе адреса и получения ФИАС-id. Без ключа (`DADATA_TOKEN`) привязка по тексту выдаст ошибку 500.
 3. **ГИС ЖКХ:** Используется для определения реальной УК по адресу. Ключ не нужен. Если сервис недоступен, можно включить флаг `GISGKH_DISABLED=1`, тогда УК будет браться из нашего mock-сервиса.
 
 Обмен с mock-uk идёт по контракту, который потребуется от реальной УК ([`docs/uk-integration.md`](docs/uk-integration.md)).
@@ -118,7 +118,7 @@ docker compose up -d --build
 | Переменная | Обязательна | Описание |
 |---|---|---|
 | `POSTGRES_PASSWORD` | да | пароль БД |
-| `MAX_BOT_TOKEN` | да | токен бота MAX; для локальной проверки — любая строка |
+| `MAX_BOT_TOKEN` | да | токен бота MAX |
 | `MAX_BOT_NAME` | нет | имя бота, по умолчанию `t117_hakaton_max_bot` |
 | `DADATA_TOKEN` | для привязки по адресу | ключ DaData |
 | `UK_API_TOKEN` | нет | токен обмена с системой УК, по умолчанию `demo-uk-token` |
@@ -134,41 +134,14 @@ docker compose up -d --build
 | Роль | Вход |
 |---|---|
 | Диспетчер УК «Наш Дом» | ИНН `1655000003`, пароль `admin2026` — «Вход для сотрудников УК (ЕСИА)» в приложении |
-| Житель | любой пользователь MAX; для API - заголовок из `scripts/initdata.py` |
+| Житель | любой пользователь MAX, вход через бота |
 
 При старте создаются демо-УК «Наш Дом», дом `h_1` «Казань, ул. Баумана, д. 7/10». Запросы и ожидаемые ответы — [`test-data.json`](test-data.json), все
 обязательные проверки API — [`DATA-API.yaml`](DATA-API.yaml).
 
-### Сценарий через API
+### Сценарий в MAX
 
-Локальный стенд с `MAX_BOT_TOKEN=test-bot-token`:
-
-```bash
-B=http://localhost:8080
-anna=$(python3 scripts/initdata.py --token test-bot-token --user 900000101 --name Анна)
-boris=$(python3 scripts/initdata.py --token test-bot-token --user 900000102 --name Борис)
-json='Content-Type: application/json'
-
-curl -s $B/api/me -H "Authorization: $anna"          # 200, house.id = h_1 (привязка по start_param, как с QR)
-
-curl -s $B/api/incidents -H "Authorization: $anna" -H "$json" \
-  -d '{"title":"Нет горячей воды","description":"В третьем подъезде нет горячей воды с утра","category":"WATER_HEAT","entrance":"3","photoUrls":[]}'
-                                                      # 201, id = inc_N, affectedCount = 1
-curl -s $B/api/incidents -H "Authorization: $boris" -H "$json" \
-  -d '{"title":"Горячая вода","description":"Горячую воду отключили, из крана идёт только холодная","category":"WATER_HEAT","entrance":"3","photoUrls":[]}'
-                                                      # 200, тот же inc_N, affectedCount = 2
-
-T=$(curl -s $B/api/auth/esia-mock -H "$json" -d '{"inn":"1655000003","password":"admin2026"}' \
-  | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
-for s in accepted in_progress verifying; do
-  curl -s -X PATCH $B/api/incidents/inc_N/status -H "Authorization: Bearer $T" -H "$json" -d "{\"status\":\"$s\"}"
-done                                                  # 200, status = $s
-
-curl -s -X POST $B/api/incidents/inc_N/confirm -H "Authorization: $anna"    # 200, verifying
-curl -s -X POST $B/api/incidents/inc_N/confirm -H "Authorization: $boris"   # 200, done
-```
-
-проверка В MAX: 
+Локально без авторизации MAX функционал работать не будет — все сценарии необходимо смотреть непосредственно в боте.
 
 - Войдите жителем в MAX Mini App, введя адрес Казань, ул. Баумана, д. 7/10 
 - Создайте заявки в свободной форме, при выборе “выбрать автоматически” система сама определит категорию и ведомство, при нажатии на “выбрать вручную” можно выбрать категорию вручную.
@@ -210,7 +183,7 @@ curl -s -X POST $B/api/incidents/inc_N/confirm -H "Authorization: $boris"   # 20
 - ЕСИА и системы УК имитируются. Доступ в кабинет УК выдаётся вручную (в демо - только «Наш Дом»);
   срок лицензии берётся из нашей БД, а не из реестра ГИС ЖКХ.
 - Лимиты запросов и защита от перебора пароля хранятся в памяти — рассчитаны на один экземпляр `api`.
-- Без `DADATA_TOKEN` привязка по адресу отвечает `500` - используйте QR.
+- Без `DADATA_TOKEN` привязка по адресу отвечает `500`.
 - Уведомления доставляются только с настоящим токеном бота MAX.
 - Пока у УК есть активный ключ 1С, её заявки не передаются в mock-УК.
 - `laya` требует до 3 ГБ памяти, `dedup` - до 1,5 ГБ; веса моделей - в GitHub Releases.
