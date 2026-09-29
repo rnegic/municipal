@@ -192,7 +192,7 @@
 .cardTitleRow {
   display: flex;
   flex: 1 1 auto;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--app-space-2);
   min-width: 0;
 }
@@ -278,9 +278,7 @@
 .cardTitle {
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .critical,
