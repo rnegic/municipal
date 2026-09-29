@@ -4,6 +4,7 @@
 соседей автоматически склеиваются в одну, УК видит четкий аварии на канбан доске, жители получают
 уведомления о каждом изменении статуса.
 
+- Команда: ДМ Яхта
 - Мини-приложение: бот [`t117_hakaton_max_bot`](https://max.ru/t117_hakaton_max_bot)
 - API: https://nerionapp.ru — спецификация [`backend/openapi.yaml`](backend/openapi.yaml), проверки [`DATA-API.yaml`](DATA-API.yaml)
 

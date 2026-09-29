@@ -2,7 +2,7 @@ version: "1.0"
 
 solution:
   name: Дом.Пульс
-  team: municipal
+  team: ДМ Яхта
   repository: https://github.com/rnegic/municipal
   openapi: backend/openapi.yaml
   testData: test-data.json
