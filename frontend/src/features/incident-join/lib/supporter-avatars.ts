@@ -7,6 +7,7 @@ interface SupporterAvatarsParams {
   affectedCount: number
   supporters: readonly IncidentSupporter[]
   joined: boolean
+  meId?: string | null
 }
 
 export const buildSupporterAvatars = ({
@@ -14,10 +15,11 @@ export const buildSupporterAvatars = ({
   affectedCount,
   supporters,
   joined,
+  meId,
 }: SupporterAvatarsParams): AvatarStackItem[] => {
   const me = joined ? getMaxUserAvatar() : null
   const known: AvatarStackItem[] = supporters
-    .filter((supporter) => supporter.id !== me?.id)
+    .filter((supporter) => supporter.id !== meId)
     .map((supporter) => ({ id: supporter.id, name: supporter.name, imageUrl: supporter.avatarUrl }))
 
   const items = me ? [{ id: me.id, name: me.name, imageUrl: me.avatarUrl }, ...known] : known

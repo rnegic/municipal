@@ -7,6 +7,7 @@ import {
   useJoinIncidentMutation,
   type IncidentSupporter,
 } from '@/entities/incident'
+import { useMeQuery } from '@/entities/user'
 import { IconCheckCircle, IconPlus } from '@/shared/assets/icons'
 import { describeApiError } from '@/shared/lib/api-error'
 import { cn } from '@/shared/lib/cn'
@@ -32,10 +33,11 @@ export const IncidentJoinButton = ({
 }: IncidentJoinButtonProps) => {
   const joinMutation = useJoinIncidentMutation()
   const joined = alreadyJoined || joinMutation.isSuccess
+  const meId = useMeQuery().data?.user.id ?? null
 
   const avatars = useMemo(
-    () => buildSupporterAvatars({ incidentId, affectedCount, supporters, joined }),
-    [affectedCount, incidentId, joined, supporters],
+    () => buildSupporterAvatars({ incidentId, affectedCount, supporters, joined, meId }),
+    [affectedCount, incidentId, joined, meId, supporters],
   )
 
   return (
